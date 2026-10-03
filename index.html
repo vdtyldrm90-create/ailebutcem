@@ -2658,7 +2658,7 @@ function loanRow(l){
   }).join('');
   const balanceCaption=closed?'İlk borç':settled>LOAN_AMOUNT_EPSILON?'Kalan borç':'Borç tutarı';
   const actionLabel=closed?'Yeniden Aç':settled>LOAN_AMOUNT_EPSILON?'Kapama':'Borcu Kapat';
-  return `<div class="item loan-row ${deleteMode.loans?'selectable-item ':''}${overdue?'overdue-payment':''}" style="${overdue?'background:#fff1f2;border-color:#fecdd3;':''}">${deleteMode.loans?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.loans.has(l.id)?'checked':''} onchange="toggleDeleteSelection('loans','${l.id}')"><span></span></label>`:''}<div class="icon ${l.direction==='given'?'out':'in'}">${l.direction==='given'?'↗':'↙'}</div><div class="itemmain"><b>${esc(l.person)} · ${direction}</b><div class="sub">${dateDetails} · ${esc(member(l.memberId))} · ${assetName}</div>${l.description?`<div class="sub">${esc(l.description)}</div>`:''}${settlementRows?`<div class="loan-payment-history">${settlementRows}</div>`:''}${duration?`<small class="sub loan-duration">${duration}</small>`:''}<small class="sub ${overdue?'late-amount':''}">${loanStatusText(l)}</small></div><div class="loan-row-side"><b class="amount">${fnum(closed?l.amount:remaining)} ${assetName}</b><small class="loan-balance-caption">${balanceCaption}</small>${!deleteMode.loans?`<button class="secondary" onclick="toggleLoanStatus('${l.id}')">${actionLabel}</button>`:''}</div></div>`;
+  return `<div class="item loan-row ${deleteMode.loans?'selectable-item ':''}${overdue?'overdue-payment':''}" style="${overdue?'background:#fff1f2;border-color:#fecdd3;':''}">${deleteMode.loans?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.loans.has(String(l.id))?'checked':''} onchange="toggleDeleteSelection('loans','${String(l.id)}')"><span></span></label>`:''}<div class="icon ${l.direction==='given'?'out':'in'}">${l.direction==='given'?'↗':'↙'}</div><div class="itemmain"><b>${esc(l.person)} · ${direction}</b><div class="sub">${dateDetails} · ${esc(member(l.memberId))} · ${assetName}</div>${l.description?`<div class="sub">${esc(l.description)}</div>`:''}${settlementRows?`<div class="loan-payment-history">${settlementRows}</div>`:''}${duration?`<small class="sub loan-duration">${duration}</small>`:''}<small class="sub ${overdue?'late-amount':''}">${loanStatusText(l)}</small></div><div class="loan-row-side"><b class="amount">${fnum(closed?l.amount:remaining)} ${assetName}</b><small class="loan-balance-caption">${balanceCaption}</small>${!deleteMode.loans?`<button class="secondary" onclick="toggleLoanStatus('${l.id}')">${actionLabel}</button>`:''}</div></div>`;
 }
 function openLoanCloseModal(id){
   const loan=(S.loans||[]).find(x=>x.id===id);
@@ -2753,8 +2753,9 @@ function loanTotal(direction){
 function loansPanel(){
   S.loans=S.loans||[];
   const rows=S.loans.filter(l=>loanFilter==='all'||(loanFilter==='open'?l.status!=='closed':l.status==='closed')).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const loanDeleteCount=deleteSelected.loans.size+(deleteSelected.loanSettlements?.size||0);
   const deleteActions=deleteMode.loans
-    ? `<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="secondary" onclick="cancelDeleteMode('loans')">İptal</button><button class="dangerbtn" onclick="askDelete('loans')" ${deleteSelected.loans.size?'':'disabled'}>Seçili Sil (${deleteSelected.loans.size})</button></div>`
+    ? `<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="secondary" onclick="cancelDeleteMode('loans')">İptal</button><button class="dangerbtn" onclick="askDelete('loans')" ${loanDeleteCount?'':'disabled'}>Seçili Sil (${loanDeleteCount})</button></div>`
     : `<button class="secondary" onclick="enterDeleteMode('loans')">Sil</button>`;
   return `<section id="loansPanel" class="panel loan-records-panel"><div class="panelhead"><div><h2>Elden Borç Kayıtları</h2><p>${rows.length} kayıt</p></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><div class="segment loan-filter">${[['open','Açık'],['closed','Kapalı'],['all','Tümü']].map(x=>`<button type="button" class="${loanFilter===x[0]?'active':''}" onclick="loanFilter='${x[0]}';render()">${x[1]}</button>`).join('')}</div>${deleteActions}</div></div><div class="list">${rows.map(loanRow).join('')||empty()}</div></section>`;
 }
@@ -3706,9 +3707,9 @@ function loanSettlementSelectionKey(loanId,settlementId){return `${String(loanId
 function toggleDeleteSelection(type,id){
   if(type==='loans'){
     const loanId=String(id);
-    if(deleteSelected.loans.has(id)){deleteSelected.loans.delete(id)}
+    if(deleteSelected.loans.has(loanId)){deleteSelected.loans.delete(loanId)}
     else{
-      deleteSelected.loans.add(id);
+      deleteSelected.loans.add(loanId);
       for(const key of Array.from(deleteSelected.loanSettlements||[]))if(key.startsWith(loanId+'::'))deleteSelected.loanSettlements.delete(key);
     }
   }else if(type==='loanSettlements'){
