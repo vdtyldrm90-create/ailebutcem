@@ -1275,6 +1275,19 @@ body.cloud-cache-loading #main button,body.cloud-cache-loading #main input,body.
 </style>
 
 </head>
+<style id="savings-report-readable-contrast-v1">
+/* Birikim raporunda net kartlardan miras kalan beyaz etiketleri okunaklı koyu metne çevir. */
+.report-savings-panel .report-savings-stats .stat small { color: #3f5047 !important; opacity: 1 !important; }
+.report-savings-panel .report-savings-stats .stat .value { color: inherit !important; opacity: 1 !important; }
+/* Tablo ve mobil satırlarda tema nedeniyle beyaza dönen açıklamaları sabitle. */
+.report-savings-panel .report-breakdown .report-table th { color: #58675f !important; }
+.report-savings-panel .report-breakdown .report-table td { color: #293b32 !important; }
+.report-savings-panel .report-mobile-row .itemmain b { color: #293b32 !important; }
+.report-savings-panel .report-mobile-row .sub { color: #596a61 !important; }
+.report-savings-panel .report-mobile-row .amount { color: #293b32 !important; }
+.report-savings-panel .report-chart-note { color: #596a61 !important; }
+</style>
+
 <body class="auth-pending">
 <div id="authGate" class="auth-gate" aria-live="polite"></div>
 <div class="app">
