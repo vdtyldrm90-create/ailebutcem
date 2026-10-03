@@ -1245,7 +1245,8 @@ body.cloud-cache-loading #main button,body.cloud-cache-loading #main input,body.
 .movement-financial-grid b{font-size:7.5px!important;line-height:1.2!important;letter-spacing:-.15px;overflow-wrap:anywhere;word-break:break-word}
 .movement-financial-grid .movement-profit-pct{display:block;font-size:7px!important;line-height:1.15;font-weight:800;color:inherit;margin-top:1px;white-space:normal}
 #main .savings-overview-card .savings-card-label{font-size:12px!important;padding:4px 7px!important;margin-bottom:7px!important}
-#main .savings-label-given{display:inline-flex!important;flex-direction:column;align-items:flex-start;gap:2px;line-height:1.08!important}
+#main .savings-label-given,
+#main .savings-label-taken{display:inline-flex!important;flex-direction:column;align-items:flex-start;gap:2px;line-height:1.08!important}
 #main .savings-label-sub{display:block;font-size:10px;line-height:1.05;font-weight:800}
 .savings-tools-column .add-action-panel .primary{width:120px!important;min-width:120px!important;max-width:120px!important;height:36px!important;min-height:36px!important;padding:6px 5px!important;font-size:10.5px!important;line-height:1.15;white-space:nowrap!important;display:inline-flex;align-items:center;justify-content:center;flex:none}
 #main .goal-actions{gap:5px!important;margin-top:6px!important}
@@ -2648,7 +2649,7 @@ function savings(){
       <section class="panel stat savings-overview-card savings-total-card"><small class="savings-card-label savings-label-total">Toplam Birikim</small><div class="value">${fmt(total)}</div><small>${activeGoals.length} devam eden hedef</small>${pl.cost>0?`<small class="savings-total-pl ${pl.profit>=0?'pl-positive':'pl-negative'}">Takip edilen K/Z: ${signedMoney(pl.profit)} (${signedPercent(pl.percent)})</small>`:''}</section>
       <div class="savings-loan-summary-grid">
         <section class="panel stat savings-overview-card"><small class="savings-card-label savings-label-given">Verdiğim<span class="savings-label-sub">(Alacağım)</span></small><div class="value">${fmt(loanTotal('given'))}</div><small>${activeGiven.length} açık kayıt</small></section>
-        <section class="panel stat savings-overview-card"><small class="savings-card-label savings-label-taken">Aldığım (Ödeyeceğim)</small><div class="value">${fmt(loanTotal('taken'))}</div><small>${activeTaken.length} açık kayıt</small></section>
+        <section class="panel stat savings-overview-card"><small class="savings-card-label savings-label-taken">Aldığım<span class="savings-label-sub">(Ödeyeceğim)</span></small><div class="value">${fmt(loanTotal('taken'))}</div><small>${activeTaken.length} açık kayıt</small></section>
         <section class="panel stat savings-overview-card"><small class="savings-card-label savings-label-net">Net Alacak</small><div class="value">${fmt(loanTotal('given')-loanTotal('taken'))}</div><small>Kurla TL karşılığı</small></section>
       </div>
     </div>
