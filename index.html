@@ -1061,7 +1061,7 @@ body.cloud-cache-loading #main button,body.cloud-cache-loading #main input,body.
 .home-transactions-preview .panelhead{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:nowrap}
 .home-transactions-preview .panelhead>div:first-child{min-width:0}
 .home-transactions-preview .panelhead h2{white-space:nowrap}
-.home-list-head-actions{flex:0 0 auto;white-space:nowrap}
+.home-list-head-actions{flex:0 0 auto;white-space:nowrap;margin-left:auto;display:flex;align-items:center;justify-content:flex-end}
 .home-savings-preview{min-width:0}
 @media(max-width:420px){
   .home-payments-preview .alerthead button,.home-transactions-preview .home-list-head-actions button{padding:6px 7px;font-size:10px}
@@ -1121,6 +1121,21 @@ body.cloud-cache-loading #main button,body.cloud-cache-loading #main input,body.
   .saving-movement-item>.amount{max-width:72px;font-size:9px}
   .saving-movement-item .movement-pl-detail{gap:2px 5px}
 }
+</style>
+
+
+<style>
+/* Planlanan ödemeler: durum filtreleri ve toplu sil aynı satırda kalsın. */
+.payment-list-controls{display:flex;align-items:center;justify-content:flex-end;gap:4px;flex-wrap:nowrap;min-width:0;max-width:100%;white-space:nowrap;overflow-x:auto;scrollbar-width:none}.payment-list-controls::-webkit-scrollbar{display:none}
+.payment-list-controls .payment-status-filter{display:flex;flex-wrap:nowrap;gap:2px;white-space:nowrap;min-width:0}
+.payment-list-controls .payment-status-filter button,.payment-list-controls>button{flex:0 0 auto;white-space:nowrap;padding:6px 7px;font-size:11px;line-height:1.15}
+.home-transactions-preview .home-list-head-actions{margin-left:auto;flex:0 0 auto}
+/* Birikim hareketinde alış maliyeti ve güncel değer her hareketin altında kompakt gösterilir. */
+.movement-financial-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 8px;padding:7px 8px;margin-top:5px;border-radius:9px;border:1px solid #e1eae5;background:linear-gradient(135deg,#f8fbf9,#f4f8fc)}
+.movement-financial-grid>span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.movement-financial-grid small{color:var(--muted);font-size:9px;line-height:1.2}
+.movement-financial-grid b{font-size:10px;line-height:1.3;overflow-wrap:anywhere}
+@media(max-width:420px){.payment-list-controls{gap:3px}.payment-list-controls .payment-status-filter{gap:1px}.payment-list-controls .payment-status-filter button,.payment-list-controls>button{padding:5px 4px;font-size:9px}.movement-financial-grid{gap:4px 6px;padding:6px}.movement-financial-grid b{font-size:9px}}
 </style>
 
 </head>
@@ -2314,7 +2329,7 @@ function deleteRecurringTx(id){
   S.recurringTransactions=(S.recurringTransactions||[]).filter(x=>x.id!==id);
   save();
 }
-function payments(){let rows=S.payments.filter(p=>(payFilter==='tumu'||p.status===payFilter)&&dateInRange(p.dueDate,dateFilters.payments,window._filterDates?.payments?.start,window._filterDates?.payments?.end)).sort((a,b)=>a.status===b.status?a.dueDate.localeCompare(b.dueDate):a.status==='bekliyor'?-1:1),pending=S.payments.filter(p=>p.status==='bekliyor').reduce((a,x)=>a+x.amount,0);return `<div class="stack">${title('Planlanan Ödemeler','Kredi, fatura ve kira gibi ödemelerin vadelerini takip edin.')}<div class="alert">${S.payments.some(p=>isOverdue(p))?`<strong style="color:#b42318">Vadesi geçmiş ${S.payments.filter(p=>isOverdue(p)).length} ödeme var.</strong>`:(S.payments.filter(p=>p.status==='bekliyor'&&days(p.dueDate)<=7).length?`Yaklaşan ödemelerinizi kontrol edin.`:'Yakın tarihte ödeme bulunmuyor.')}<p><strong style="color:#b42318">Vadesi geçmiş toplam: ${fmt(S.payments.filter(p=>isOverdue(p)).reduce((a,x)=>a+x.amount,0))}</strong></p></div><div class="split"><section class="panel add-action-panel"><div><h2>Yeni Planlı Ödeme</h2><p>Tek sefer veya her ay düzenli ödeme tanımlayın.</p></div><button class="primary" onclick="openPayModal()">+ Ödeme Ekle</button></section><section class="panel"><div class="panelhead"><div><h2>Planlanan Ödemeler</h2></div><div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><div class="segment payment-status-filter">${[['tumu','Tümü'],['bekliyor','Bekliyor'],['odendi','Ödendi']].map(x=>`<button class="${payFilter===x[0]?'active':''}" onclick="payFilter='${x[0]}';render()">${x[1]}</button>`).join('')}</div>${deleteMode.payments?`<button class="secondary" onclick="cancelDeleteMode('payments')">İptal</button><button class="dangerbtn" onclick="askDelete('payments')" ${deleteSelected.payments.size?'':'disabled'}>Seçili Sil (${deleteSelected.payments.size})</button>`:`<button class="secondary" onclick="enterDeleteMode('payments')">Sil</button>`}</div></div>${dateFilterUI('payments')}<div class="list payments-list">${rows.map(p=>paymentRow(p,true)).join('')||empty()}</div><p class="sub" style="margin-top:12px">Düzenli ödemeler her ay için ayrı kayıt oluşturur. “Bu Ay” filtresi yalnızca bu ayın taksitlerini gösterir; diğer ayları görmek için “Tümü” veya “Tarih Seç” kullan. “Ödendi” işaretlenen ödeme giderlere eklenir; geri alındığında ilgili gider kaydı kaldırılır.</p></section></div></div>`}
+function payments(){let rows=S.payments.filter(p=>(payFilter==='tumu'||p.status===payFilter)&&dateInRange(p.dueDate,dateFilters.payments,window._filterDates?.payments?.start,window._filterDates?.payments?.end)).sort((a,b)=>a.status===b.status?a.dueDate.localeCompare(b.dueDate):a.status==='bekliyor'?-1:1),pending=S.payments.filter(p=>p.status==='bekliyor').reduce((a,x)=>a+x.amount,0);return `<div class="stack">${title('Planlanan Ödemeler','Kredi, fatura ve kira gibi ödemelerin vadelerini takip edin.')}<div class="alert">${S.payments.some(p=>isOverdue(p))?`<strong style="color:#b42318">Vadesi geçmiş ${S.payments.filter(p=>isOverdue(p)).length} ödeme var.</strong>`:(S.payments.filter(p=>p.status==='bekliyor'&&days(p.dueDate)<=7).length?`Yaklaşan ödemelerinizi kontrol edin.`:'Yakın tarihte ödeme bulunmuyor.')}<p><strong style="color:#b42318">Vadesi geçmiş toplam: ${fmt(S.payments.filter(p=>isOverdue(p)).reduce((a,x)=>a+x.amount,0))}</strong></p></div><div class="split"><section class="panel add-action-panel"><div><h2>Yeni Planlı Ödeme</h2><p>Tek sefer veya her ay düzenli ödeme tanımlayın.</p></div><button class="primary" onclick="openPayModal()">+ Ödeme Ekle</button></section><section class="panel"><div class="panelhead"><div><h2>Planlanan Ödemeler</h2></div><div class="payment-list-controls"><div class="segment payment-status-filter">${[['tumu','Tümü'],['bekliyor','Bekliyor'],['odendi','Ödendi']].map(x=>`<button class="${payFilter===x[0]?'active':''}" onclick="payFilter='${x[0]}';render()">${x[1]}</button>`).join('')}</div>${deleteMode.payments?`<button class="secondary" onclick="cancelDeleteMode('payments')">İptal</button><button class="dangerbtn" onclick="askDelete('payments')" ${deleteSelected.payments.size?'':'disabled'}>Seçili Sil (${deleteSelected.payments.size})</button>`:`<button class="secondary" onclick="enterDeleteMode('payments')">Sil</button>`}</div></div>${dateFilterUI('payments')}<div class="list payments-list">${rows.map(p=>paymentRow(p,true)).join('')||empty()}</div><p class="sub" style="margin-top:12px">Düzenli ödemeler her ay için ayrı kayıt oluşturur. “Bu Ay” filtresi yalnızca bu ayın taksitlerini gösterir; diğer ayları görmek için “Tümü” veya “Tarih Seç” kullan. “Ödendi” işaretlenen ödeme giderlere eklenir; geri alındığında ilgili gider kaydı kaldırılır.</p></section></div></div>`}
 function paymentForm(){return `<form class="payment-form" onsubmit="addPay(event)"><div class="field"><label>Ödeme Adı</label><input id="pTitle" placeholder="Elektrik, kira, kredi..." required></div><div class="row2"><div class="field"><label>Tutar / Miktar</label><input id="pAmount" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="0,00" required></div><div class="field"><label>Varlık / Kur Türü</label><select id="pAsset">${assetOptions}</select></div><div class="field"><label>Vade Tarihi</label><input id="pDate" type="date" value="${date()}" required></div><div class="field"><label>Kategori</label><select id="pCat"><option>Fatura</option><option>Kira</option><option>Kredi</option><option>Aidat</option><option>Eğitim</option><option>Diğer</option></select></div><div class="field"><label>Aile Bireyi</label><select id="pMember">${S.members.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select></div></div><div class="segment pay-recurring-toggle" style="margin:10px 0"><button type="button" id="oncePay" class="active" onclick="setPayRecurring(false)">Tek Sefer</button><button type="button" id="monthlyPay" onclick="setPayRecurring(true)">Her Ay Düzenli</button></div><input type="hidden" id="pRecurring" value="0"><div id="recurringOptions" class="field" style="display:none"><label>Kaç Ay Devam Edecek?</label><input id="pMonths" type="number" min="2" step="1" value="2" inputmode="numeric"><div class="sub">En az 2 ay seçilebilir. Örn. 12 = 12 ay boyunca.</div></div><button class="primary">Ödeme Ekle</button></form>`}
 function setPayRecurring(v){let r=byId('pRecurring'),o=byId('oncePay'),m=byId('monthlyPay'),box=byId('recurringOptions');if(r)r.value=v?'1':'0';if(o)o.classList.toggle('active',!v);if(m)m.classList.toggle('active',v);if(box)box.style.display=v?'block':'none'}
 function addPay(e){
@@ -2474,7 +2489,7 @@ function loansPanel(){
   const deleteActions=deleteMode.loans
     ? `<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="secondary" onclick="cancelDeleteMode('loans')">İptal</button><button class="dangerbtn" onclick="askDelete('loans')" ${deleteSelected.loans.size?'':'disabled'}>Seçili Sil (${deleteSelected.loans.size})</button></div>`
     : `<button class="secondary" onclick="enterDeleteMode('loans')">Sil</button>`;
-  return `<section id="loansPanel" class="panel loan-records-panel"><div class="panelhead"><div><h2>Elden Borç Kayıtları</h2><p>${rows.length} kayıt · Filtreye uyan tüm kayıtlar</p></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><div class="segment loan-filter">${[['open','Açık'],['all','Tümü']].map(x=>`<button type="button" class="${loanFilter===x[0]?'active':''}" onclick="loanFilter='${x[0]}';render()">${x[1]}</button>`).join('')}</div>${deleteActions}</div></div><div class="list">${rows.map(loanRow).join('')||empty()}</div></section>`;
+  return `<section id="loansPanel" class="panel loan-records-panel"><div class="panelhead"><div><h2>Elden Borç Kayıtları</h2><p>${rows.length} kayıt</p></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><div class="segment loan-filter">${[['open','Açık'],['closed','Kapalı'],['all','Tümü']].map(x=>`<button type="button" class="${loanFilter===x[0]?'active':''}" onclick="loanFilter='${x[0]}';render()">${x[1]}</button>`).join('')}</div>${deleteActions}</div></div><div class="list">${rows.map(loanRow).join('')||empty()}</div></section>`;
 }
 function savings(){
   const total=S.goals.reduce((a,g)=>a+holdingsValue(g.holdings),0);
@@ -2507,37 +2522,25 @@ function savings(){
 }
 function savingRow(x,lotState=acquisitionLotState()){
   const g=S.goals.find(g=>String(g.id)===String(x.goalId)),completed=g?goalIsCompleted(g):false,asset=x.asset||'TRY';
+  const assetName=assetLabels[asset]||asset;
   let detail='';
-  if(Number(x.sign)>0&&asset==='TRY'){
+  if(Number(x.sign)>0){
     const lot=lotState.byMovementId.get(String(x.id));
     const remain=Math.max(0,Number(lot?.remaining)||0);
-    detail=`<div class="movement-pl-detail pl-neutral"><span>Alış maliyeti: ${fmt(remain)}</span><span>Güncel fiyat: ${fmt(remain)}</span><span>TL birikiminde kur farkı hesaplanmaz.</span></div>`;
-  }else if(Number(x.sign)>0){
-    const lot=lotState.byMovementId.get(String(x.id));
-    const currentUnit=currentExitRate(asset);
-    const remain=Math.max(0,Number(lot?.remaining)||0);
-    const hasCost=Number(x.costRate)>0&&!!lot;
-    const cost=hasCost?remain*Number(lot.costRate):0;
+    const hasCost=asset==='TRY'||(Number(x.costRate)>0&&!!lot);
+    const cost=asset==='TRY'?remain:(hasCost?remain*Number(x.costRate):0);
+    const currentUnit=asset==='TRY'?1:currentExitRate(asset);
     const current=remain*currentUnit;
     const profit=current-cost;
     const pct=cost>0?profit/cost*100:0;
-    const bits=[];
-    bits.push(`<span>Alış maliyeti: ${hasCost?fmt(cost):'kayıtlı değil'}</span>`);
-    bits.push(`<span>Güncel fiyat: ${fmt(current)}</span>`);
-    if(completed){
-      bits.push('<span class="goal-completed-note">Hedef tamamlandı · Kâr/zarar hesabı durduruldu.</span>');
-    }else if(!hasCost){
-      bits.push('<span>Bu eski kayıtta maliyet bilinmediğinden kâr/zarar hesaplanamıyor.</span>');
-    }else if(remain<=0){
-      bits.push('<span>Bu alımdan kalan miktar yok.</span>');
-    }else{
-      bits.push(`<b class="${profit>=0?'pl-positive':'pl-negative'}">Kâr/Zarar: ${signedMoney(profit)} (${signedPercent(pct)})</b>`);
-    }
-    detail=`<div class="movement-pl-detail">${bits.join('')}</div>`;
+    const costText=hasCost?fmt(cost):'Kayıtlı değil';
+    const profitText=completed?'Hedef tamamlandı':asset==='TRY'?'Kur farkı yok':!hasCost?'Maliyet eksik':remain<=0?'Kalan miktar yok':`${signedMoney(profit)} (${signedPercent(pct)})`;
+    const profitClass=completed||asset==='TRY'?'pl-neutral':!hasCost||remain<=0?'pl-unknown':profit>=0?'pl-positive':'pl-negative';
+    detail=`<div class="movement-financial-grid"><span><small>Tarih</small><b>${fd(x.date)}</b></span><span><small>Alış maliyeti</small><b>${costText}</b></span><span><small>Güncel fiyat/değer</small><b>${fmt(current)}${asset!=='TRY'?` <small>(${fmt(currentUnit)} / birim)</small>`:''}</b></span><span><small>Kâr / Zarar</small><b class="${profitClass}">${profitText}</b></span>${completed?'<span class="goal-completed-note">Hedef tamamlandı; kâr/zarar hesabı durduruldu.</span>':asset==='TRY'?'<span class="sub">TL birikiminde kur farkı hesaplanmaz.</span>':!hasCost?'<span class="sub">Bu eski kayıtta gerçek alış maliyeti bulunmuyor.</span>':remain<=0?'<span class="sub">Bu alımdan kalan miktar yok.</span>':''}</div>`;
   }else{
-    detail=`<div class="movement-pl-detail pl-neutral"><span>Çıkarılan miktar: ${fnum(x.quantity)} ${assetLabels[asset]||asset}.</span><span>Bu hareket için kâr/zarar hesaplanmaz.</span></div>`;
+    detail=`<div class="movement-pl-detail pl-neutral"><span>Çıkarılan miktar: ${fnum(x.quantity)} ${assetName}.</span><span>Bu çıkarma hareketi için elde kalan varlık kâr/zararı hesaplanmaz.</span></div>`;
   }
-  return `<div class="item saving-movement-item ${deleteMode.movements?'selectable-item':''}">${deleteMode.movements?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.movements.has(x.id)?'checked':''} onchange="toggleDeleteSelection('movements','${x.id}')"><span></span></label>`:''}<div class="icon ${x.sign>0?'in':'out'}">${x.sign>0?'+':'−'}</div><div class="itemmain"><b>${esc(x.goalName)}</b><div class="sub">${fd(x.date)}${completed?` · <span class="goal-completed-badge">Tamamlandı</span>`:''}</div>${detail}</div><div class="amount ${x.sign>0?'in':'out'}">${x.sign>0?'+':'−'}${fnum(x.quantity)} ${assetLabels[asset]||asset}</div></div>`;
+  return `<div class="item saving-movement-item ${deleteMode.movements?'selectable-item':''}">${deleteMode.movements?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.movements.has(x.id)?'checked':''} onchange="toggleDeleteSelection('movements','${x.id}')"><span></span></label>`:''}<div class="icon ${x.sign>0?'in':'out'}">${x.sign>0?'+':'−'}</div><div class="itemmain"><b>${esc(x.goalName)}</b><div class="sub">${completed?`<span class="goal-completed-badge">Tamamlandı</span>`:''}${x.sign>0?'Birikim eklendi':'Birikim çıkarıldı'}</div>${detail}</div><div class="amount ${x.sign>0?'in':'out'}">${x.sign>0?'+':'−'}${fnum(x.quantity)} ${assetName}</div></div>`;
 }
 function deleteSavingMovement(id){let x=(S.savingMovements||[]).find(m=>m.id===id);if(!x)return;let g=S.goals.find(g=>g.id===x.goalId);if(g){g.holdings[x.asset]=Math.max(0,(g.holdings[x.asset]||0)-x.quantity*x.sign)}S.savingMovements=S.savingMovements.filter(m=>m.id!==id);save()}
 function goalForm(){return `<form class="goal-form" onsubmit="addGoal(event)"><div class="field"><label>Hedef Adı</label><input id="gName" placeholder="Örn: Tatil birikimi" required></div><div class="row2"><div class="field"><label>Hedef Tutarı</label><input id="gTarget" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="0,00" required></div><div class="field"><label>Hedef Kur Türü</label><select id="gAsset">${assetOptions}</select></div><div class="field"><label>Hedefe Başlama Tarihi</label><input id="gStartDate" type="date" value="${date()}" required></div><div class="field"><label>Sahibi</label><select id="gMember">${S.members.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select></div></div><button class="primary">Hedef Oluştur</button></form>`}
@@ -2602,7 +2605,6 @@ function goalCard(g,compact=false){
       <div style="display:flex;gap:6px;align-items:center">${completed?`<span class="goal-completed-badge">Tamamlandı</span>`:`<span class="goal-active-badge">Devam Ediyor</span>`}${!compact?(deleteMode.goals?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.goals.has(g.id)?'checked':''} onchange="toggleDeleteSelection('goals','${g.id}')"><span></span></label>`:''):''}</div>
     </div>
     <div><div style="display:flex;justify-content:space-between"><b>${moneyInAsset(total,g.targetAsset||'TRY')}</b><b style="color:var(--primary)">%${Math.round(pct)}</b></div><div class="progress"><i style="width:${Math.min(100,pct)}%"></i></div><div class="goalmeta"><span>Hedef: ${moneyInAsset(g.target,g.targetAsset||'TRY')}</span><span>${completed?'Hedef tamamlandı':'Kalan: '+moneyInAsset(Math.max(0,g.target-total),g.targetAsset||'TRY')}</span></div>${completed&&duration?`<div class="goal-duration">${duration} sürede tamamlandı.</div>`:''}</div>
-    ${!completed?goalFinancialLines(g,compact):''}
     <div class="assets">${held.map(x=>`<span class="asset ${x[0].startsWith('GOLD')||['CEYREK','YARIM','TAM'].includes(x[0])?'gold':''}">${assetLabels[x[0]]||x[0]}: ${fnum(x[1])}</span>`).join('')}</div>
     ${completed&&!compact?goalCompletionDetails(g):''}
     ${!compact&&!completed?`<div class="goal-actions goal-modal-actions"><button class="primary" onclick="openSavingMoveModal('${g.id}',1)">+ Birikim Ekle</button><button class="outline" onclick="openSavingMoveModal('${g.id}',-1)">Birikim Çıkar</button></div>`:''}
