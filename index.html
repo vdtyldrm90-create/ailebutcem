@@ -1235,6 +1235,44 @@ body.cloud-cache-loading #main button,body.cloud-cache-loading #main input,body.
 }
 </style>
 
+
+<style id="saving-detail-and-actions-tweaks">
+/* Keep per-movement details compact; show profit and percent clearly on additions. */
+.saving-movement-item>.amount{max-width:58px!important;flex:0 0 58px!important;font-size:8.5px!important;line-height:1.2;white-space:normal!important;overflow-wrap:anywhere;text-align:right}
+.movement-financial-grid.movement-add-grid{grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:2px 3px!important;padding:5px 3px!important}
+.movement-financial-grid.movement-withdrawal-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:3px 6px!important;padding:5px 6px!important}
+.movement-financial-grid small{font-size:7px!important;line-height:1.15!important;letter-spacing:-.1px}
+.movement-financial-grid b{font-size:7.5px!important;line-height:1.2!important;letter-spacing:-.15px;overflow-wrap:anywhere;word-break:break-word}
+.movement-financial-grid .movement-profit-pct{display:block;font-size:7px!important;line-height:1.15;font-weight:800;color:inherit;margin-top:1px;white-space:normal}
+#main .savings-overview-card .savings-card-label{font-size:12px!important;padding:4px 7px!important;margin-bottom:7px!important}
+#main .savings-label-given{display:inline-flex!important;flex-direction:column;align-items:flex-start;gap:2px;line-height:1.08!important}
+#main .savings-label-sub{display:block;font-size:10px;line-height:1.05;font-weight:800}
+.savings-tools-column .add-action-panel .primary{width:120px!important;min-width:120px!important;max-width:120px!important;height:36px!important;min-height:36px!important;padding:6px 5px!important;font-size:10.5px!important;line-height:1.15;white-space:nowrap!important;display:inline-flex;align-items:center;justify-content:center;flex:none}
+#main .goal-actions{gap:5px!important;margin-top:6px!important}
+#main .goal-actions button{min-width:0!important;width:100%;min-height:32px!important;padding:6px 3px!important;font-size:10px!important;line-height:1.15;white-space:nowrap!important}
+@media(max-width:520px){
+  .saving-movement-item{gap:5px!important}
+  .saving-movement-item>.amount{max-width:50px!important;flex-basis:50px!important;font-size:8px!important}
+  .movement-financial-grid.movement-add-grid{gap:2px 2px!important;padding:5px 2px!important}
+  .movement-financial-grid.movement-withdrawal-grid{gap:3px 4px!important;padding:5px 4px!important}
+  .movement-financial-grid small{font-size:6.8px!important}
+  .movement-financial-grid b{font-size:7px!important;letter-spacing:-.2px}
+  .movement-financial-grid .movement-profit-pct{font-size:6.5px!important}
+  #main .savings-overview-card .savings-card-label{font-size:9.5px!important;padding:4px 6px!important}
+  #main .savings-label-sub{font-size:8.5px}
+  .savings-tools-column .add-action-panel .primary{width:120px!important;min-width:120px!important;max-width:120px!important;align-self:flex-end}
+  #main .goal-actions{gap:4px!important}
+  #main .goal-actions button{font-size:9px!important;padding:5px 2px!important;letter-spacing:-.15px}
+}
+@media(max-width:360px){
+  .saving-movement-item>.amount{max-width:44px!important;flex-basis:44px!important;font-size:7.5px!important}
+  .movement-financial-grid small{font-size:6.3px!important}
+  .movement-financial-grid b{font-size:6.6px!important}
+  .movement-financial-grid .movement-profit-pct{font-size:6.2px!important}
+  #main .goal-actions button{font-size:8.5px!important}
+}
+</style>
+
 </head>
 <body class="auth-pending">
 <div id="authGate" class="auth-gate" aria-live="polite"></div>
@@ -2609,7 +2647,7 @@ function savings(){
     <div class="savings-overview-grid">
       <section class="panel stat savings-overview-card savings-total-card"><small class="savings-card-label savings-label-total">Toplam Birikim</small><div class="value">${fmt(total)}</div><small>${activeGoals.length} devam eden hedef</small>${pl.cost>0?`<small class="savings-total-pl ${pl.profit>=0?'pl-positive':'pl-negative'}">Takip edilen K/Z: ${signedMoney(pl.profit)} (${signedPercent(pl.percent)})</small>`:''}</section>
       <div class="savings-loan-summary-grid">
-        <section class="panel stat savings-overview-card"><small class="savings-card-label savings-label-given">Verdiğim (Alacağım)</small><div class="value">${fmt(loanTotal('given'))}</div><small>${activeGiven.length} açık kayıt</small></section>
+        <section class="panel stat savings-overview-card"><small class="savings-card-label savings-label-given">Verdiğim<span class="savings-label-sub">(Alacağım)</span></small><div class="value">${fmt(loanTotal('given'))}</div><small>${activeGiven.length} açık kayıt</small></section>
         <section class="panel stat savings-overview-card"><small class="savings-card-label savings-label-taken">Aldığım (Ödeyeceğim)</small><div class="value">${fmt(loanTotal('taken'))}</div><small>${activeTaken.length} açık kayıt</small></section>
         <section class="panel stat savings-overview-card"><small class="savings-card-label savings-label-net">Net Alacak</small><div class="value">${fmt(loanTotal('given')-loanTotal('taken'))}</div><small>Kurla TL karşılığı</small></section>
       </div>
@@ -2645,19 +2683,11 @@ function savingRow(x,lotState=acquisitionLotState()){
     const profit=remainingCurrent-cost;
     const pct=cost>0?profit/cost*100:0;
     const costText=hasCost?fmt(cost):'Kayıtlı değil';
-    const profitText=completed?'Hedef tamamlandı':asset==='TRY'?'Kur farkı yok':!hasCost?'Maliyet eksik':remain<=0?'Kalan miktar yok':`${signedMoney(profit)} (${signedPercent(pct)})`;
+    const profitMarkup=completed?'Hedef tamamlandı':asset==='TRY'?'Kur farkı yok':!hasCost?'Maliyet eksik':remain<=0?'Kalan miktar yok':`${signedMoney(profit)}<span class="movement-profit-pct">${signedPercent(pct)}</span>`;
     const profitClass=completed||asset==='TRY'?'pl-neutral':!hasCost||remain<=0?'pl-unknown':profit>=0?'pl-positive':'pl-negative';
-    detail=`<div class="movement-financial-grid"><span><small>Tarih</small><b>${fd(x.date)}</b></span><span><small>İşlemi yapan</small><b>${esc(profileName)}</b></span><span><small>Alış maliyeti</small><b>${costText}</b></span><span><small>Güncel değer</small><b>${fmt(remainingCurrent)}</b></span><span><small>Kâr / Zarar</small><b class="${profitClass}">${profitText}</b></span>${completed?'<span class="goal-completed-note">Hedef tamamlandı; kâr/zarar hesabı durduruldu.</span>':asset==='TRY'?'<span class="sub">TL birikiminde kur farkı hesaplanmaz.</span>':!hasCost?'<span class="sub">Bu eski kayıtta gerçek alış maliyeti bulunmuyor.</span>':remain<=0?'<span class="sub">Bu alımdan kalan miktar yok.</span>':''}</div>`;
+    detail=`<div class="movement-financial-grid movement-add-grid"><span><small>Tarih</small><b>${fd(x.date)}</b></span><span><small>İşlemi yapan</small><b>${esc(profileName)}</b></span><span><small>Alış maliyeti</small><b>${costText}</b></span><span><small>Güncel değer</small><b>${fmt(remainingCurrent)}</b></span><span><small>Kâr / Zarar</small><b class="${profitClass}">${profitMarkup}</b></span></div>`;
   }else{
-    const allocation=lotState.withdrawalsByMovementId?.get(String(x.id))||{quantity:qty,allocatedQty:0,knownQty:0,unknownQty:qty,cost:0};
-    const hasCost=asset==='TRY'||(allocation.unknownQty<=1e-8&&allocation.allocatedQty>=qty-1e-8&&allocation.knownQty>=qty-1e-8);
-    const cost=asset==='TRY'?qty:(Number(allocation.cost)||0);
-    const costText=hasCost?fmt(cost):(allocation.knownQty>0?`${fmt(cost)} (kısmi)`:'Kayıtlı değil');
-    const profit=current-cost;
-    const pct=cost>0?profit/cost*100:0;
-    const profitText=completed?'Hedef tamamlandı':asset==='TRY'?'Kur farkı yok':!hasCost?'Maliyet eksik':`${signedMoney(profit)} (${signedPercent(pct)})`;
-    const profitClass=completed||asset==='TRY'?'pl-neutral':!hasCost?'pl-unknown':profit>=0?'pl-positive':'pl-negative';
-    detail=`<div class="movement-financial-grid"><span><small>Tarih</small><b>${fd(x.date)}</b></span><span><small>İşlemi yapan</small><b>${esc(profileName)}</b></span><span><small>Alış maliyeti</small><b>${costText}</b></span><span><small>Güncel değer</small><b>${fmt(current)}</b></span><span><small>Kâr / Zarar</small><b class="${profitClass}">${profitText}</b></span>${completed?'<span class="goal-completed-note">Hedef tamamlandı; kâr/zarar hesabı durduruldu.</span>':asset==='TRY'?'<span class="sub">TL hareketinde kur farkı hesaplanmaz.</span>':!hasCost?'<span class="sub">Bu çıkarma için maliyetin bir bölümü bilinmiyor veya eski hareketlerde kaydedilmemiş.</span>':''}</div>`;
+    detail=`<div class="movement-financial-grid movement-withdrawal-grid"><span><small>Tarih</small><b>${fd(x.date)}</b></span><span><small>İşlemi yapan</small><b>${esc(profileName)}</b></span><span><small>Güncel değer</small><b>${fmt(current)}</b></span></div>`;
   }
   const signPositive=Number(x.sign)>0;
   return `<div class="item saving-movement-item ${deleteMode.movements?'selectable-item':''}">${deleteMode.movements?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.movements.has(x.id)?'checked':''} onchange="toggleDeleteSelection('movements','${x.id}')"><span></span></label>`:''}<div class="icon ${signPositive?'in':'out'}" aria-label="${signPositive?'Birikim eklendi':'Birikim çıkarıldı'}">${signPositive?'＋':'↘'}</div><div class="itemmain"><b>${esc(x.goalName)}</b><div class="sub">${completed?`<span class="goal-completed-badge">Tamamlandı</span>`:''}${signPositive?'Birikim eklendi':'Birikim çıkarıldı'}</div>${detail}</div><div class="amount ${signPositive?'in':'out'}">${signPositive?'+':'−'}${fnum(qty)} ${assetName}</div></div>`;
@@ -2760,7 +2790,7 @@ function goalFinancialLines(g,compact=false){
   return `<div class="goal-financial-lines"><div><small>Tarih</small><b>${snap.date?fd(snap.date):'—'}</b></div><div><small>Alış maliyeti</small><b>${costLabel}</b></div><div><small>Güncel fiyat</small><b>${fmt(snap.value)}</b></div><div><small>Kâr / Zarar</small><b class="${plClass}">${plText}</b></div></div>`;
 }
 function goalCard(g,compact=false){
-  let total=goalValueInTarget(g),pct=g.target?total/g.target*100:0,completed=goalIsCompleted(g),held=Object.entries(g.holdings).filter(x=>x[1]>0);
+  let total=goalValueInTarget(g),pct=g.target?total/g.target*100:0,completed=goalIsCompleted(g);
   const goalMoves=(S.savingMovements||[]).filter(m=>String(m.goalId)===String(g.id)).slice().sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))||String(a.createdAt||'').localeCompare(String(b.createdAt||'')));
   let completion=findGoalCompletionDate(g);
   let duration=completed?goalDurationText({...g,completionDate:completion}):'';
@@ -2770,7 +2800,6 @@ function goalCard(g,compact=false){
       <div style="display:flex;gap:6px;align-items:center">${completed?`<span class="goal-completed-badge">Tamamlandı</span>`:`<span class="goal-active-badge">Devam Ediyor</span>`}${!compact?(deleteMode.goals?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.goals.has(g.id)?'checked':''} onchange="toggleDeleteSelection('goals','${g.id}')"><span></span></label>`:''):''}</div>
     </div>
     <div><div style="display:flex;justify-content:space-between"><b>${moneyInAsset(total,g.targetAsset||'TRY')}</b><b style="color:var(--primary)">%${Math.round(pct)}</b></div><div class="progress"><i style="width:${Math.min(100,pct)}%"></i></div><div class="goalmeta"><span>Hedef: ${moneyInAsset(g.target,g.targetAsset||'TRY')}</span><span>${completed?'Hedef tamamlandı':'Kalan: '+moneyInAsset(Math.max(0,g.target-total),g.targetAsset||'TRY')}</span></div>${completed&&duration?`<div class="goal-duration">${duration} sürede tamamlandı.</div>`:''}</div>
-    <div class="assets">${held.map(x=>`<span class="asset ${x[0].startsWith('GOLD')||['CEYREK','YARIM','TAM'].includes(x[0])?'gold':''}">${assetLabels[x[0]]||x[0]}: ${fnum(x[1])}</span>`).join('')}</div>
     ${!compact&&goalMoves.length?`<div class="goal-movement-badges" aria-label="Hedef birikim hareketleri">${goalMoves.map(m=>{const added=Number(m.sign)>0;const assetName=assetLabels[m.asset]||m.asset||'TL';return `<span class="goal-movement-chip ${added?'added':'removed'}" title="${added?'Birikim eklendi':'Birikim çıkarıldı'} · ${fd(m.date)}"><span class="goal-movement-chip-icon">${added?'＋':'−'}</span><span class="goal-movement-chip-label">${esc(assetName)} ${fnum(m.quantity)}</span></span>`}).join('')}</div>`:''}
     ${completed&&!compact?goalCompletionDetails(g):''}
     ${!compact&&!completed?`<div class="goal-actions goal-modal-actions"><button class="primary" onclick="openSavingMoveModal('${g.id}',1)">+ Birikim Ekle</button><button class="outline" onclick="openSavingMoveModal('${g.id}',-1)">Birikim Çıkar</button></div>`:''}
