@@ -2966,7 +2966,7 @@ function savingMovementTable(rows,lotState,isAddition,completed){
     }else extras=`<td>${fmt(current)} TL</td>`;
     return `<tr>${select}<td>${fd(x.date)}</td><td>${esc(member(x.memberId))}</td><td class="movement-quantity">${isAddition?'+':'−'}${fnum(qty)} ${esc(assetName)}</td>${extras}</tr>`;
   }).join('');
-  return `<div class="movement-table-wrap"><table class="table movement-history-table"><thead><tr>${selectionHead}${headers}</tr></thead><tbody>${body}</tbody></table></div>`;
+  return `<div class="movement-table-wrap"><table class="movement-history-table"><thead><tr>${selectionHead}${headers}</tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
 function savingRow(x,lotState=acquisitionLotState(),inGoalDetail=false){
