@@ -797,6 +797,103 @@ body.auth-pending .app,body.auth-required .app{display:none!important}
 @media(max-width:800px){.bottom button{transition:background .16s ease,color .16s ease}.bottom .nav-label{display:block}}
 </style>
 
+
+<style>
+/* Semantik filtre renkleri: tarih seçimi ve liste kapsamı */
+.date-filter button{transition:background .15s ease,color .15s ease,box-shadow .15s ease}
+.date-filter button:nth-of-type(1){color:#356ea9}
+.date-filter button:nth-of-type(1):hover{background:#edf4fc}
+.date-filter button:nth-of-type(1).active{background:#e5effb!important;color:#2d6097!important;box-shadow:inset 0 0 0 1px #c8dcf4!important}
+.date-filter button:nth-of-type(2){color:#7053a5}
+.date-filter button:nth-of-type(2):hover{background:#f3effb}
+.date-filter button:nth-of-type(2).active{background:#eee8fa!important;color:#68489e!important;box-shadow:inset 0 0 0 1px #d9cdf2!important}
+.date-filter button:nth-of-type(3){color:#936a1c}
+.date-filter button:nth-of-type(3):hover{background:#fff6e5}
+.date-filter button:nth-of-type(3).active{background:#fff0d2!important;color:#855d12!important;box-shadow:inset 0 0 0 1px #f0d9a5!important}
+.date-filter input{accent-color:#9a762a}
+
+/* İşlem geçmişi: Tümü nötr, Gelir yeşil, Gider kırmızı */
+.tx-history-actions .segment button[onclick*="txFilter='tumu'"]{color:#66747a}
+.tx-history-actions .segment button[onclick*="txFilter='tumu'"].active{background:#edf1f3!important;color:#4e5e64!important;box-shadow:inset 0 0 0 1px #d9e0e3!important}
+.tx-history-actions .segment button[onclick*="txFilter='gelir'"]{color:#278252!important}
+.tx-history-actions .segment button[onclick*="txFilter='gelir'"]:hover{background:#e7f5ec!important;color:#237849!important}
+.tx-history-actions .segment button[onclick*="txFilter='gelir'"].active{background:#e0f2e6!important;color:#237849!important;box-shadow:inset 0 0 0 1px #b8e0c6!important}
+.tx-history-actions .segment button[onclick*="txFilter='gider'"]{color:#c44743!important}
+.tx-history-actions .segment button[onclick*="txFilter='gider'"]:hover{background:#fff0ef!important;color:#b93834!important}
+.tx-history-actions .segment button[onclick*="txFilter='gider'"].active{background:#fde9e7!important;color:#b93834!important;box-shadow:inset 0 0 0 1px #f3c4c0!important}
+
+/* Planlı ödeme filtreleri */
+.payment-status-filter button:first-child{color:#66747a}
+.payment-status-filter button:first-child.active{background:#edf1f3!important;color:#4e5e64!important;box-shadow:inset 0 0 0 1px #d9e0e3!important}
+.payment-status-filter button:nth-child(2){color:#a36b18}
+.payment-status-filter button:nth-child(2):hover{background:#fff5e3}
+.payment-status-filter button:nth-child(2).active{background:#fff0d2!important;color:#8f5d10!important;box-shadow:inset 0 0 0 1px #efd59d!important}
+.payment-status-filter button:nth-child(3){color:#278252}
+.payment-status-filter button:nth-child(3):hover{background:#e7f5ec}
+.payment-status-filter button:nth-child(3).active{background:#e0f2e6!important;color:#237849!important;box-shadow:inset 0 0 0 1px #b8e0c6!important}
+
+/* Elden borç filtresi: Açık yeşil, Kapalı mavi, Tümü nötr */
+.loan-filter button:nth-child(1){color:#278252}
+.loan-filter button:nth-child(1).active{background:#e0f2e6!important;color:#237849!important;box-shadow:inset 0 0 0 1px #b8e0c6!important}
+.loan-filter button:nth-child(2){color:#4d7196}
+.loan-filter button:nth-child(2).active{background:#e8f0f8!important;color:#3d638b!important;box-shadow:inset 0 0 0 1px #ccdcec!important}
+.loan-filter button:nth-child(3){color:#66747a}
+.loan-filter button:nth-child(3).active{background:#edf1f3!important;color:#4e5e64!important;box-shadow:inset 0 0 0 1px #d9e0e3!important}
+
+/* Birikim durum filtreleri */
+.saving-tabs button:first-child{color:#278252}
+.saving-tabs button:first-child.active{background:#e0f2e6!important;color:#237849!important;box-shadow:inset 0 0 0 1px #b8e0c6!important}
+.saving-tabs button:last-child{color:#7053a5}
+.saving-tabs button:last-child.active{background:#eee8fa!important;color:#68489e!important;box-shadow:inset 0 0 0 1px #d9cdf2!important}
+.report-mode button:first-child{color:#356ea9}
+.report-mode button:first-child.active{background:#e5effb!important;color:#2d6097!important;box-shadow:inset 0 0 0 1px #c8dcf4!important}
+.report-mode button:last-child{color:#207780}
+.report-mode button:last-child.active{background:#e6f4f5!important;color:#207780!important;box-shadow:inset 0 0 0 1px #c5e6e8!important}
+
+/* Form alanlarını işleme uygun, yumuşak renklerle ayır */
+.tx-form,.payment-form,.goal-form,.saving-move-form,.loan-form{--form-accent:var(--primary);--form-soft:#f7faf9;--form-border:var(--border)}
+.tx-form.tx-form-expense{--form-accent:#c44743;--form-soft:#fff8f7;--form-border:#efd0ca}
+.tx-form.tx-form-income{--form-accent:#278252;--form-soft:#f6fbf7;--form-border:#cde6d4}
+.payment-form{--form-accent:#a8751d;--form-soft:#fffcf4;--form-border:#efdfb8}
+.goal-form{--form-accent:#7053a5;--form-soft:#faf8fe;--form-border:#ded4f2}
+.saving-move-form.saving-move-add{--form-accent:#278252;--form-soft:#f6fbf7;--form-border:#cde6d4}
+.saving-move-form.saving-move-remove{--form-accent:#c44743;--form-soft:#fff8f7;--form-border:#efd0ca}
+.loan-form.loan-form-given{--form-accent:#278252;--form-soft:#f6fbf7;--form-border:#cde6d4}
+.loan-form.loan-form-taken{--form-accent:#a8751d;--form-soft:#fffcf4;--form-border:#efdfb8}
+.tx-form .field input,.tx-form .field select,
+.payment-form .field input,.payment-form .field select,
+.goal-form .field input,.goal-form .field select,
+.saving-move-form .field input,.saving-move-form .field select,
+.loan-form .field input,.loan-form .field select{background:var(--form-soft);border-color:var(--form-border);transition:border-color .15s ease,box-shadow .15s ease,background .15s ease}
+.tx-form .field input:focus,.tx-form .field select:focus,
+.payment-form .field input:focus,.payment-form .field select:focus,
+.goal-form .field input:focus,.goal-form .field select:focus,
+.saving-move-form .field input:focus,.saving-move-form .field select:focus,
+.loan-form .field input:focus,.loan-form .field select:focus{border-color:var(--form-accent)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--form-accent) 14%,transparent)!important;background:#fff}
+.tx-form #tx-submit-btn,.payment-form>button.primary,.goal-form>button.primary,.saving-move-form>button.primary,.loan-form>button.primary{background:var(--form-accent)}
+.tx-form #tx-submit-btn:hover,.payment-form>button.primary:hover,.goal-form>button.primary:hover,.saving-move-form>button.primary:hover,.loan-form>button.primary:hover{filter:brightness(.94)}
+.tx-type-toggle #tg{color:#c44743}
+.tx-type-toggle #tg.active{background:#fde9e7!important;color:#b93834!important;box-shadow:inset 0 0 0 1px #f3c4c0!important}
+.tx-type-toggle #ti{color:#278252}
+.tx-type-toggle #ti.active{background:#e0f2e6!important;color:#237849!important;box-shadow:inset 0 0 0 1px #b8e0c6!important}
+.tx-recurrence-toggle #onceTx{color:#66747a}
+.tx-recurrence-toggle #onceTx.active{background:#edf1f3!important;color:#4e5e64!important}
+.tx-form-income .tx-recurrence-toggle #monthlyTx.active{background:#e0f2e6!important;color:#237849!important;box-shadow:inset 0 0 0 1px #b8e0c6!important}
+.tx-form-expense .tx-recurrence-toggle #monthlyTx.active{background:#fde9e7!important;color:#b93834!important;box-shadow:inset 0 0 0 1px #f3c4c0!important}
+.pay-recurring-toggle #oncePay{color:#66747a}
+.pay-recurring-toggle #oncePay.active{background:#edf1f3!important;color:#4e5e64!important}
+.pay-recurring-toggle #monthlyPay{color:#a8751d}
+.pay-recurring-toggle #monthlyPay.active{background:#fff0d2!important;color:#8f5d10!important;box-shadow:inset 0 0 0 1px #efd59d!important}
+.loan-direction-toggle #loanGiven{color:#278252}
+.loan-direction-toggle #loanGiven.active{background:#e0f2e6!important;color:#237849!important;box-shadow:inset 0 0 0 1px #b8e0c6!important}
+.loan-direction-toggle #loanTaken{color:#a8751d}
+.loan-direction-toggle #loanTaken.active{background:#fff0d2!important;color:#8f5d10!important;box-shadow:inset 0 0 0 1px #efd59d!important}
+@media(max-width:520px){
+  .date-filter button{padding-left:7px;padding-right:7px;font-size:10px}
+  .payment-status-filter button{padding-left:7px;padding-right:7px}
+}
+</style>
+
 </head>
 <body class="auth-pending">
 <div id="authGate" class="auth-gate" aria-live="polite"></div>
@@ -1027,7 +1124,7 @@ function moneyInAsset(n,asset){
   if(a==='TRY')return fmt(value);
   return `${value.toLocaleString('tr-TR',{minimumFractionDigits:0,maximumFractionDigits:3})} ${assetLabels[a]||a}`;
 }
-const tabs=[['ozet','Ana Sayfa','⌂'],['islemler','İşlemler','↕'],['odemeler','Ödemeler','◷'],['birikim','Birikim','◇'],['raporlar','Raporlar','▤']];
+const tabs=[['ozet','Ana Sayfa','⌂'],['islemler','İşlemler','↕'],['odemeler','Ödemeler','◷'],['birikim','Birikim','◉'],['raporlar','Raporlar','▤']];
 function nav(){document.getElementById('desktopNav').innerHTML=tabs.map(x=>`<button class="navbtn navtab-${x[0]} ${tab===x[0]?'active':''}" onclick="go('${x[0]}')"><span class="navicon">${x[2]}</span><span>${x[1]}</span></button>`).join('');document.getElementById('bottomNav').innerHTML=tabs.map(x=>`<button class="navtab-${x[0]} ${tab===x[0]?'active':''}" onclick="go('${x[0]}')"><span class="ni">${x[2]}</span><span class="nav-label">${x[1]}</span></button>`).join('');const gear=byId('familySettingsBtn');if(gear){gear.classList.toggle('active',tab==='aile');gear.setAttribute('aria-current',tab==='aile'?'page':'false')}}
 function closeSettingsMenu(){
   const menu=byId('settingsMenu'),button=byId('familySettingsBtn');
@@ -1612,17 +1709,19 @@ function openSavingMoveModal(id,sign){
 }
 function savingMoveForm(g,sign){
   const verb=sign>0?'Ekle':'Çıkar';
-  return `<form onsubmit="submitSavingMove(event,'${g.id}',${sign})"><div class="field"><label>Birikim Hedefi</label><input value="${esc(g.name)}" readonly></div><div class="row2"><div class="field"><label>Miktar</label><input id="amt-${g.id}" type="number" min="0.001" step="0.001" placeholder="Miktar" required></div><div class="field"><label>Kur Türü</label><select id="asset-${g.id}" aria-label="Kur Türü" class="goal-asset-select">${assetOptions}</select></div><div class="field"><label>Tarih</label><input id="saveDate-${g.id}" type="date" value="${date()}" required></div></div><button class="primary">Birikime ${verb}</button></form>`;
+  return `<form class="saving-move-form ${sign>0?'saving-move-add':'saving-move-remove'}" onsubmit="submitSavingMove(event,'${g.id}',${sign})"><div class="field"><label>Birikim Hedefi</label><input value="${esc(g.name)}" readonly></div><div class="row2"><div class="field"><label>Miktar</label><input id="amt-${g.id}" type="number" min="0.001" step="0.001" placeholder="Miktar" required></div><div class="field"><label>Kur Türü</label><select id="asset-${g.id}" aria-label="Kur Türü" class="goal-asset-select">${assetOptions}</select></div><div class="field"><label>Tarih</label><input id="saveDate-${g.id}" type="date" value="${date()}" required></div></div><button class="primary">Birikime ${verb}</button></form>`;
 }
 function submitSavingMove(e,id,sign){e.preventDefault();adjust(id,sign);}
 
-function txForm(){return `<form onsubmit="addTx(event)"><div class="segment"><button type="button" id="tg" class="active" onclick="setTxType('gider')">Gider</button><button type="button" id="ti" onclick="setTxType('gelir')">Gelir</button></div><input type="hidden" id="txType" value="gider"><div class="row2"><div class="field"><label>Tutar / Miktar</label><input id="txAmount" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="0,00" required></div><div class="field"><label>Varlık / Kur Türü</label><select id="txAsset">${assetOptions}</select></div><div class="field"><label>Tarih / Başlangıç</label><input id="txDate" type="date" value="${date()}" required></div><div class="field"><label>Kategori</label><select id="txCat"><option>Market</option><option>Fatura</option><option>Kira</option><option>Kredi</option><option>Eğitim</option><option>Sağlık</option><option>Ulaşım</option><option>Maaş</option><option>Ek Gelir</option><option>Diğer</option></select></div><div class="field"><label>Aile Bireyi</label><select id="txMember">${S.members.map(m=>`<option value="${m.id}" ${m.id===S.active?'selected':''}>${esc(m.name)}</option>`).join('')}</select></div></div><div class="field"><label>Açıklama</label><input id="txDesc" placeholder="Örn: Maaş, haftalık market"></div><div class="segment tx-recurrence-toggle" style="margin:10px 0"><button type="button" id="onceTx" class="active" onclick="setTxRecurring(false)">Tek Sefer</button><button type="button" id="monthlyTx" onclick="setTxRecurring(true)">Düzenli Gider</button></div><input type="hidden" id="txRecurring" value="0"><div id="txRecurringOptions" class="field" style="display:none"><label>Kaç Ay Eklensin?</label><input id="txMonths" type="number" min="2" max="600" step="1" value="12" inputmode="numeric"><div class="sub">Seçilen ay sayısı kadar ayrı kayıt oluşturulur. Her ayın tarihi ve tutarı işlem geçmişinde ayrı görünür.</div></div><button class="primary" id="tx-submit-btn">Ekle</button></form>`}
+function txForm(){return `<form class="tx-form tx-form-expense" onsubmit="addTx(event)"><div class="segment tx-type-toggle"><button type="button" id="tg" class="active" onclick="setTxType('gider')">Gider</button><button type="button" id="ti" onclick="setTxType('gelir')">Gelir</button></div><input type="hidden" id="txType" value="gider"><div class="row2"><div class="field"><label>Tutar / Miktar</label><input id="txAmount" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="0,00" required></div><div class="field"><label>Varlık / Kur Türü</label><select id="txAsset">${assetOptions}</select></div><div class="field"><label>Tarih / Başlangıç</label><input id="txDate" type="date" value="${date()}" required></div><div class="field"><label>Kategori</label><select id="txCat"><option>Market</option><option>Fatura</option><option>Kira</option><option>Kredi</option><option>Eğitim</option><option>Sağlık</option><option>Ulaşım</option><option>Maaş</option><option>Ek Gelir</option><option>Diğer</option></select></div><div class="field"><label>Aile Bireyi</label><select id="txMember">${S.members.map(m=>`<option value="${m.id}" ${m.id===S.active?'selected':''}>${esc(m.name)}</option>`).join('')}</select></div></div><div class="field"><label>Açıklama</label><input id="txDesc" placeholder="Örn: Maaş, haftalık market"></div><div class="segment tx-recurrence-toggle" style="margin:10px 0"><button type="button" id="onceTx" class="active" onclick="setTxRecurring(false)">Tek Sefer</button><button type="button" id="monthlyTx" onclick="setTxRecurring(true)">Düzenli Gider</button></div><input type="hidden" id="txRecurring" value="0"><div id="txRecurringOptions" class="field" style="display:none"><label>Kaç Ay Eklensin?</label><input id="txMonths" type="number" min="2" max="600" step="1" value="12" inputmode="numeric"><div class="sub">Seçilen ay sayısı kadar ayrı kayıt oluşturulur. Her ayın tarihi ve tutarı işlem geçmişinde ayrı görünür.</div></div><button class="primary" id="tx-submit-btn">Ekle</button></form>`}
 
 function setTxType(t){
   let type=byId('txType'),g=byId('tg'),i=byId('ti');
   if(type)type.value=t;
   if(g)g.classList.toggle('active',t==='gider');
   if(i)i.classList.toggle('active',t==='gelir');
+  const txFormEl=document.querySelector('#modalBody form.tx-form');
+  if(txFormEl){txFormEl.classList.toggle('tx-form-income',t==='gelir');txFormEl.classList.toggle('tx-form-expense',t==='gider');}
   let b=byId('tx-submit-btn');
   if(b)b.textContent=t==='gelir'?'Gelir Ekle':'Ekle';
   let monthly=byId('monthlyTx');
@@ -1737,8 +1836,8 @@ function deleteRecurringTx(id){
   S.recurringTransactions=(S.recurringTransactions||[]).filter(x=>x.id!==id);
   save();
 }
-function payments(){let rows=S.payments.filter(p=>(payFilter==='tumu'||p.status===payFilter)&&dateInRange(p.dueDate,dateFilters.payments,window._filterDates?.payments?.start,window._filterDates?.payments?.end)).sort((a,b)=>a.status===b.status?a.dueDate.localeCompare(b.dueDate):a.status==='bekliyor'?-1:1),pending=S.payments.filter(p=>p.status==='bekliyor').reduce((a,x)=>a+x.amount,0);return `<div class="stack">${title('Planlanan Ödemeler','Kredi, fatura ve kira gibi ödemelerin vadelerini takip edin.')}<div class="alert">${S.payments.some(p=>isOverdue(p))?`<strong style="color:#b42318">Vadesi geçmiş ${S.payments.filter(p=>isOverdue(p)).length} ödeme var.</strong>`:(S.payments.filter(p=>p.status==='bekliyor'&&days(p.dueDate)<=7).length?`Yaklaşan ödemelerinizi kontrol edin.`:'Yakın tarihte ödeme bulunmuyor.')}<p><strong style="color:#b42318">Vadesi geçmiş toplam: ${fmt(S.payments.filter(p=>isOverdue(p)).reduce((a,x)=>a+x.amount,0))}</strong></p></div><div class="split"><section class="panel add-action-panel"><div><h2>Yeni Planlı Ödeme</h2><p>Tek sefer veya her ay düzenli ödeme tanımlayın.</p></div><button class="primary" onclick="openPayModal()">+ Ödeme Ekle</button></section><section class="panel"><div class="panelhead"><div><h2>Planlanan Ödemeler</h2><p>${rows.length} kayıt listeleniyor</p></div><div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><div class="segment">${[['tumu','Tümü'],['bekliyor','Bekliyor'],['odendi','Ödendi']].map(x=>`<button class="${payFilter===x[0]?'active':''}" onclick="payFilter='${x[0]}';render()">${x[1]}</button>`).join('')}</div>${deleteMode.payments?`<button class="secondary" onclick="cancelDeleteMode('payments')">İptal</button><button class="dangerbtn" onclick="askDelete('payments')" ${deleteSelected.payments.size?'':'disabled'}>Seçili Sil (${deleteSelected.payments.size})</button>`:`<button class="secondary" onclick="enterDeleteMode('payments')">Sil</button>`}</div></div>${dateFilterUI('payments')}<div class="list payments-list">${rows.map(p=>paymentRow(p,true)).join('')||empty()}</div><p class="sub" style="margin-top:12px">“Ödendi” işaretlenen ödemeler otomatik olarak giderlere eklenir; geri alındığında ilgili gider kaydı kaldırılır.</p></section></div></div>`}
-function paymentForm(){return `<form onsubmit="addPay(event)"><div class="field"><label>Ödeme Adı</label><input id="pTitle" placeholder="Elektrik, kira, kredi..." required></div><div class="row2"><div class="field"><label>Tutar / Miktar</label><input id="pAmount" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="0,00" required></div><div class="field"><label>Varlık / Kur Türü</label><select id="pAsset">${assetOptions}</select></div><div class="field"><label>Vade Tarihi</label><input id="pDate" type="date" value="${date()}" required></div><div class="field"><label>Kategori</label><select id="pCat"><option>Fatura</option><option>Kira</option><option>Kredi</option><option>Aidat</option><option>Eğitim</option><option>Diğer</option></select></div><div class="field"><label>Aile Bireyi</label><select id="pMember">${S.members.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select></div></div><div class="segment" style="margin:10px 0"><button type="button" id="oncePay" class="active" onclick="setPayRecurring(false)">Tek Sefer</button><button type="button" id="monthlyPay" onclick="setPayRecurring(true)">Her Ay Düzenli</button></div><input type="hidden" id="pRecurring" value="0"><div id="recurringOptions" class="field" style="display:none"><label>Kaç Ay Devam Edecek?</label><input id="pMonths" type="number" min="2" step="1" value="2" inputmode="numeric"><div class="sub">En az 2 ay seçilebilir. Örn. 12 = 12 ay boyunca.</div></div><button class="primary">Ödeme Ekle</button></form>`}
+function payments(){let rows=S.payments.filter(p=>(payFilter==='tumu'||p.status===payFilter)&&dateInRange(p.dueDate,dateFilters.payments,window._filterDates?.payments?.start,window._filterDates?.payments?.end)).sort((a,b)=>a.status===b.status?a.dueDate.localeCompare(b.dueDate):a.status==='bekliyor'?-1:1),pending=S.payments.filter(p=>p.status==='bekliyor').reduce((a,x)=>a+x.amount,0);return `<div class="stack">${title('Planlanan Ödemeler','Kredi, fatura ve kira gibi ödemelerin vadelerini takip edin.')}<div class="alert">${S.payments.some(p=>isOverdue(p))?`<strong style="color:#b42318">Vadesi geçmiş ${S.payments.filter(p=>isOverdue(p)).length} ödeme var.</strong>`:(S.payments.filter(p=>p.status==='bekliyor'&&days(p.dueDate)<=7).length?`Yaklaşan ödemelerinizi kontrol edin.`:'Yakın tarihte ödeme bulunmuyor.')}<p><strong style="color:#b42318">Vadesi geçmiş toplam: ${fmt(S.payments.filter(p=>isOverdue(p)).reduce((a,x)=>a+x.amount,0))}</strong></p></div><div class="split"><section class="panel add-action-panel"><div><h2>Yeni Planlı Ödeme</h2><p>Tek sefer veya her ay düzenli ödeme tanımlayın.</p></div><button class="primary" onclick="openPayModal()">+ Ödeme Ekle</button></section><section class="panel"><div class="panelhead"><div><h2>Planlanan Ödemeler</h2><p>${rows.length} kayıt listeleniyor</p></div><div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><div class="segment payment-status-filter">${[['tumu','Tümü'],['bekliyor','Bekliyor'],['odendi','Ödendi']].map(x=>`<button class="${payFilter===x[0]?'active':''}" onclick="payFilter='${x[0]}';render()">${x[1]}</button>`).join('')}</div>${deleteMode.payments?`<button class="secondary" onclick="cancelDeleteMode('payments')">İptal</button><button class="dangerbtn" onclick="askDelete('payments')" ${deleteSelected.payments.size?'':'disabled'}>Seçili Sil (${deleteSelected.payments.size})</button>`:`<button class="secondary" onclick="enterDeleteMode('payments')">Sil</button>`}</div></div>${dateFilterUI('payments')}<div class="list payments-list">${rows.map(p=>paymentRow(p,true)).join('')||empty()}</div><p class="sub" style="margin-top:12px">“Ödendi” işaretlenen ödemeler otomatik olarak giderlere eklenir; geri alındığında ilgili gider kaydı kaldırılır.</p></section></div></div>`}
+function paymentForm(){return `<form class="payment-form" onsubmit="addPay(event)"><div class="field"><label>Ödeme Adı</label><input id="pTitle" placeholder="Elektrik, kira, kredi..." required></div><div class="row2"><div class="field"><label>Tutar / Miktar</label><input id="pAmount" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="0,00" required></div><div class="field"><label>Varlık / Kur Türü</label><select id="pAsset">${assetOptions}</select></div><div class="field"><label>Vade Tarihi</label><input id="pDate" type="date" value="${date()}" required></div><div class="field"><label>Kategori</label><select id="pCat"><option>Fatura</option><option>Kira</option><option>Kredi</option><option>Aidat</option><option>Eğitim</option><option>Diğer</option></select></div><div class="field"><label>Aile Bireyi</label><select id="pMember">${S.members.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select></div></div><div class="segment pay-recurring-toggle" style="margin:10px 0"><button type="button" id="oncePay" class="active" onclick="setPayRecurring(false)">Tek Sefer</button><button type="button" id="monthlyPay" onclick="setPayRecurring(true)">Her Ay Düzenli</button></div><input type="hidden" id="pRecurring" value="0"><div id="recurringOptions" class="field" style="display:none"><label>Kaç Ay Devam Edecek?</label><input id="pMonths" type="number" min="2" step="1" value="2" inputmode="numeric"><div class="sub">En az 2 ay seçilebilir. Örn. 12 = 12 ay boyunca.</div></div><button class="primary">Ödeme Ekle</button></form>`}
 function setPayRecurring(v){let r=byId('pRecurring'),o=byId('oncePay'),m=byId('monthlyPay'),box=byId('recurringOptions');if(r)r.value=v?'1':'0';if(o)o.classList.toggle('active',!v);if(m)m.classList.toggle('active',v);if(box)box.style.display=v?'block':'none'}
 function addPay(e){e.preventDefault();let amount=parseMoney(byId('pAmount')?.value),rec=byId('pRecurring')?.value==='1',months=rec?Math.max(2,Number(byId('pMonths')?.value)||2):1;if(amount<=0)return;S.payments.push({id:uid(),title:(byId('pTitle')?.value||'').trim(),category:byId('pCat')?.value||'Diğer',amount:amount,asset:byId('pAsset')?.value||'TRY',dueDate:byId('pDate')?.value||date(),status:'bekliyor',memberId:byId('pMember')?.value||S.active,recurring:rec,interval:'aylik',months:months,remaining:months});closeModal();save()}
 function togglePay(id){let p=S.payments.find(x=>x.id===id);if(!p)return;if(p.status==='bekliyor'){let tx={id:uid(),type:'gider',amount:p.amount,asset:p.asset||'TRY',category:p.category,date:date(),description:'Planlı ödeme: '+p.title,memberId:p.memberId,paymentId:p.id};S.transactions.unshift(tx);if(p.recurring){p.remaining=Math.max(0,(Number(p.remaining)||Number(p.months)||1)-1);if(p.remaining>0){p.dueDate=addMonths(p.dueDate,1);p.status='bekliyor';p.lastPaidDate=tx.date}else{p.status='odendi';p.transactionId=tx.id}}else{p.status='odendi';p.transactionId=tx.id}}else{S.transactions=S.transactions.filter(t=>t.paymentId!==id);p.status='bekliyor';if(p.recurring){p.remaining=Math.max(1,Number(p.remaining)||Number(p.months)||1);p.dueDate=p.lastPaidDate?addMonths(p.lastPaidDate,1):p.dueDate}delete p.transactionId}save()}
@@ -1748,10 +1847,12 @@ function setLoanDirection(direction){
   if(el)el.value=direction;
   if(given)given.classList.toggle('active',direction==='given');
   if(taken)taken.classList.toggle('active',direction==='taken');
+  const loanFormEl=document.querySelector('#modalBody form.loan-form');
+  if(loanFormEl){loanFormEl.classList.toggle('loan-form-given',direction==='given');loanFormEl.classList.toggle('loan-form-taken',direction==='taken');}
   if(submit)submit.textContent=direction==='given'?'Borç Verme Kaydet':'Borç Alma Kaydet';
 }
 function loanForm(){
-  return `<form onsubmit="addLoan(event)"><div class="segment" style="margin-bottom:12px"><button id="loanGiven" type="button" class="active" onclick="setLoanDirection('given')">Borç Verdim</button><button id="loanTaken" type="button" onclick="setLoanDirection('taken')">Borç Aldım</button></div><input type="hidden" id="loanDirection" value="given"><div class="field"><label>Kişi / Karşı Taraf</label><input id="loanPerson" maxlength="80" placeholder="Örn: Mehmet" required></div><div class="row2"><div class="field"><label>Tutar</label><input id="loanAmount" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="0,00" required></div><div class="field"><label>Kur Türü</label><select id="loanAsset">${assetOptions}</select></div><div class="field"><label>Borç Verme / Alma Tarihi</label><input id="loanDate" type="date" value="${date()}" required></div><div class="field"><label>Borç Kapama Tarihi (kapandıysa, isteğe bağlı)</label><input id="loanCloseDate" type="date"></div><div class="field"><label>Geri Ödeme Vadesi (isteğe bağlı)</label><input id="loanDueDate" type="date"></div><div class="field"><label>Aile Bireyi</label><select id="loanMember">${S.members.map(m=>`<option value="${m.id}" ${m.id===S.active?'selected':''}>${esc(m.name)}</option>`).join('')}</select></div></div><div class="field"><label>Açıklama (isteğe bağlı)</label><input id="loanDesc" maxlength="160" placeholder="Örn: Araç tamiri için verilen borç"></div><button id="loanSubmit" class="primary">Borç Verme Kaydet</button><p class="sub loan-form-note">Borç kayıtları gelir/gider ve birikim hedefi toplamlarından ayrı tutulur.</p></form>`;
+  return `<form class="loan-form loan-form-given" onsubmit="addLoan(event)"><div class="segment loan-direction-toggle" style="margin-bottom:12px"><button id="loanGiven" type="button" class="active" onclick="setLoanDirection('given')">Borç Verdim</button><button id="loanTaken" type="button" onclick="setLoanDirection('taken')">Borç Aldım</button></div><input type="hidden" id="loanDirection" value="given"><div class="field"><label>Kişi / Karşı Taraf</label><input id="loanPerson" maxlength="80" placeholder="Örn: Mehmet" required></div><div class="row2"><div class="field"><label>Tutar</label><input id="loanAmount" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="0,00" required></div><div class="field"><label>Kur Türü</label><select id="loanAsset">${assetOptions}</select></div><div class="field"><label>Borç Verme / Alma Tarihi</label><input id="loanDate" type="date" value="${date()}" required></div><div class="field"><label>Borç Kapama Tarihi (kapandıysa, isteğe bağlı)</label><input id="loanCloseDate" type="date"></div><div class="field"><label>Geri Ödeme Vadesi (isteğe bağlı)</label><input id="loanDueDate" type="date"></div><div class="field"><label>Aile Bireyi</label><select id="loanMember">${S.members.map(m=>`<option value="${m.id}" ${m.id===S.active?'selected':''}>${esc(m.name)}</option>`).join('')}</select></div></div><div class="field"><label>Açıklama (isteğe bağlı)</label><input id="loanDesc" maxlength="160" placeholder="Örn: Araç tamiri için verilen borç"></div><button id="loanSubmit" class="primary">Borç Verme Kaydet</button><p class="sub loan-form-note">Borç kayıtları gelir/gider ve birikim hedefi toplamlarından ayrı tutulur.</p></form>`;
 }
 function addLoan(e){
   e.preventDefault();
@@ -1884,7 +1985,7 @@ function savingRow(x){
   let g=S.goals.find(g=>g.id===x.goalId),completed=g?goalIsCompleted(g):false;
   return `<div class="item ${deleteMode.movements?'selectable-item':''}">${deleteMode.movements?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.movements.has(x.id)?'checked':''} onchange="toggleDeleteSelection('movements','${x.id}')"><span></span></label>`:''}<div class="icon ${x.sign>0?'in':'out'}">${x.sign>0?'+':'−'}</div><div class="itemmain"><b>${esc(x.goalName)}</b><div class="sub">${fd(x.date)} · ${assetLabels[x.asset]||x.asset} · Kur/Fiyat: ${fmt(x.rate||0)} · ${esc(member(x.memberId))}${completed?` · <span class="goal-completed-badge">Tamamlandı</span>`:''}</div></div><div class="amount ${x.sign>0?'in':'out'}">${x.sign>0?'+':'−'}${fnum(x.quantity)} ${assetLabels[x.asset]||x.asset}</div></div>`}
 function deleteSavingMovement(id){let x=(S.savingMovements||[]).find(m=>m.id===id);if(!x)return;let g=S.goals.find(g=>g.id===x.goalId);if(g){g.holdings[x.asset]=Math.max(0,(g.holdings[x.asset]||0)-x.quantity*x.sign)}S.savingMovements=S.savingMovements.filter(m=>m.id!==id);save()}
-function goalForm(){return `<form onsubmit="addGoal(event)"><div class="field"><label>Hedef Adı</label><input id="gName" placeholder="Örn: Tatil birikimi" required></div><div class="row2"><div class="field"><label>Hedef Tutarı</label><input id="gTarget" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="0,00" required></div><div class="field"><label>Hedef Kur Türü</label><select id="gAsset">${assetOptions}</select></div><div class="field"><label>Hedefe Başlama Tarihi</label><input id="gStartDate" type="date" value="${date()}" required></div><div class="field"><label>Sahibi</label><select id="gMember">${S.members.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select></div></div><button class="primary">Hedef Oluştur</button></form>`}
+function goalForm(){return `<form class="goal-form" onsubmit="addGoal(event)"><div class="field"><label>Hedef Adı</label><input id="gName" placeholder="Örn: Tatil birikimi" required></div><div class="row2"><div class="field"><label>Hedef Tutarı</label><input id="gTarget" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="0,00" required></div><div class="field"><label>Hedef Kur Türü</label><select id="gAsset">${assetOptions}</select></div><div class="field"><label>Hedefe Başlama Tarihi</label><input id="gStartDate" type="date" value="${date()}" required></div><div class="field"><label>Sahibi</label><select id="gMember">${S.members.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select></div></div><button class="primary">Hedef Oluştur</button></form>`}
 function addGoal(e){e.preventDefault();let target=parseMoney(byId('gTarget')?.value),name=(byId('gName')?.value||'').trim();if(target<=0||!name)return;S.goals.push({id:uid(),name:name,target:target,targetAsset:byId('gAsset')?.value||'TRY',startDate:byId('gStartDate')?.value||date(),completionDate:null,memberId:byId('gMember')?.value||S.active,holdings:{TRY:0,USD:0,EUR:0,GOLD22:0,GOLD24:0,CEYREK:0,YARIM:0,TAM:0}});closeModal();save()}
 function goalCard(g,compact=false){
   let total=goalValueInTarget(g),pct=g.target?total/g.target*100:0,completed=goalIsCompleted(g),held=Object.entries(g.holdings).filter(x=>x[1]>0);
