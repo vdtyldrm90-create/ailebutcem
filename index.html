@@ -524,10 +524,10 @@ input,textarea{ text-transform:uppercase; }
 </style>
 
 <style>
-/* Raporlar sekmesi ve altı öğeli mobil gezinme */
+/* Raporlar sekmesi ve beş öğeli mobil gezinme */
 @media(max-width:800px){
-  .bottom{grid-template-columns:repeat(6,minmax(0,1fr))!important}
-  .bottom button{font-size:clamp(7px,2.15vw,10px)!important;padding-left:1px!important;padding-right:1px!important;letter-spacing:-.25px}
+  .bottom{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+  .bottom button{font-size:clamp(9px,2.6vw,11px)!important;padding-left:1px!important;padding-right:1px!important;letter-spacing:-.25px}
   .bottom .ni{font-size:16px!important}
 }
 .report-controls .panelhead{align-items:center;flex-wrap:wrap;margin-bottom:8px}
@@ -558,16 +558,16 @@ input,textarea{ text-transform:uppercase; }
   .report-mobile-row .itemmain b{white-space:normal}
 }
 @media(max-width:390px){
-  .bottom button{font-size:7px!important}
+  .bottom button{font-size:9px!important}
   .bottom .ni{font-size:15px!important}
   .report-stat-grid .stat .value{font-size:14px}
 }
 </style>
 
 <style>
-/* Mobil alt sekme yazıları: daha okunaklı, altı sekmeye sığacak ölçü */
+/* Mobil alt sekme yazıları: beş sekmeye okunaklı ve dengeli sığar */
 @media (max-width: 800px) {
-  .bottom { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
+  .bottom { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
   .bottom button {
     font-size: clamp(9px, 2.8vw, 11px) !important;
     font-weight: 750 !important;
@@ -580,9 +580,83 @@ input,textarea{ text-transform:uppercase; }
   .bottom .ni { font-size: 17px !important; line-height: 17px !important; }
 }
 @media (max-width: 360px) {
-  .bottom button { font-size: 9px !important; letter-spacing: -0.25px !important; }
+  .bottom button { font-size: 9px !important; letter-spacing: -0.2px !important; }
   .bottom .ni { font-size: 16px !important; line-height: 16px !important; }
 }
+</style>
+
+<style>
+
+/* Raporlar: tema uyumlu özet, seçimler ve duyarlı grafik */
+.report-controls .panelhead{align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.report-mode{display:flex;gap:3px;padding:3px;border-radius:11px;background:var(--soft);width:max-content}
+.report-mode button{border:0;background:transparent;color:var(--muted);padding:8px 13px;border-radius:8px;font-weight:750;font-size:12px}
+.report-mode button.active{background:var(--card);color:var(--primary);box-shadow:0 1px 4px #00000010}
+.report-control-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.report-year-select,.report-month-select{border:1px solid var(--border);background:var(--card);color:var(--fg);border-radius:10px;padding:8px 10px;min-height:38px;font-weight:700;font-size:12px;max-width:100%}
+.report-period-label{font-size:11px;color:var(--muted);margin-top:5px}
+.report-stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.report-stat-grid .stat{min-width:0;position:relative;overflow:hidden}
+.report-stat-grid .stat:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:currentColor;opacity:.65}
+.report-stat-grid .stat small{display:block;font-size:11px;line-height:1.35}
+.report-stat-grid .stat .value{font-size:clamp(14px,1.5vw,22px);overflow-wrap:anywhere;line-height:1.25}
+.report-stat-grid .report-plan-income{color:#438b7b;background:#f0f7f4}
+.report-stat-grid .report-plan-expense{color:#bd6e62;background:#fff5f2}
+.report-breakdown{min-width:0}
+.report-chart-panel{overflow:hidden}
+.report-chart-legend{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:0 0 10px;font-size:11px;color:var(--muted)}
+.report-legend-item{display:inline-flex;align-items:center;gap:6px}
+.report-legend-dot{width:9px;height:9px;border-radius:3px;display:inline-block;flex:none}
+.report-chart-area{position:relative;height:218px;display:flex;align-items:stretch;gap:7px;padding:10px 5px 24px;border-bottom:1px solid var(--border);background:repeating-linear-gradient(to top,transparent 0,transparent calc(25% - 1px),rgba(120,145,136,.13) calc(25% - 1px),rgba(120,145,136,.13) 25%)}
+.report-chart-month{flex:1;min-width:0;height:100%;display:flex;align-items:flex-end;justify-content:center;gap:3px;position:relative}
+.report-chart-unit{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;position:relative}
+.report-chart-bar{display:block;width:36%;min-width:8px;max-width:34px;border-radius:6px 6px 2px 2px;min-height:0;transition:height .25s ease;box-shadow:inset 0 1px 0 #ffffff65}
+.report-chart-bar.income{background:#5aab86}
+.report-chart-bar.expense{background:#d9776b}
+.report-chart-bar.plan-income{background:#b7dccc}
+.report-chart-bar.plan-expense{background:#efb8ad}
+.report-chart-month .report-chart-bar{width:36%;min-width:4px;max-width:18px}
+.report-chart-label{position:absolute;bottom:-21px;left:0;right:0;text-align:center;font-size:9px;color:var(--muted);white-space:nowrap}
+.report-chart-unit .report-chart-value{font-size:10px;color:var(--muted);text-align:center;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.report-chart-unit .report-chart-name{font-size:10px;color:var(--fg);text-align:center;line-height:1.25}
+.report-chart-note{font-size:10px;color:var(--muted);line-height:1.45;margin:10px 0 0}
+.report-table-wrap{max-width:100%;overflow-x:auto}
+.report-table{min-width:760px;display:table!important}
+.report-table th,.report-table td{white-space:nowrap}
+.report-table .number{text-align:right;font-variant-numeric:tabular-nums}
+.report-total-row td{background:#f2f7f4;font-weight:800;border-bottom:0}
+.report-mobile-list{display:none}
+.report-note{line-height:1.5;margin-top:12px}
+.report-netline{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:12px;font-size:12px}
+.report-netline strong{color:var(--primary)}
+.report-mobile-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid var(--border)}
+.report-mobile-row:last-child{border-bottom:0}
+.report-mobile-row .itemmain{min-width:0;flex:1}
+.report-mobile-row .itemmain b{display:block;font-size:12px;white-space:normal}
+.report-mobile-row .amount{white-space:normal;text-align:right;font-size:11px}
+.report-mobile-row .sub{line-height:1.5}
+@media(max-width:800px){
+  .bottom{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+  .report-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .report-stat-grid .stat{padding:12px}
+  .report-stat-grid .stat .value{font-size:clamp(14px,4vw,17px)}
+  .report-controls .panelhead{align-items:flex-start}
+  .report-control-actions{width:100%;justify-content:space-between}
+  .report-table-wrap{display:none}
+  .report-mobile-list{display:flex;flex-direction:column}
+  .report-chart-area{height:190px;gap:3px;padding-left:1px;padding-right:1px}
+  .report-chart-month .report-chart-bar{min-width:3px}
+  .report-chart-label{font-size:8px}
+}
+@media(max-width:390px){
+  .bottom button{font-size:9px!important}
+  .bottom .ni{font-size:16px!important}
+  .report-stat-grid .stat .value{font-size:14px}
+  .report-control-actions{gap:6px}
+  .report-year-select,.report-month-select{padding:7px 8px;font-size:11px;min-height:36px}
+  .report-chart-area{height:175px}
+}
+
 </style>
 
 <style>
@@ -661,7 +735,7 @@ goals:[
 {id:'g2',name:'Araba Birikimi',target:1200000,memberId:'m-ayse',holdings:{TRY:180000,USD:0,EUR:3000,GOLD24:0}},
 {id:'g3',name:'Kurban Birikimi',target:35000,memberId:'m-zeynep',holdings:{TRY:14000,USD:0,EUR:0,GOLD24:2}}]});
 let S=JSON.parse(localStorage.getItem(KEY)||'null')||seed(),tab='ozet',txFilter='tumu',payFilter='tumu';
-let reportMode='monthly',reportYear=new Date().getFullYear();
+let reportMode='monthly',reportYear=new Date().getFullYear(),reportMonth=new Date().getMonth();
 let deleteMode={transactions:false,recurringTransactions:false,payments:false,goals:false,movements:false,loans:false};
 let dateFilters={transactions:'month',recurringTransactions:'month',payments:'month',movements:'month',home:'month'};
 let savingsFilter='active',loanFilter='open';
@@ -890,6 +964,134 @@ function render(){
   m.innerHTML=tab==='ozet'?home():tab==='islemler'?transactions():tab==='odemeler'?payments():tab==='birikim'?savings():tab==='raporlar'?reports():family();
   if(tab==='aile'&&cloud.inviteUrl)setTimeout(renderCloudQr,0);
 }
+
+function reportSetMode(mode){reportMode=mode==='yearly'?'yearly':'monthly';render()}
+function reportSetYear(year){const n=Number(year);if(Number.isFinite(n))reportYear=n;render()}
+function reportSetMonth(month){const n=Number(month);if(Number.isInteger(n)&&n>=0&&n<=11)reportMonth=n;render()}
+function reportIso(y,m,d){return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`}
+function reportMonthName(y,m,long=true){return new Date(y,m,1).toLocaleDateString('tr-TR',{month:long?'long':'short'})}
+function reportYears(){
+  const set=new Set([new Date().getFullYear(),Number(reportYear)]);
+  const addIso=iso=>{if(/^\d{4}-\d{2}-\d{2}$/.test(String(iso||'')))set.add(Number(String(iso).slice(0,4)))};
+  (S.transactions||[]).forEach(t=>addIso(t.date));
+  (S.payments||[]).forEach(p=>{
+    addIso(p.dueDate);
+    if(p.recurring&&p.dueDate){
+      const months=Math.min(600,Math.max(1,Number(p.remaining??p.months)||1));
+      let cursor=p.dueDate,anchor=Number(String(p.dueDate).slice(-2))||1;
+      for(let i=1;i<months;i++)cursor=monthlyNextDate(cursor,anchor);
+      addIso(cursor);
+    }
+  });
+  (S.recurringTransactions||[]).forEach(r=>{addIso(r.startDate);addIso(r.nextDate);});
+  let years=[...set].filter(Number.isFinite).sort((a,b)=>b-a);
+  if(years.length>20)years=years.slice(0,20);
+  return years;
+}
+function reportPaymentOccurrences(p){
+  if(p.status!=='bekliyor'||!p.dueDate)return [];
+  const count=p.recurring?Math.min(600,Math.max(1,Math.floor(Number(p.remaining??p.months)||1))):1;
+  const anchor=Number(String(p.dueDate).slice(-2))||1;
+  const out=[];let cursor=p.dueDate;
+  for(let i=0;i<count;i++){
+    out.push({date:cursor,amount:Number(p.amount)||0,asset:p.asset||'TRY',category:p.category||'Diğer',title:p.title||'Planlı ödeme',paymentId:p.id,occurrence:i+1});
+    if(p.recurring&&i<count-1)cursor=monthlyNextDate(cursor,anchor);
+  }
+  return out;
+}
+function reportPeriod(start,end){
+  const today=date();
+  const result={actualIncome:0,actualExpense:0,plannedIncome:0,plannedExpense:0,transactions:0,plannedPayments:0,expenseCategories:{}};
+  const inPeriod=iso=>!!iso&&iso>=start&&iso<=end;
+  const addCategory=(name,kind,amount)=>{
+    const key=(name||'Diğer').trim()||'Diğer';
+    const row=result.expenseCategories[key]||(result.expenseCategories[key]={category:key,actual:0,planned:0});
+    row[kind]+=amount;
+  };
+  (S.transactions||[]).forEach(t=>{
+    if(!inPeriod(t.date))return;
+    const amount=(Number(t.amount)||0)*(rates[t.asset||'TRY']||1);
+    const future=t.date>today;
+    const isIncome=t.type==='gelir'||t.type==='income';
+    if(isIncome){result[future?'plannedIncome':'actualIncome']+=amount;}
+    else{
+      result[future?'plannedExpense':'actualExpense']+=amount;
+      addCategory(t.category,future?'planned':'actual',amount);
+    }
+    result.transactions++;
+  });
+  (S.payments||[]).forEach(p=>{
+    reportPaymentOccurrences(p).forEach(occ=>{
+      if(!inPeriod(occ.date))return;
+      const amount=occ.amount*(rates[occ.asset||'TRY']||1);
+      result.plannedExpense+=amount;
+      result.plannedPayments++;
+      addCategory(occ.category,'planned',amount);
+    });
+  });
+  result.expenseCategories=Object.values(result.expenseCategories).map(x=>({...x,total:x.actual+x.planned})).sort((a,b)=>b.total-a.total);
+  result.actualNet=result.actualIncome-result.actualExpense;
+  result.plannedNet=result.plannedIncome-result.plannedExpense;
+  result.totalIncome=result.actualIncome+result.plannedIncome;
+  result.totalExpense=result.actualExpense+result.plannedExpense;
+  return result;
+}
+function reportAggregate(rows){
+  const keys=['actualIncome','actualExpense','plannedIncome','plannedExpense','transactions','plannedPayments'];
+  const out=Object.fromEntries(keys.map(k=>[k,0]));
+  rows.forEach(r=>keys.forEach(k=>out[k]+=(Number(r[k])||0)));
+  out.actualNet=out.actualIncome-out.actualExpense;
+  out.plannedNet=out.plannedIncome-out.plannedExpense;
+  out.totalIncome=out.actualIncome+out.plannedIncome;
+  out.totalExpense=out.actualExpense+out.plannedExpense;
+  return out;
+}
+function reportStat(label,value,kind,icon){
+  return `<div class="panel stat report-stat ${kind}"><small>${icon?`${icon} `:''}${label}</small><div class="value">${fmt(value)}</div></div>`;
+}
+function reportLegend(color,label){return `<span class="report-legend-item"><i class="report-legend-dot" style="background:${color}"></i>${label}</span>`}
+function reportChartMonthly(data){
+  const bars=[
+    {label:'Gerçekleşen gelir',short:'Gerçekleşen gelir',value:data.actualIncome,cls:'income'},
+    {label:'Gerçekleşen gider',short:'Gerçekleşen gider',value:data.actualExpense,cls:'expense'},
+    {label:'Planlanan gelir',short:'Planlanan gelir',value:data.plannedIncome,cls:'plan-income'},
+    {label:'Planlanan gider',short:'Planlanan gider',value:data.plannedExpense,cls:'plan-expense'}
+  ];
+  const max=Math.max(1,...bars.map(x=>x.value));
+  return `<div class="report-chart-area report-chart-monthly" role="img" aria-label="Seçili ayın gerçekleşen ve planlanan gelir gider grafiği">${bars.map(b=>`<div class="report-chart-unit"><span class="report-chart-value">${b.value?fnum(b.value):'—'}</span><div class="report-chart-bar ${b.cls}" title="${b.label}: ${fmt(b.value)}" style="height:${b.value?Math.max(3,Math.round(b.value/max*78)):0}%"></div><span class="report-chart-name">${b.label}</span></div>`).join('')}</div>`;
+}
+function reportChartYearly(rows){
+  const max=Math.max(1,...rows.map(x=>Math.max(x.actualExpense,x.plannedExpense)));
+  return `<div class="report-chart-area report-chart-yearly" role="img" aria-label="Seçili yılın aylık gerçekleşen ve planlanan gider grafiği">${rows.map(r=>`<div class="report-chart-month"><div class="report-chart-bar expense" title="${r.name}: gerçekleşen gider ${fmt(r.actualExpense)}" style="height:${r.actualExpense?Math.max(2,Math.round(r.actualExpense/max*88)):0}%"></div><div class="report-chart-bar plan-expense" title="${r.name}: planlanan gider ${fmt(r.plannedExpense)}" style="height:${r.plannedExpense?Math.max(2,Math.round(r.plannedExpense/max*88)):0}%"></div><span class="report-chart-label">${r.short}</span></div>`).join('')}</div>`;
+}
+function reportMonthlyBreakdown(data){
+  const rows=data.expenseCategories;
+  if(!rows.length)return `<div class="empty">Bu ay için gider kaydı bulunmuyor.</div>`;
+  return `<div class="report-table-wrap"><table class="table report-table"><thead><tr><th>Kategori</th><th class="number">Gerçekleşen gider</th><th class="number">Planlanan gider</th><th class="number">Toplam</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.category)}</td><td class="number">${fmt(r.actual)}</td><td class="number">${fmt(r.planned)}</td><td class="number"><b>${fmt(r.total)}</b></td></tr>`).join('')}</tbody></table></div><div class="report-mobile-list">${rows.map(r=>`<div class="report-mobile-row"><div class="itemmain"><b>${esc(r.category)}</b><div class="sub">Gerçekleşen ${fmt(r.actual)} · Planlanan ${fmt(r.planned)}</div></div><div class="amount">${fmt(r.total)}</div></div>`).join('')}</div>`;
+}
+function reportYearBreakdown(rows,total){
+  const rowHtml=r=>`<tr><td>${r.name}</td><td class="number">${fmt(r.actualIncome)}</td><td class="number">${fmt(r.actualExpense)}</td><td class="number">${fmt(r.plannedIncome)}</td><td class="number">${fmt(r.plannedExpense)}</td><td class="number">${fmt(r.actualIncome-r.actualExpense)}</td></tr>`;
+  return `<div class="report-table-wrap"><table class="table report-table"><thead><tr><th>Ay</th><th class="number">Gerçekleşen gelir</th><th class="number">Gerçekleşen gider</th><th class="number">Planlanan gelir</th><th class="number">Planlanan gider</th><th class="number">Net</th></tr></thead><tbody>${rows.map(rowHtml).join('')}<tr class="report-total-row"><td>Yıl Toplamı</td><td class="number">${fmt(total.actualIncome)}</td><td class="number">${fmt(total.actualExpense)}</td><td class="number">${fmt(total.plannedIncome)}</td><td class="number">${fmt(total.plannedExpense)}</td><td class="number">${fmt(total.actualNet)}</td></tr></tbody></table></div><div class="report-mobile-list">${rows.map(r=>`<div class="report-mobile-row"><div class="itemmain"><b>${r.name}</b><div class="sub">Gerçekleşen gelir ${fmt(r.actualIncome)} · Gider ${fmt(r.actualExpense)}<br>Planlanan gelir ${fmt(r.plannedIncome)} · Gider ${fmt(r.plannedExpense)}</div></div><div class="amount">Net<br><b>${fmt(r.actualIncome-r.actualExpense)}</b></div></div>`).join('')}<div class="report-mobile-row"><div class="itemmain"><b>Yıl Toplamı</b><div class="sub">Gerçekleşen gelir ${fmt(total.actualIncome)} · Gider ${fmt(total.actualExpense)}<br>Planlanan gelir ${fmt(total.plannedIncome)} · Gider ${fmt(total.plannedExpense)}</div></div><div class="amount"><b>${fmt(total.actualNet)}</b></div></div></div>`;
+}
+function reports(){
+  const years=reportYears();
+  if(!years.includes(Number(reportYear)))reportYear=years[0]||new Date().getFullYear();
+  const yearOptions=years.map(y=>`<option value="${y}" ${Number(reportYear)===y?'selected':''}>${y}</option>`).join('');
+  const monthOptions=Array.from({length:12},(_,m)=>`<option value="${m}" ${Number(reportMonth)===m?'selected':''}>${reportMonthName(reportYear,m,true)}</option>`).join('');
+  const periodLabel=reportMode==='monthly'?`${reportMonthName(reportYear,reportMonth,true)} ${reportYear}`:`${reportYear} yılı`;
+  if(reportMode==='monthly'){
+    const data=reportPeriod(reportIso(reportYear,reportMonth,1),reportIso(reportYear,reportMonth,new Date(reportYear,reportMonth+1,0).getDate()));
+    return `<div class="stack">${title('Ekonomik Raporlar','Geçmiş harcamaları ve gelecek dönem planlarını ay veya yıl bazında inceleyin.')}<section class="panel report-controls"><div class="panelhead"><div><h2>Rapor Dönemi</h2><p>İncelemek istediğiniz dönemi seçin.</p></div><div class="report-mode"><button class="${reportMode==='monthly'?'active':''}" onclick="reportSetMode('monthly')">Ay Ay</button><button class="${reportMode==='yearly'?'active':''}" onclick="reportSetMode('yearly')">Yıl Yıl</button></div></div><div class="report-control-actions"><label class="field" style="gap:4px;flex:1;min-width:115px"><span class="sub">Ay</span><select class="report-month-select" aria-label="Rapor ayı" onchange="reportSetMonth(this.value)">${monthOptions}</select></label><label class="field" style="gap:4px;flex:1;min-width:95px"><span class="sub">Yıl</span><select class="report-year-select" aria-label="Rapor yılı" onchange="reportSetYear(this.value)">${yearOptions}</select></label></div><div class="report-period-label">Gösterilen dönem: <b>${esc(periodLabel)}</b></div></section><div class="report-stat-grid">${reportStat('Gerçekleşen Gelir',data.actualIncome,'income','↑')}${reportStat('Gerçekleşen Gider',data.actualExpense,'expense','↓')}${reportStat('Planlanan Gelir',data.plannedIncome,'report-plan-income','↗')}${reportStat('Planlanan Gider',data.plannedExpense,'report-plan-expense','↘')}</div><section class="panel report-chart-panel"><div class="panelhead"><div><h2>Gelir / Gider Karşılaştırması</h2><p>${esc(periodLabel)} · gerçekleşen ve planlanan tutarlar</p></div></div><div class="report-chart-legend">${reportLegend('#5aab86','Gerçekleşen gelir')}${reportLegend('#d9776b','Gerçekleşen gider')}${reportLegend('#b7dccc','Planlanan gelir')}${reportLegend('#efb8ad','Planlanan gider')}</div>${reportChartMonthly(data)}<div class="report-netline"><span>Gerçekleşen net bütçe: <strong>${fmt(data.actualNet)}</strong></span><span>Planlanan net: <strong>${fmt(data.plannedNet)}</strong></span></div><p class="report-chart-note">Planlanan giderlere vadesi gelmiş ancak ödenmemiş ödemeler ve ileri tarihli giderler dahildir. Döviz ve altın tutarları güncel gösterge kurlarıyla TL karşılığına çevrilir; geçmiş dönemler de güncel kurlar üzerinden hesaplanır.</p></section><section class="panel report-breakdown"><div class="panelhead"><div><h2>Gider Dağılımı</h2><p>Kategoriye göre gerçekleşen ve planlanan giderler</p></div></div>${reportMonthlyBreakdown(data)}</section></div>`;
+  }
+  const rows=Array.from({length:12},(_,m)=>{
+    const start=reportIso(reportYear,m,1),end=reportIso(reportYear,m,new Date(reportYear,m+1,0).getDate());
+    return {month:m,name:reportMonthName(reportYear,m,true),short:reportMonthName(reportYear,m,false).replace('.',''),...reportPeriod(start,end)};
+  });
+  const total=reportAggregate(rows);
+  return `<div class="stack">${title('Ekonomik Raporlar','Geçmiş harcamaları ve gelecek dönem planlarını ay veya yıl bazında inceleyin.')}<section class="panel report-controls"><div class="panelhead"><div><h2>Rapor Dönemi</h2><p>Seçilen yılın 12 aylık görünümü.</p></div><div class="report-mode"><button class="${reportMode==='monthly'?'active':''}" onclick="reportSetMode('monthly')">Ay Ay</button><button class="${reportMode==='yearly'?'active':''}" onclick="reportSetMode('yearly')">Yıl Yıl</button></div></div><div class="report-control-actions"><label class="field" style="gap:4px;flex:1;min-width:95px"><span class="sub">Yıl</span><select class="report-year-select" aria-label="Rapor yılı" onchange="reportSetYear(this.value)">${yearOptions}</select></label></div><div class="report-period-label">Gösterilen dönem: <b>${esc(periodLabel)}</b></div></section><div class="report-stat-grid">${reportStat('Gerçekleşen Gelir',total.actualIncome,'income','↑')}${reportStat('Gerçekleşen Gider',total.actualExpense,'expense','↓')}${reportStat('Planlanan Gelir',total.plannedIncome,'report-plan-income','↗')}${reportStat('Planlanan Gider',total.plannedExpense,'report-plan-expense','↘')}</div><section class="panel report-chart-panel"><div class="panelhead"><div><h2>Aylara Göre Harcama</h2><p>${reportYear} · gerçekleşen ve planlanan gider</p></div></div><div class="report-chart-legend">${reportLegend('#d9776b','Gerçekleşen gider')}${reportLegend('#efb8ad','Planlanan gider')}</div>${reportChartYearly(rows)}<div class="report-netline"><span>Yılın gerçekleşen net bütçesi: <strong>${fmt(total.actualNet)}</strong></span><span>Planlanan net: <strong>${fmt(total.plannedNet)}</strong></span></div><p class="report-chart-note">Çubukların üzerine geldiğinizde aylık tutarlar görünür. Mobil cihazlarda ay ay tablo da aşağıda listelenir.</p></section><section class="panel report-breakdown"><div class="panelhead"><div><h2>Ay Ay Detay</h2><p>Gerçekleşen ve planlanan tutarlar</p></div></div>${reportYearBreakdown(rows,total)}</section></div>`;
+}
+
+
 function title(a,b){return `<div class="title"><h1>${a}</h1><p>${b}</p></div>`}
 function summary(kind='home'){
   let list=S.transactions.filter(t=>(kind!=='home'||t.date<=date())&&dateInRange(t.date,dateFilters[kind]||'month',window._filterDates?.[kind]?.start,window._filterDates?.[kind]?.end)),
