@@ -1133,6 +1133,7 @@ body.cloud-cache-loading #main button,body.cloud-cache-loading #main input,body.
 /* Birikim hareketinde alış maliyeti ve güncel değer her hareketin altında kompakt gösterilir. */
 .movement-financial-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 8px;padding:7px 8px;margin-top:5px;border-radius:9px;border:1px solid #e1eae5;background:linear-gradient(135deg,#f8fbf9,#f4f8fc)}
 .movement-financial-grid>span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.movement-financial-grid .goal-completed-note{grid-column:1/-1;font-size:9px;line-height:1.3;color:#a44742;background:#fff0ee;border-radius:6px;padding:4px 6px}.saving-movement-item .icon{align-self:flex-start}
 .movement-financial-grid small{color:var(--muted);font-size:9px;line-height:1.2}
 .movement-financial-grid b{font-size:10px;line-height:1.3;overflow-wrap:anywhere}
 @media(max-width:420px){.payment-list-controls{gap:3px}.payment-list-controls .payment-status-filter{gap:1px}.payment-list-controls .payment-status-filter button,.payment-list-controls>button{padding:5px 4px;font-size:9px}.movement-financial-grid{gap:4px 6px;padding:6px}.movement-financial-grid b{font-size:9px}}
@@ -1458,7 +1459,7 @@ function movementCostRate(m){
 function acquisitionLotState(){
   const timeline=(S.savingMovements||[]).map((m,index)=>({...m,__index:index}));
   timeline.sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))||String(a.createdAt||'').localeCompare(String(b.createdAt||''))||(b.__index-a.__index));
-  const lotsByKey=new Map(),byMovementId=new Map();
+  const lotsByKey=new Map(),byMovementId=new Map(),withdrawalsByMovementId=new Map();
   for(const m of timeline){
     const asset=m.asset||'TRY',key=String(m.goalId)+'::'+asset,qty=Math.max(0,Number(m.quantity)||0);
     if(Number(m.sign)>0){
@@ -1467,15 +1468,26 @@ function acquisitionLotState(){
       lotsByKey.get(key).push(lot);
       byMovementId.set(String(m.id),lot);
     }else if(Number(m.sign)<0){
-      let toRemove=qty;
+      let toRemove=qty,allocatedQty=0,knownQty=0,unknownQty=0,cost=0;
       for(const lot of (lotsByKey.get(key)||[])){
         if(toRemove<=0)break;
         const used=Math.min(lot.remaining,toRemove);
+        if(used<=0)continue;
+        allocatedQty+=used;
+        if(Number(lot.costRate)>0){knownQty+=used;cost+=used*Number(lot.costRate)}
+        else unknownQty+=used;
         lot.remaining=Math.max(0,lot.remaining-used);toRemove-=used;
       }
+      // A withdrawal not matched to recorded lots has an unknown cost basis.
+      if(toRemove>0)unknownQty+=toRemove;
+      // TL has no exchange-rate gain/loss; its nominal cost equals its amount.
+      if(asset==='TRY'){
+        cost=qty;allocatedQty=qty;knownQty=qty;unknownQty=0;
+      }
+      withdrawalsByMovementId.set(String(m.id),{quantity:qty,allocatedQty,knownQty,unknownQty,cost});
     }
   }
-  return {lotsByKey,byMovementId};
+  return {lotsByKey,byMovementId,withdrawalsByMovementId};
 }
 function trackedProfitLoss(lotState=acquisitionLotState()){
   let cost=0,value=0,repurchase=0,quantity=0;
@@ -2555,24 +2567,36 @@ function savings(){
 function savingRow(x,lotState=acquisitionLotState()){
   const g=S.goals.find(g=>String(g.id)===String(x.goalId)),completed=g?goalIsCompleted(g):false,asset=x.asset||'TRY';
   const assetName=assetLabels[asset]||asset;
+  const qty=Math.max(0,Number(x.quantity)||0);
+  const currentUnit=asset==='TRY'?1:currentExitRate(asset);
+  const current=qty*currentUnit;
+  const profileName=member(x.memberId);
   let detail='';
   if(Number(x.sign)>0){
     const lot=lotState.byMovementId.get(String(x.id));
     const remain=Math.max(0,Number(lot?.remaining)||0);
     const hasCost=asset==='TRY'||(Number(x.costRate)>0&&!!lot);
     const cost=asset==='TRY'?remain:(hasCost?remain*Number(x.costRate):0);
-    const currentUnit=asset==='TRY'?1:currentExitRate(asset);
-    const current=remain*currentUnit;
-    const profit=current-cost;
+    const remainingCurrent=remain*currentUnit;
+    const profit=remainingCurrent-cost;
     const pct=cost>0?profit/cost*100:0;
     const costText=hasCost?fmt(cost):'Kayıtlı değil';
     const profitText=completed?'Hedef tamamlandı':asset==='TRY'?'Kur farkı yok':!hasCost?'Maliyet eksik':remain<=0?'Kalan miktar yok':`${signedMoney(profit)} (${signedPercent(pct)})`;
     const profitClass=completed||asset==='TRY'?'pl-neutral':!hasCost||remain<=0?'pl-unknown':profit>=0?'pl-positive':'pl-negative';
-    detail=`<div class="movement-financial-grid"><span><small>Tarih</small><b>${fd(x.date)}</b></span><span><small>Alış maliyeti</small><b>${costText}</b></span><span><small>Güncel fiyat/değer</small><b>${fmt(current)}${asset!=='TRY'?` <small>(${fmt(currentUnit)} / birim)</small>`:''}</b></span><span><small>Kâr / Zarar</small><b class="${profitClass}">${profitText}</b></span>${completed?'<span class="goal-completed-note">Hedef tamamlandı; kâr/zarar hesabı durduruldu.</span>':asset==='TRY'?'<span class="sub">TL birikiminde kur farkı hesaplanmaz.</span>':!hasCost?'<span class="sub">Bu eski kayıtta gerçek alış maliyeti bulunmuyor.</span>':remain<=0?'<span class="sub">Bu alımdan kalan miktar yok.</span>':''}</div>`;
+    detail=`<div class="movement-financial-grid"><span><small>Tarih</small><b>${fd(x.date)}</b></span><span><small>İşlemi yapan</small><b>${esc(profileName)}</b></span><span><small>Alış maliyeti</small><b>${costText}</b></span><span><small>Güncel değer</small><b>${fmt(remainingCurrent)}</b></span><span><small>Kâr / Zarar</small><b class="${profitClass}">${profitText}</b></span>${completed?'<span class="goal-completed-note">Hedef tamamlandı; kâr/zarar hesabı durduruldu.</span>':asset==='TRY'?'<span class="sub">TL birikiminde kur farkı hesaplanmaz.</span>':!hasCost?'<span class="sub">Bu eski kayıtta gerçek alış maliyeti bulunmuyor.</span>':remain<=0?'<span class="sub">Bu alımdan kalan miktar yok.</span>':''}</div>`;
   }else{
-    detail=`<div class="movement-pl-detail pl-neutral"><span>Çıkarılan miktar: ${fnum(x.quantity)} ${assetName}.</span><span>Bu çıkarma hareketi için elde kalan varlık kâr/zararı hesaplanmaz.</span></div>`;
+    const allocation=lotState.withdrawalsByMovementId?.get(String(x.id))||{quantity:qty,allocatedQty:0,knownQty:0,unknownQty:qty,cost:0};
+    const hasCost=asset==='TRY'||(allocation.unknownQty<=1e-8&&allocation.allocatedQty>=qty-1e-8&&allocation.knownQty>=qty-1e-8);
+    const cost=asset==='TRY'?qty:(Number(allocation.cost)||0);
+    const costText=hasCost?fmt(cost):(allocation.knownQty>0?`${fmt(cost)} (kısmi)`:'Kayıtlı değil');
+    const profit=current-cost;
+    const pct=cost>0?profit/cost*100:0;
+    const profitText=completed?'Hedef tamamlandı':asset==='TRY'?'Kur farkı yok':!hasCost?'Maliyet eksik':`${signedMoney(profit)} (${signedPercent(pct)})`;
+    const profitClass=completed||asset==='TRY'?'pl-neutral':!hasCost?'pl-unknown':profit>=0?'pl-positive':'pl-negative';
+    detail=`<div class="movement-financial-grid"><span><small>Tarih</small><b>${fd(x.date)}</b></span><span><small>İşlemi yapan</small><b>${esc(profileName)}</b></span><span><small>Alış maliyeti</small><b>${costText}</b></span><span><small>Güncel değer</small><b>${fmt(current)}</b></span><span><small>Kâr / Zarar</small><b class="${profitClass}">${profitText}</b></span>${completed?'<span class="goal-completed-note">Hedef tamamlandı; kâr/zarar hesabı durduruldu.</span>':asset==='TRY'?'<span class="sub">TL hareketinde kur farkı hesaplanmaz.</span>':!hasCost?'<span class="sub">Bu çıkarma için maliyetin bir bölümü bilinmiyor veya eski hareketlerde kaydedilmemiş.</span>':''}</div>`;
   }
-  return `<div class="item saving-movement-item ${deleteMode.movements?'selectable-item':''}">${deleteMode.movements?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.movements.has(x.id)?'checked':''} onchange="toggleDeleteSelection('movements','${x.id}')"><span></span></label>`:''}<div class="icon ${x.sign>0?'in':'out'}">${x.sign>0?'+':'−'}</div><div class="itemmain"><b>${esc(x.goalName)}</b><div class="sub">${completed?`<span class="goal-completed-badge">Tamamlandı</span>`:''}${x.sign>0?'Birikim eklendi':'Birikim çıkarıldı'}</div>${detail}</div><div class="amount ${x.sign>0?'in':'out'}">${x.sign>0?'+':'−'}${fnum(x.quantity)} ${assetName}</div></div>`;
+  const signPositive=Number(x.sign)>0;
+  return `<div class="item saving-movement-item ${deleteMode.movements?'selectable-item':''}">${deleteMode.movements?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.movements.has(x.id)?'checked':''} onchange="toggleDeleteSelection('movements','${x.id}')"><span></span></label>`:''}<div class="icon ${signPositive?'in':'out'}" aria-label="${signPositive?'Birikim eklendi':'Birikim çıkarıldı'}">${signPositive?'＋':'↘'}</div><div class="itemmain"><b>${esc(x.goalName)}</b><div class="sub">${completed?`<span class="goal-completed-badge">Tamamlandı</span>`:''}${signPositive?'Birikim eklendi':'Birikim çıkarıldı'}</div>${detail}</div><div class="amount ${signPositive?'in':'out'}">${signPositive?'+':'−'}${fnum(qty)} ${assetName}</div></div>`;
 }
 function deleteSavingMovement(id){let x=(S.savingMovements||[]).find(m=>m.id===id);if(!x)return;let g=S.goals.find(g=>g.id===x.goalId);if(g){g.holdings[x.asset]=Math.max(0,(g.holdings[x.asset]||0)-x.quantity*x.sign)}S.savingMovements=S.savingMovements.filter(m=>m.id!==id);save()}
 function goalForm(){return `<form class="goal-form" onsubmit="addGoal(event)"><div class="field"><label>Hedef Adı</label><input id="gName" placeholder="Örn: Tatil birikimi" required></div><div class="row2"><div class="field"><label>Hedef Tutarı</label><input id="gTarget" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="0,00" required></div><div class="field"><label>Hedef Kur Türü</label><select id="gAsset">${assetOptions}</select></div><div class="field"><label>Hedefe Başlama Tarihi</label><input id="gStartDate" type="date" value="${date()}" required></div><div class="field"><label>Sahibi</label><select id="gMember">${S.members.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select></div></div><button class="primary">Hedef Oluştur</button></form>`}
