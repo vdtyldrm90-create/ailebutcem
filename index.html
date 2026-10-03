@@ -1120,8 +1120,8 @@ window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;pwaInstal
 let rates={TRY:1,USD:49.0170,EUR:55.5892,GOLD22:6191.826,GOLD24:6587.048,CEYREK:11170.053,YARIM:22340.107,TAM:44680.213};
 let rateUpdated='30 Eylül 2026';
 let rateQuotes={
-  USD:{label:'Dolar',value:49.0170,suffix:'TL'},
-  EUR:{label:'Euro',value:55.5892,suffix:'TL'},
+  USD:{label:'Dolar',value:49.0170,buy:49.0170*0.995,sell:49.0170*1.005,suffix:'TL'},
+  EUR:{label:'Euro',value:55.5892,buy:55.5892*0.995,sell:55.5892*1.005,suffix:'TL'},
   GOLD22:{label:'22 Ayar Altın',buy:6129.907,sell:6191.826,suffix:'TL/gr'},
   GOLD24:{label:'24 Ayar Altın',buy:6531.059,sell:6587.048,suffix:'TL/gr'},
   CEYREK:{label:'Çeyrek Altın',buy:10946.652,sell:11170.053,suffix:'TL'},
@@ -1160,7 +1160,7 @@ function rememberActiveTab(value){
 let S=JSON.parse(localStorage.getItem(KEY)||'null')||seed(),tab=readActiveTab(),txFilter='tumu',payFilter='tumu';
 let reportMode='monthly',reportYear=new Date().getFullYear(),reportMonth=new Date().getMonth(),reportIncomeCategory='*',reportExpenseCategory='*';
 let deleteMode={transactions:false,recurringTransactions:false,payments:false,goals:false,movements:false,loans:false};
-let dateFilters={transactions:'month',recurringTransactions:'all',payments:'all',movements:'all',home:'all'};
+let dateFilters={transactions:'month',recurringTransactions:'all',payments:'month',movements:'all',home:'all'};
 let savingsFilter='active',loanFilter='open';
 
 let deleteSelected={transactions:new Set(),recurringTransactions:new Set(),payments:new Set(),goals:new Set(),movements:new Set(),loans:new Set()};
@@ -1178,6 +1178,16 @@ if(S.rateData.quotes){
   });
 }
 rateUpdated=S.rateData.updated||rateUpdated;
+function normalizeIndicativeRateSpreads(){
+  const rules={USD:[0.995,1.005],EUR:[0.995,1.005],GOLD22:[0.99,1.01],GOLD24:[0.99,1.01],CEYREK:[0.97,1.03],YARIM:[0.97,1.03],TAM:[0.97,1.03]};
+  Object.entries(rules).forEach(([key,[buyFactor,sellFactor]])=>{
+    const q=rateQuotes[key]||{},mid=Number(q.value)||Number(rates[key])||((Number(q.buy)||0)+(Number(q.sell)||0))/2;
+    if(!(mid>0))return;
+    const buy=Number(q.buy)||0,sell=Number(q.sell)||0;
+    if(!(buy>0&&sell>0)||Math.abs(buy-sell)<0.000001){rateQuotes[key]={...q,value:mid,buy:mid*buyFactor,sell:mid*sellFactor};}
+  });
+}
+normalizeIndicativeRateSpreads();
 
 S.family=S.family||{id:'family-'+uid(),name:'Ailem',inviteToken:uid()};
 S.family.id=S.family.id||'family-'+uid();
@@ -1197,6 +1207,7 @@ S.recurringTransactions=(S.recurringTransactions||[]).map(r=>({
 }));
 S.loans=(S.loans||[]).map(l=>({...l,asset:l.asset||'TRY',status:l.status||'open',memberId:l.memberId||S.active,date:l.date||String(l.createdAt||date()).slice(0,10),closedAt:l.closedAt||null}));
 S.payments=(S.payments||[]).map(p=>({...p,recurring:!!p.recurring,interval:p.interval||'aylik',months:Math.max(1,Number(p.months)||1),remaining:Math.max(0,Number(p.remaining ?? (p.recurring?Number(p.months)||1:1)))}));
+const legacyPaymentsMigratedAtBoot=expandLegacyRecurringPayments();
 S.savingMovements=(S.savingMovements||[]).map(m=>({...m,date:m.date||date()}));
 (S.goals||[]).forEach(g=>{g.targetAsset=g.targetAsset||'TRY';g.startDate=g.startDate||date();});
 (S.goals||[]).forEach(g=>{
@@ -1204,6 +1215,7 @@ S.savingMovements=(S.savingMovements||[]).map(m=>({...m,date:m.date||date()}));
   if(g.holdings.GOLD!=null && g.holdings.GOLD24==null){g.holdings.GOLD24=g.holdings.GOLD;delete g.holdings.GOLD}
   Object.keys(assetLabels).forEach(k=>{if(g.holdings[k]==null)g.holdings[k]=0})
 });
+if(legacyPaymentsMigratedAtBoot)try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
 
 function date(n=0){let d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)}
 function uid(){return crypto.randomUUID?crypto.randomUUID():Date.now()+Math.random()}
@@ -1555,7 +1567,7 @@ function reportYears(){
   (S.transactions||[]).forEach(t=>addIso(t.date));
   (S.payments||[]).forEach(p=>{
     addIso(p.dueDate);
-    if(p.recurring&&p.dueDate){
+    if(p.recurring&&!p.recurringGroupId&&!p.installment&&p.dueDate){
       const months=Math.min(600,Math.max(1,Number(p.remaining??p.months)||1));
       let cursor=p.dueDate,anchor=Number(String(p.dueDate).slice(-2))||1;
       for(let i=1;i<months;i++)cursor=monthlyNextDate(cursor,anchor);
@@ -1569,12 +1581,13 @@ function reportYears(){
 }
 function reportPaymentOccurrences(p){
   if(p.status!=='bekliyor'||!p.dueDate)return [];
-  const count=p.recurring?Math.min(600,Math.max(1,Math.floor(Number(p.remaining??p.months)||1))):1;
+  const isInstallment=!!(p.recurringGroupId||p.installment);
+  const count=!isInstallment&&p.recurring?Math.min(600,Math.max(1,Math.floor(Number(p.remaining??p.months)||1))):1;
   const anchor=Number(String(p.dueDate).slice(-2))||1;
   const out=[];let cursor=p.dueDate;
   for(let i=0;i<count;i++){
     out.push({date:cursor,amount:Number(p.amount)||0,asset:p.asset||'TRY',category:p.category||'Diğer',title:p.title||'Planlı ödeme',paymentId:p.id,occurrence:i+1});
-    if(p.recurring&&i<count-1)cursor=monthlyNextDate(cursor,anchor);
+    if(!isInstallment&&p.recurring&&i<count-1)cursor=monthlyNextDate(cursor,anchor);
   }
   return out;
 }
@@ -1714,27 +1727,17 @@ function summary(kind='home'){
 }
 function home(){
   const today=date();
-  const overdue=S.payments.filter(p=>p.status==='bekliyor'&&days(p.dueDate)<0).sort((a,b)=>(a.dueDate||'').localeCompare(b.dueDate||''));
-  const upcoming=S.payments.filter(p=>p.status==='bekliyor'&&days(p.dueDate)>=0&&days(p.dueDate)<=7).sort((a,b)=>(a.dueDate||'').localeCompare(b.dueDate||''));
+  const overdue=S.payments.filter(p=>p.status==='bekliyor'&&dayDiffToday(p.dueDate)>0).sort((a,b)=>(a.dueDate||'').localeCompare(b.dueDate||''));
+  const upcoming=S.payments.filter(p=>p.status==='bekliyor'&&(-dayDiffToday(p.dueDate))>=0&&(-dayDiffToday(p.dueDate))<=7).sort((a,b)=>(a.dueDate||'').localeCompare(b.dueDate||''));
   const total=upcoming.reduce((a,x)=>a+(Number(x.amount)||0),0);
   const overTotal=overdue.reduce((a,x)=>a+(Number(x.amount)||0),0);
   const homePayments=upcoming.slice(0,5);
-  const homeTransactions=S.transactions.filter(t=>dateInRange(t.date,dateFilters.transactions,window._filterDates?.transactions?.start,window._filterDates?.transactions?.end)).slice().sort((a,b)=>{
-    const af=String(a.date||'').slice(0,10)>today,bf=String(b.date||'').slice(0,10)>today;
-    if(af!==bf)return af?1:-1;
-    return af?(a.date||'').localeCompare(b.date||''):(b.date||'').localeCompare(a.date||'');
-  }).slice(0,5);
-  let upcomingMessage='';
-  if(overdue.length){
-    upcomingMessage+=`<b class="home-overdue-title">⚠ ${overdue.length} vadesi geçmiş ödeme var</b><p class="home-overdue-total">Vadesi geçmiş toplam: ${fmt(overTotal)}</p>`;
-  }
-  if(upcoming.length){
-    upcomingMessage+=`<b>${upcoming.length} yaklaşan ödeme</b><p class="home-upcoming-total">Bugün ve önümüzdeki 7 gün içinde toplam ${fmt(total)}</p>`;
-  }else{
-    upcomingMessage+='<p>Önümüzdeki 7 gün içinde vadesi yaklaşan bekleyen ödeme yok.</p>';
-  }
-  return `<div class="stack">${title(`Merhaba, ${esc(member(S.active))}`,'Ailenizin finansal durumuna genel bakış.')}<div class="home-summary-wrap"><div class="home-summary-filter">${dateFilterUI('home')}</div>${summary('home').replace('grid3','grid3 '+(overdue.length?'home-summary-overdue':''))}</div><section class="alert ${overdue.length?'danger':''} home-payments-preview"><div class="alerthead"><div>${upcomingMessage}</div><button class="ghost" onclick="go('odemeler')">Tüm ödemeler</button></div><p class="sub home-upcoming-note">Yalnızca bugün ve önümüzdeki 7 gün içinde vadesi gelen, bekleyen ödemeler gösterilir.</p><div class="list">${homePayments.map(paymentRow).join('')||empty()}</div></section>${homeLoansMini()}<div class="grid2"><section class="panel home-transactions-preview"><div class="panelhead"><div><h2>Son İşlemler</h2><p>${homeTransactions.length} kayıt · en fazla 5 işlem</p></div><div class="home-list-head-actions">${dateFilterUI('transactions')}<button class="ghost" onclick="go('islemler')">Tüm işlemler</button></div></div><div class="list">${homeTransactions.map(txRow).join('')||empty()}</div></section><section class="stack"><ratesPanel/><section class="panel"><div class="panelhead"><div><h2>Birikim Hedefleri</h2><p>Güncel kurla hedef ilerlemesi</p></div><button class="ghost" onclick="go('birikim')">Tümü</button></div><div class="goalgrid" style="grid-template-columns:1fr">${S.goals.filter(g=>!goalIsCompleted(g)).slice(0,3).map(g=>goalCard(g,true)).join('')||empty()}</div></section></section></div></div>`;
+  const homeTransactions=S.transactions.filter(t=>String(t.date||'').slice(0,10)<=today).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))||String(b.createdAt||'').localeCompare(String(a.createdAt||''))).slice(0,5);
+  const overdueSection=overdue.length?`<section class="alert danger home-overdue-preview"><b class="home-overdue-title">⚠ ${overdue.length} vadesi geçmiş ödeme var</b><p class="home-overdue-total">Vadesi geçmiş toplam: ${fmt(overTotal)}</p><button class="ghost" onclick="go('odemeler')">Ödemeleri görüntüle</button></section>`:'';
+  const upcomingSection=upcoming.length?`<section class="alert home-payments-preview"><div class="alerthead"><div><b>${upcoming.length} yaklaşan ödeme</b><p class="home-upcoming-total">Bugün ve önümüzdeki 7 gün içinde toplam ${fmt(total)}</p></div><button class="ghost" onclick="go('odemeler')">Tüm ödemeler</button></div><p class="sub home-upcoming-note">Yalnızca önümüzdeki 7 gün içindeki bekleyen ödemeler gösterilir.</p><div class="list">${homePayments.map(paymentRow).join('')}</div></section>`:'';
+  return `<div class="stack">${title(`Merhaba, ${esc(member(S.active))}`,'Ailenizin finansal durumuna genel bakış.')}<div class="home-summary-wrap"><div class="home-summary-filter">${dateFilterUI('home')}</div>${summary('home').replace('grid3','grid3 '+(overdue.length?'home-summary-overdue':''))}</div>${overdueSection}${upcomingSection}<div class="grid2"><section class="panel home-transactions-preview"><div class="panelhead"><div><h2>Son İşlemler</h2><p>${homeTransactions.length} kayıt · en fazla 5 işlem</p></div><div class="home-list-head-actions"><button class="ghost" onclick="go('islemler')">Tüm işlemler</button></div></div><div class="list">${homeTransactions.map(txRow).join('')||empty()}</div></section><section class="stack">${ratesPanel()}<section class="panel"><div class="panelhead"><div><h2>Birikim Hedefleri</h2><p>Güncel kurla hedef ilerlemesi</p></div><button class="ghost" onclick="go('birikim')">Tümü</button></div><div class="goalgrid" style="grid-template-columns:1fr">${S.goals.filter(g=>!goalIsCompleted(g)).slice(0,3).map(g=>goalCard(g,true)).join('')||empty()}</div></section></section></div>${homeLoansMini()}</div>`;
 }
+
 function homeLoansMini(){
   const given=(S.loans||[]).filter(l=>l.direction==='given'&&l.status!=='closed').length;
   const taken=(S.loans||[]).filter(l=>l.direction==='taken'&&l.status!=='closed').length;
@@ -1796,13 +1799,19 @@ async function fetchText(url){
   return await r.text();
 }
 function applyCurrencyRates(usdTry,eurTry,source,spread={}){
+  const quote=(mid,buyRaw,sellRaw)=>{
+    let buy=Number(buyRaw)||0,sell=Number(sellRaw)||0;
+    // TCMB alış/satış verisi varsa onu kullan; yalnızca orta kur varsa yaklaşık %0,5 referans makası göster.
+    if(!(buy>0&&sell>0)||Math.abs(buy-sell)<0.000001){buy=mid*0.995;sell=mid*1.005;}
+    return {buy,sell};
+  };
   if(usdTry>0){
-    rates.USD=usdTry;
-    rateQuotes.USD={...(rateQuotes.USD||{}),label:'Dolar',value:usdTry,buy:Number(spread.usdBuy)||usdTry,sell:Number(spread.usdSell)||usdTry,suffix:'TL'};
+    const q=quote(usdTry,spread.usdBuy,spread.usdSell);
+    rates.USD=usdTry;rateQuotes.USD={...(rateQuotes.USD||{}),label:'Dolar',value:usdTry,...q,suffix:'TL'};
   }
   if(eurTry>0){
-    rates.EUR=eurTry;
-    rateQuotes.EUR={...(rateQuotes.EUR||{}),label:'Euro',value:eurTry,buy:Number(spread.eurBuy)||eurTry,sell:Number(spread.eurSell)||eurTry,suffix:'TL'};
+    const q=quote(eurTry,spread.eurBuy,spread.eurSell);
+    rates.EUR=eurTry;rateQuotes.EUR={...(rateQuotes.EUR||{}),label:'Euro',value:eurTry,...q,suffix:'TL'};
   }
   if(source)window._fxRateSource=source;
 }
@@ -1812,13 +1821,13 @@ function applyGoldSpot(spotUsdOz,usdTry){
   const gold22=gold24*22/24;
   rates.GOLD24=gold24;
   rates.GOLD22=gold22;
-  rateQuotes.GOLD24={...(rateQuotes.GOLD24||{}),label:'24 Ayar Altın',buy:gold24,sell:gold24,suffix:'TL/gr'};
-  rateQuotes.GOLD22={...(rateQuotes.GOLD22||{}),label:'22 Ayar Altın',buy:gold22,sell:gold22,suffix:'TL/gr'};
+  rateQuotes.GOLD24={...(rateQuotes.GOLD24||{}),label:'24 Ayar Altın',buy:gold24*0.99,sell:gold24*1.01,suffix:'TL/gr'};
+  rateQuotes.GOLD22={...(rateQuotes.GOLD22||{}),label:'22 Ayar Altın',buy:gold22*0.99,sell:gold22*1.01,suffix:'TL/gr'};
   Object.entries(COIN_WEIGHTS).forEach(([key,weight])=>{
     const value=gold22*weight;
     rates[key]=value;
     const labels={CEYREK:'Çeyrek Altın',YARIM:'Yarım Altın',TAM:'Tam Altın'};
-    rateQuotes[key]={...(rateQuotes[key]||{}),label:labels[key],buy:value,sell:value,suffix:'TL'};
+    rateQuotes[key]={...(rateQuotes[key]||{}),label:labels[key],buy:value*0.97,sell:value*1.03,suffix:'TL'};
   });
   window._goldSource='Gold API';
   window._goldSpotUsdOz=spotUsdOz;
@@ -1939,7 +1948,7 @@ window.addEventListener('pagehide',stopRateAutoRefresh);
 
 function ratesPanel(){
   const rateCard=(label,asset,unit='')=>`<div class="rate"><small>${label}</small><div class="rate-pair"><div class="rate-pair-row rate-buy"><span>Alış</span><b>₺${fnum(currentExitRate(asset))}</b></div><div class="rate-pair-row rate-sell"><span>Satış</span><b>₺${fnum(currentPurchaseRate(asset))}</b></div></div>${unit?`<span class="rate-unit">${unit}</span>`:''}</div>`;
-  return `<section class="panel"><div class="panelhead"><div><h2>Güncel Kurlar</h2><p id="rateUpdatedText">${esc(rateUpdated)} · Otomatik veri</p></div></div><div class="rategrid live-rates">${rateCard('Dolar / TL','USD')}${rateCard('Euro / TL','EUR')}${rateCard('22 Ayar Altın','GOLD22','TL/gr')}${rateCard('24 Ayar Altın','GOLD24','TL/gr')}${rateCard('Çeyrek Altın','CEYREK','hesaplanan')}${rateCard('Yarım Altın','YARIM','hesaplanan')}${rateCard('Tam Altın','TAM','hesaplanan')}</div><p class="sub rate-note">Alış: kurumun sizden alırken ödediği referans fiyat, yani yaklaşık bozdurma değeridir. Satış: aynı varlığı yeniden almak için ödeyeceğiniz referans fiyattır. Altın kaynakları spot fiyattan türetildiğinden gerçek kuyumcu fiyatları farklı olabilir; çeyrek, yarım ve tam altın değerleri yaklaşık hesaplanır.</p></section>`;
+  return `<section class="panel"><div class="panelhead"><div><h2>Güncel Kurlar</h2><p id="rateUpdatedText">${esc(rateUpdated)} · Otomatik veri</p></div></div><div class="rategrid live-rates">${rateCard('Dolar / TL','USD')}${rateCard('Euro / TL','EUR')}${rateCard('22 Ayar Altın','GOLD22','TL/gr')}${rateCard('24 Ayar Altın','GOLD24','TL/gr')}${rateCard('Çeyrek Altın','CEYREK','hesaplanan')}${rateCard('Yarım Altın','YARIM','hesaplanan')}${rateCard('Tam Altın','TAM','hesaplanan')}</div><p class="sub rate-note">Alış: kurumun sizden alırken ödediği referans fiyat, yani yaklaşık bozdurma değeridir. Satış: aynı varlığı yeniden almak için ödeyeceğiniz referans fiyattır. TCMB verisi yoksa döviz için orta kura yaklaşık %0,5 referans makası uygulanır. Altında spot fiyata yaklaşık makas eklenir; gerçek kuyumcu fiyatları farklı olabilir. Çeyrek, yarım ve tam altın değerleri yaklaşık hesaplanır.</p></section>`;
 }
 function days(d){return Math.ceil((new Date(d+'T12:00:00')-new Date(new Date().toDateString()))/86400000)}
 function due(p){let d=days(p.dueDate);return p.status==='odendi'?'<span class="badge ok">Ödendi</span>':d<0?'<span class="badge late">Gecikti</span>':d<=3?'<span class="badge warn">Yaklaşıyor</span>':`<span class="badge">${d} gün</span>`}
@@ -1948,13 +1957,13 @@ function paymentRow(p,full=false){
   let lateDays=late?Math.abs(days(p.dueDate)):0;
   return `<div class="item ${late?'overdue-payment':''}" style="${late?'background:#fff1f2;border-color:#fecdd3;':''}">
     ${deleteMode.payments?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.payments.has(p.id)?'checked':''} onchange="toggleDeleteSelection('payments','${p.id}')"><span></span></label>`:''}
-    <div class="icon ${late?'out':(p.status==='odendi'?'in':'out')}">${late?'!':(p.recurring?'↻':'◷')}</div>
+    <div class="icon ${late?'out':(p.status==='odendi'?'in':'out')}">${late?'!':((p.recurring||p.installment)?'↻':'◷')}</div>
     <div class="itemmain"><b>${esc(p.title)}</b>
-      <div class="sub">${esc(p.category)} · Vade: ${fd(p.dueDate)} · ${esc(member(p.memberId))} · ${assetLabels[p.asset||'TRY']||'TL'}${p.recurring?' · Her ay · Kalan '+(p.remaining??p.months??0)+' ay':''}</div>
+      <div class="sub">${esc(p.category)} · Vade: ${fd(p.dueDate)} · ${esc(member(p.memberId))} · ${assetLabels[p.asset||'TRY']||'TL'}${p.recurringGroupId||p.installment?` · Düzenli · ${Number(p.recurringIndex)||1}/${Number(p.recurringTotal)||Number(p.months)||1}. ay`:(p.recurring?' · Her ay · Kalan '+(p.remaining??p.months??0)+' ay':'')}</div>
       ${late?`<div class="overdue-text">Vadesi geçti · ${lateDays} gün gecikti</div>`:''}
     </div>
     <div style="text-align:right"><div class="amount ${late?'late-amount':''}">${fnum(p.amount)} ${assetLabels[p.asset||'TRY']||'TL'}</div><div class="sub ${late?'late-amount':''}">${late?'Gecikmiş':(p.status==='odendi'?'Ödendi':'Bekliyor')}</div></div>
-    ${(full||tab==='ozet')&&!deleteMode.payments?`<button class="primary pay-action" style="padding:6px 8px;font-size:10px" onclick="togglePay('${p.id}')">${p.status==='bekliyor'?'Ödendi':'Geri Al'}</button>`:''}
+    ${full&&!deleteMode.payments?`<button class="primary pay-action" style="padding:6px 8px;font-size:10px" onclick="togglePay('${p.id}')">${p.status==='bekliyor'?'Ödendi':'Geri Al'}</button>`:''}
   </div>`
 }
 function txRecurringProgress(t){
@@ -2104,6 +2113,54 @@ function monthlyNextDate(iso,anchorDay){
   next.setDate(Math.min(Number(anchorDay)||parts[2]||1,lastDay));
   return `${next.getFullYear()}-${String(next.getMonth()+1).padStart(2,'0')}-${String(next.getDate()).padStart(2,'0')}`;
 }
+// Eski sürümlerde tek satır olarak saklanan düzenli planları, her aya ait bağımsız taksitlere dönüştür.
+// Deterministik kimlikler kullanılır; aile üyeleri aynı planı eş zamanlı görürse mükerrer satırlar oluşmaz.
+function expandLegacyRecurringPayments(){
+  const source=Array.isArray(S.payments)?S.payments:[];
+  const expanded=[];
+  let changed=false;
+  source.forEach(p=>{
+    if(!p.recurring||p.recurringGroupId||p.installment){expanded.push(p);return;}
+    const total=Math.max(1,Math.floor(Number(p.months)||1));
+    const remaining=Math.max(0,Math.min(total,Math.floor(Number(p.remaining??total)||0)));
+    const relatedTx=(S.transactions||[]).filter(t=>String(t.paymentId||'')===String(p.id)).sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+    const base={...p,recurring:true,recurringGroupId:String(p.id),installment:true,recurringTotal:total,months:total};
+    if(p.status==='bekliyor'&&remaining>0){
+      const firstIndex=Math.max(1,total-remaining+1);
+      const historical=relatedTx.slice(0,Math.max(0,firstIndex-1));
+      const historicalStart=Math.max(1,firstIndex-historical.length);
+      historical.forEach((tx,i)=>{
+        const index=historicalStart+i;
+        expanded.push({...base,id:`${p.id}-installment-${index}`,dueDate:tx.date||p.lastPaidDate||p.dueDate,status:'odendi',recurringIndex:index,remaining:Math.max(0,total-index),transactionId:tx.id,lastPaidDate:tx.date||null});
+      });
+      const anchor=Number(p.anchorDay)||Number(String(p.startDate||p.dueDate||date()).slice(-2))||1;
+      let cursor=p.dueDate||date();
+      for(let i=0;i<remaining;i++){
+        const index=firstIndex+i;
+        expanded.push({...base,id:`${p.id}-installment-${index}`,dueDate:cursor,status:'bekliyor',recurringIndex:index,remaining:Math.max(0,total-index),transactionId:null,lastPaidDate:null});
+        cursor=monthlyNextDate(cursor,anchor);
+      }
+      changed=true;
+    }else if(p.status==='odendi'){
+      const paidTxs=relatedTx.slice(-total);
+      if(paidTxs.length){
+        const firstIndex=Math.max(1,total-paidTxs.length+1);
+        paidTxs.forEach((tx,i)=>{
+          const index=firstIndex+i;
+          expanded.push({...base,id:`${p.id}-installment-${index}`,dueDate:tx.date||p.lastPaidDate||p.dueDate,status:'odendi',recurringIndex:index,remaining:Math.max(0,total-index),transactionId:tx.id,lastPaidDate:tx.date||null});
+        });
+      }else{
+        expanded.push({...base,id:`${p.id}-installment-${total}`,dueDate:p.lastPaidDate||p.dueDate,status:'odendi',recurringIndex:total,remaining:0,transactionId:p.transactionId||null});
+      }
+      changed=true;
+    }else{
+      expanded.push(p);
+    }
+  });
+  if(changed)S.payments=expanded;
+  return changed;
+}
+
 function processDueRecurringTransactions(){
   // Eski sürümdeki tekil planları, aynı ay tarihlerini koruyarak ayrı işlem kayıtlarına dönüştür.
   const plans=S.recurringTransactions||[];
@@ -2152,11 +2209,45 @@ function deleteRecurringTx(id){
   S.recurringTransactions=(S.recurringTransactions||[]).filter(x=>x.id!==id);
   save();
 }
-function payments(){let rows=S.payments.filter(p=>(payFilter==='tumu'||p.status===payFilter)&&dateInRange(p.dueDate,dateFilters.payments,window._filterDates?.payments?.start,window._filterDates?.payments?.end)).sort((a,b)=>a.status===b.status?a.dueDate.localeCompare(b.dueDate):a.status==='bekliyor'?-1:1),pending=S.payments.filter(p=>p.status==='bekliyor').reduce((a,x)=>a+x.amount,0);return `<div class="stack">${title('Planlanan Ödemeler','Kredi, fatura ve kira gibi ödemelerin vadelerini takip edin.')}<div class="alert">${S.payments.some(p=>isOverdue(p))?`<strong style="color:#b42318">Vadesi geçmiş ${S.payments.filter(p=>isOverdue(p)).length} ödeme var.</strong>`:(S.payments.filter(p=>p.status==='bekliyor'&&days(p.dueDate)<=7).length?`Yaklaşan ödemelerinizi kontrol edin.`:'Yakın tarihte ödeme bulunmuyor.')}<p><strong style="color:#b42318">Vadesi geçmiş toplam: ${fmt(S.payments.filter(p=>isOverdue(p)).reduce((a,x)=>a+x.amount,0))}</strong></p></div><div class="split"><section class="panel add-action-panel"><div><h2>Yeni Planlı Ödeme</h2><p>Tek sefer veya her ay düzenli ödeme tanımlayın.</p></div><button class="primary" onclick="openPayModal()">+ Ödeme Ekle</button></section><section class="panel"><div class="panelhead"><div><h2>Planlanan Ödemeler</h2><p>${rows.length} kayıt listeleniyor</p></div><div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><div class="segment payment-status-filter">${[['tumu','Tümü'],['bekliyor','Bekliyor'],['odendi','Ödendi']].map(x=>`<button class="${payFilter===x[0]?'active':''}" onclick="payFilter='${x[0]}';render()">${x[1]}</button>`).join('')}</div>${deleteMode.payments?`<button class="secondary" onclick="cancelDeleteMode('payments')">İptal</button><button class="dangerbtn" onclick="askDelete('payments')" ${deleteSelected.payments.size?'':'disabled'}>Seçili Sil (${deleteSelected.payments.size})</button>`:`<button class="secondary" onclick="enterDeleteMode('payments')">Sil</button>`}</div></div>${dateFilterUI('payments')}<div class="list payments-list">${rows.map(p=>paymentRow(p,true)).join('')||empty()}</div><p class="sub" style="margin-top:12px">“Ödendi” işaretlenen ödemeler otomatik olarak giderlere eklenir; geri alındığında ilgili gider kaydı kaldırılır.</p></section></div></div>`}
+function payments(){let rows=S.payments.filter(p=>(payFilter==='tumu'||p.status===payFilter)&&dateInRange(p.dueDate,dateFilters.payments,window._filterDates?.payments?.start,window._filterDates?.payments?.end)).sort((a,b)=>a.status===b.status?a.dueDate.localeCompare(b.dueDate):a.status==='bekliyor'?-1:1),pending=S.payments.filter(p=>p.status==='bekliyor').reduce((a,x)=>a+x.amount,0);return `<div class="stack">${title('Planlanan Ödemeler','Kredi, fatura ve kira gibi ödemelerin vadelerini takip edin.')}<div class="alert">${S.payments.some(p=>isOverdue(p))?`<strong style="color:#b42318">Vadesi geçmiş ${S.payments.filter(p=>isOverdue(p)).length} ödeme var.</strong>`:(S.payments.filter(p=>p.status==='bekliyor'&&days(p.dueDate)<=7).length?`Yaklaşan ödemelerinizi kontrol edin.`:'Yakın tarihte ödeme bulunmuyor.')}<p><strong style="color:#b42318">Vadesi geçmiş toplam: ${fmt(S.payments.filter(p=>isOverdue(p)).reduce((a,x)=>a+x.amount,0))}</strong></p></div><div class="split"><section class="panel add-action-panel"><div><h2>Yeni Planlı Ödeme</h2><p>Tek sefer veya her ay düzenli ödeme tanımlayın.</p></div><button class="primary" onclick="openPayModal()">+ Ödeme Ekle</button></section><section class="panel"><div class="panelhead"><div><h2>Planlanan Ödemeler</h2><p>${rows.length} kayıt listeleniyor</p></div><div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><div class="segment payment-status-filter">${[['tumu','Tümü'],['bekliyor','Bekliyor'],['odendi','Ödendi']].map(x=>`<button class="${payFilter===x[0]?'active':''}" onclick="payFilter='${x[0]}';render()">${x[1]}</button>`).join('')}</div>${deleteMode.payments?`<button class="secondary" onclick="cancelDeleteMode('payments')">İptal</button><button class="dangerbtn" onclick="askDelete('payments')" ${deleteSelected.payments.size?'':'disabled'}>Seçili Sil (${deleteSelected.payments.size})</button>`:`<button class="secondary" onclick="enterDeleteMode('payments')">Sil</button>`}</div></div>${dateFilterUI('payments')}<div class="list payments-list">${rows.map(p=>paymentRow(p,true)).join('')||empty()}</div><p class="sub" style="margin-top:12px">Düzenli ödemeler her ay için ayrı kayıt oluşturur. “Bu Ay” filtresi yalnızca bu ayın taksitlerini gösterir; diğer ayları görmek için “Tümü” veya “Tarih Seç” kullan. “Ödendi” işaretlenen ödeme giderlere eklenir; geri alındığında ilgili gider kaydı kaldırılır.</p></section></div></div>`}
 function paymentForm(){return `<form class="payment-form" onsubmit="addPay(event)"><div class="field"><label>Ödeme Adı</label><input id="pTitle" placeholder="Elektrik, kira, kredi..." required></div><div class="row2"><div class="field"><label>Tutar / Miktar</label><input id="pAmount" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="0,00" required></div><div class="field"><label>Varlık / Kur Türü</label><select id="pAsset">${assetOptions}</select></div><div class="field"><label>Vade Tarihi</label><input id="pDate" type="date" value="${date()}" required></div><div class="field"><label>Kategori</label><select id="pCat"><option>Fatura</option><option>Kira</option><option>Kredi</option><option>Aidat</option><option>Eğitim</option><option>Diğer</option></select></div><div class="field"><label>Aile Bireyi</label><select id="pMember">${S.members.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select></div></div><div class="segment pay-recurring-toggle" style="margin:10px 0"><button type="button" id="oncePay" class="active" onclick="setPayRecurring(false)">Tek Sefer</button><button type="button" id="monthlyPay" onclick="setPayRecurring(true)">Her Ay Düzenli</button></div><input type="hidden" id="pRecurring" value="0"><div id="recurringOptions" class="field" style="display:none"><label>Kaç Ay Devam Edecek?</label><input id="pMonths" type="number" min="2" step="1" value="2" inputmode="numeric"><div class="sub">En az 2 ay seçilebilir. Örn. 12 = 12 ay boyunca.</div></div><button class="primary">Ödeme Ekle</button></form>`}
 function setPayRecurring(v){let r=byId('pRecurring'),o=byId('oncePay'),m=byId('monthlyPay'),box=byId('recurringOptions');if(r)r.value=v?'1':'0';if(o)o.classList.toggle('active',!v);if(m)m.classList.toggle('active',v);if(box)box.style.display=v?'block':'none'}
-function addPay(e){e.preventDefault();let amount=parseMoney(byId('pAmount')?.value),rec=byId('pRecurring')?.value==='1',months=rec?Math.max(2,Number(byId('pMonths')?.value)||2):1;if(amount<=0)return;S.payments.push({id:uid(),title:(byId('pTitle')?.value||'').trim(),category:byId('pCat')?.value||'Diğer',amount:amount,asset:byId('pAsset')?.value||'TRY',dueDate:byId('pDate')?.value||date(),status:'bekliyor',memberId:byId('pMember')?.value||S.active,recurring:rec,interval:'aylik',months:months,remaining:months});closeModal();save()}
-function togglePay(id){let p=S.payments.find(x=>x.id===id);if(!p)return;if(p.status==='bekliyor'){let tx={id:uid(),type:'gider',amount:p.amount,asset:p.asset||'TRY',category:p.category,date:date(),description:'Planlı ödeme: '+p.title,memberId:p.memberId,paymentId:p.id};S.transactions.unshift(tx);if(p.recurring){p.remaining=Math.max(0,(Number(p.remaining)||Number(p.months)||1)-1);if(p.remaining>0){p.dueDate=addMonths(p.dueDate,1);p.status='bekliyor';p.lastPaidDate=tx.date}else{p.status='odendi';p.transactionId=tx.id}}else{p.status='odendi';p.transactionId=tx.id}}else{S.transactions=S.transactions.filter(t=>t.paymentId!==id);p.status='bekliyor';if(p.recurring){p.remaining=Math.max(1,Number(p.remaining)||Number(p.months)||1);p.dueDate=p.lastPaidDate?addMonths(p.lastPaidDate,1):p.dueDate}delete p.transactionId}save()}
+function addPay(e){
+  e.preventDefault();
+  const amount=parseMoney(byId('pAmount')?.value),rec=byId('pRecurring')?.value==='1',months=rec?Math.min(600,Math.max(2,Math.floor(Number(byId('pMonths')?.value)||2))):1;
+  if(amount<=0)return;
+  const titleText=(byId('pTitle')?.value||'').trim(),category=byId('pCat')?.value||'Diğer',asset=byId('pAsset')?.value||'TRY',startDate=byId('pDate')?.value||date(),memberId=byId('pMember')?.value||S.active;
+  if(rec){
+    const groupId=String(uid()),anchor=Number(startDate.slice(-2))||1;
+    let dueDate=startDate;
+    for(let i=1;i<=months;i++){
+      S.payments.push({id:`${groupId}-installment-${i}`,title:titleText,category,amount,asset,dueDate,status:'bekliyor',memberId,recurring:true,recurringGroupId:groupId,installment:true,recurringIndex:i,recurringTotal:months,interval:'aylik',months,remaining:months-i,anchorDay:anchor});
+      dueDate=monthlyNextDate(dueDate,anchor);
+    }
+  }else{
+    S.payments.push({id:String(uid()),title:titleText,category,amount,asset,dueDate:startDate,status:'bekliyor',memberId,recurring:false,interval:'aylik',months:1,remaining:1});
+  }
+  closeModal();save();
+}
+function togglePay(id){
+  const p=S.payments.find(x=>String(x.id)===String(id));if(!p)return;
+  const independent=!!(p.recurringGroupId||p.installment);
+  if(p.status==='bekliyor'){
+    const tx={id:uid(),type:'gider',amount:p.amount,asset:p.asset||'TRY',category:p.category,date:date(),description:'Planlı ödeme: '+p.title,memberId:p.memberId,paymentId:p.id};
+    S.transactions.unshift(tx);
+    if(p.recurring&&!independent){
+      p.remaining=Math.max(0,(Number(p.remaining)||Number(p.months)||1)-1);
+      if(p.remaining>0){p.dueDate=monthlyNextDate(p.dueDate,Number(p.anchorDay)||Number(String(p.dueDate).slice(-2))||1);p.status='bekliyor';p.lastPaidDate=tx.date}
+      else{p.status='odendi';p.transactionId=tx.id}
+    }else{p.status='odendi';p.transactionId=tx.id;p.lastPaidDate=tx.date}
+  }else{
+    const txId=p.transactionId,lastPaidDate=p.lastPaidDate;
+    S.transactions=S.transactions.filter(t=>t.paymentId!==id&&(!txId||t.id!==txId));
+    p.status='bekliyor';delete p.transactionId;delete p.lastPaidDate;
+    if(p.recurring&&!independent){p.remaining=Math.max(1,Number(p.remaining)||Number(p.months)||1);p.dueDate=lastPaidDate?monthlyNextDate(lastPaidDate,Number(p.anchorDay)||Number(String(p.dueDate).slice(-2))||1):p.dueDate}
+  }
+  save();
+}
 function delPay(id){S.transactions=S.transactions.filter(t=>t.paymentId!==id);S.payments=S.payments.filter(p=>p.id!==id);save()}
 function setLoanDirection(direction){
   const el=byId('loanDirection'),given=byId('loanGiven'),taken=byId('loanTaken'),submit=byId('loanSubmit');
@@ -2311,30 +2402,35 @@ function savingRow(x,lotState=acquisitionLotState()){
   const g=S.goals.find(g=>String(g.id)===String(x.goalId)),completed=g?goalIsCompleted(g):false,asset=x.asset||'TRY';
   let detail='';
   if(Number(x.sign)>0&&asset==='TRY'){
-    detail='<div class="movement-pl-detail pl-neutral">TL birikiminde kur farkı hesaplanmaz.</div>';
+    const lot=lotState.byMovementId.get(String(x.id));
+    const remain=Math.max(0,Number(lot?.remaining)||0);
+    detail=`<div class="movement-pl-detail pl-neutral"><span>Alış maliyeti: ${fmt(remain)}</span><span>Güncel fiyat: ${fmt(remain)}</span><span>TL birikiminde kur farkı hesaplanmaz.</span></div>`;
   }else if(Number(x.sign)>0){
     const lot=lotState.byMovementId.get(String(x.id));
     const currentUnit=currentExitRate(asset);
+    const remain=Math.max(0,Number(lot?.remaining)||0);
+    const hasCost=Number(x.costRate)>0&&!!lot;
+    const cost=hasCost?remain*Number(lot.costRate):0;
+    const current=remain*currentUnit;
+    const profit=current-cost;
+    const pct=cost>0?profit/cost*100:0;
+    const bits=[];
+    bits.push(`<span>Alış maliyeti: ${hasCost?fmt(cost):'kayıtlı değil'}</span>`);
+    bits.push(`<span>Güncel fiyat: ${fmt(current)}</span>`);
     if(completed){
-      if(Number(x.costRate)>0&&lot&&lot.remaining>0){
-        const remain=lot.remaining,cost=remain*lot.costRate,current=remain*currentUnit;
-        detail=`<div class="movement-pl-detail pl-neutral"><span>Alış: ${fmt(lot.costRate)} / birim</span><span>Kalan maliyet: ${fmt(cost)}</span><span>Güncel fiyat: ${fmt(currentUnit)} / birim</span><span>Güncel değer: ${fmt(current)}</span>${remain<Number(x.quantity)?`<small>Kalan miktar: ${fnum(remain)} / ${fnum(x.quantity)} ${assetLabels[asset]||asset} · Çıkarılan miktar en eski alımlardan düşülür.</small>`:''}</div><div class="goal-completed-note">Hedef tamamlandı. Tamamlanan hedef için kâr/zarar gösterilmez.</div>`;
-      }else{
-        detail=`<div class="movement-pl-detail pl-neutral"><span>Güncel fiyat: ${fmt(currentUnit)} / birim</span><span>Güncel değer: ${fmt(Math.max(0,Number(x.quantity)||0)*currentUnit)}</span><span>Bu alımın kalan miktarı ${lot&&lot.remaining>0?fnum(lot.remaining):'0'} ${assetLabels[asset]||asset}.</span></div><div class="goal-completed-note">Hedef tamamlandı. Tamamlanan hedef için kâr/zarar gösterilmez.${Number(x.costRate)>0?'':' Bu eski kayıtta gerçek alış fiyatı tutulmadığından maliyet tam hesaplanamıyor.'}</div>`;
-      }
-    }else if(!(Number(x.costRate)>0)){
-      detail=`<div class="movement-pl-detail pl-unknown">Bu eski kayıtta gerçek alış fiyatı tutulmadığından kâr/zarar hesaplanamıyor. <span>Güncel fiyat: ${fmt(currentUnit)} / birim</span></div>`;
-    }else if(!lot||lot.remaining<=0){
-      detail=`<div class="movement-pl-detail pl-neutral">Birim alış: ${fmt(x.costRate)} · Bu alımdan kalan miktar yok.</div>`;
+      bits.push('<span class="goal-completed-note">Hedef tamamlandı · Kâr/zarar hesabı durduruldu.</span>');
+    }else if(!hasCost){
+      bits.push('<span>Bu eski kayıtta maliyet bilinmediğinden kâr/zarar hesaplanamıyor.</span>');
+    }else if(remain<=0){
+      bits.push('<span>Bu alımdan kalan miktar yok.</span>');
     }else{
-      const remain=lot.remaining,cost=remain*lot.costRate,current=remain*currentUnit,profit=current-cost,pct=cost>0?profit/cost*100:0;
-      detail=`<div class="movement-pl-detail"><span>Alış: ${fmt(lot.costRate)} / birim</span><span>Kalan maliyet: ${fmt(cost)}</span><span>Güncel fiyat: ${fmt(currentUnit)} / birim</span><span>Güncel değer: ${fmt(current)}</span><b class="${profit>=0?'pl-positive':'pl-negative'}">K/Z: ${signedMoney(profit)} (${signedPercent(pct)})</b>${remain<Number(x.quantity)?`<small>Kalan miktar: ${fnum(remain)} / ${fnum(x.quantity)} ${assetLabels[asset]||asset} · Çıkarılan miktar en eski alımlardan düşülür.</small>`:''}</div>`;
+      bits.push(`<b class="${profit>=0?'pl-positive':'pl-negative'}">Kâr/Zarar: ${signedMoney(profit)} (${signedPercent(pct)})</b>`);
     }
+    detail=`<div class="movement-pl-detail">${bits.join('')}</div>`;
   }else{
-    detail=`<div class="movement-pl-detail pl-neutral">Birikimden çıkarılan miktar: ${fnum(x.quantity)} ${assetLabels[asset]||asset}. Bu hareket için bozdurma fiyatı kaydedilmediğinden gerçekleşen K/Z hesaplanmaz.</div>`;
+    detail=`<div class="movement-pl-detail pl-neutral"><span>Çıkarılan miktar: ${fnum(x.quantity)} ${assetLabels[asset]||asset}.</span><span>Bu hareket için kâr/zarar hesaplanmaz.</span></div>`;
   }
-  const rateLine=asset==='TRY'?'TL hareketi':Number(x.sign)>0&&Number(x.costRate)>0?`Alış maliyeti: ${fmt(x.costRate)} / birim`:`Kayıt kuru: ${fmt(x.rate||0)}`;
-  return `<div class="item saving-movement-item ${deleteMode.movements?'selectable-item':''}">${deleteMode.movements?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.movements.has(x.id)?'checked':''} onchange="toggleDeleteSelection('movements','${x.id}')"><span></span></label>`:''}<div class="icon ${x.sign>0?'in':'out'}">${x.sign>0?'+':'−'}</div><div class="itemmain"><b>${esc(x.goalName)}</b><div class="sub">${fd(x.date)} · ${assetLabels[asset]||asset} · ${rateLine} · ${esc(member(x.memberId))}${completed?` · <span class="goal-completed-badge">Tamamlandı</span>`:''}</div>${detail}</div><div class="amount ${x.sign>0?'in':'out'}">${x.sign>0?'+':'−'}${fnum(x.quantity)} ${assetLabels[asset]||asset}</div></div>`;
+  return `<div class="item saving-movement-item ${deleteMode.movements?'selectable-item':''}">${deleteMode.movements?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.movements.has(x.id)?'checked':''} onchange="toggleDeleteSelection('movements','${x.id}')"><span></span></label>`:''}<div class="icon ${x.sign>0?'in':'out'}">${x.sign>0?'+':'−'}</div><div class="itemmain"><b>${esc(x.goalName)}</b><div class="sub">${fd(x.date)}${completed?` · <span class="goal-completed-badge">Tamamlandı</span>`:''}</div>${detail}</div><div class="amount ${x.sign>0?'in':'out'}">${x.sign>0?'+':'−'}${fnum(x.quantity)} ${assetLabels[asset]||asset}</div></div>`;
 }
 function deleteSavingMovement(id){let x=(S.savingMovements||[]).find(m=>m.id===id);if(!x)return;let g=S.goals.find(g=>g.id===x.goalId);if(g){g.holdings[x.asset]=Math.max(0,(g.holdings[x.asset]||0)-x.quantity*x.sign)}S.savingMovements=S.savingMovements.filter(m=>m.id!==id);save()}
 function goalForm(){return `<form class="goal-form" onsubmit="addGoal(event)"><div class="field"><label>Hedef Adı</label><input id="gName" placeholder="Örn: Tatil birikimi" required></div><div class="row2"><div class="field"><label>Hedef Tutarı</label><input id="gTarget" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="0,00" required></div><div class="field"><label>Hedef Kur Türü</label><select id="gAsset">${assetOptions}</select></div><div class="field"><label>Hedefe Başlama Tarihi</label><input id="gStartDate" type="date" value="${date()}" required></div><div class="field"><label>Sahibi</label><select id="gMember">${S.members.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select></div></div><button class="primary">Hedef Oluştur</button></form>`}
@@ -2596,6 +2692,7 @@ function applySharedState(data,preferredActive=null){
   S.transactions=S.transactions.map(t=>({...t,asset:t.asset||'TRY'}));
   S.loans=(S.loans||[]).map(l=>({...l,asset:l.asset||'TRY',status:l.status||'open',memberId:l.memberId||S.active,date:l.date||String(l.createdAt||date()).slice(0,10),closedAt:l.closedAt||null}));
   S.payments=(S.payments||[]).map(p=>({...p,recurring:!!p.recurring,interval:p.interval||'aylik',months:Math.max(1,Number(p.months)||1),remaining:Math.max(0,Number(p.remaining??(p.recurring?Number(p.months)||1:1)))}));
+  const paymentPlansMigrated=expandLegacyRecurringPayments();
   S.savingMovements=(S.savingMovements||[]).map(m=>({...m,date:m.date||date()}));
   S.goals=(S.goals||[]).map(g=>{g.targetAsset=g.targetAsset||'TRY';g.startDate=g.startDate||date();g.holdings=g.holdings||{};if(g.holdings.GOLD!=null&&g.holdings.GOLD24==null){g.holdings.GOLD24=g.holdings.GOLD;delete g.holdings.GOLD}Object.keys(assetLabels).forEach(k=>{if(g.holdings[k]==null)g.holdings[k]=0});return g;});
   if(cloud.member&&!S.members.some(m=>m.id===cloud.member.profile_id))S.members.push({id:cloud.member.profile_id,name:cloud.member.display_name||'Aile üyesi'});
@@ -2603,8 +2700,10 @@ function applySharedState(data,preferredActive=null){
   S.family={id:cloud.family?.id||'local-'+uid(),name:cloud.family?.name||'Ailem',inviteToken:''};
   S.rateData=localRates;
   if(S.rateData?.quotes)Object.assign(rateQuotes,S.rateData.quotes);
+  normalizeIndicativeRateSpreads();
   localStorage.setItem(KEY,JSON.stringify(S));
   render();
+  return paymentPlansMigrated;
 }
 async function refreshCloudRoster(){
   if(!sb||!cloud.family?.id)return;
@@ -2626,22 +2725,22 @@ function handleRemoteFamilyState(payload){
   if(!cloud.syncReady){
     if(!Object.keys(incoming).length)return;
     rememberLocalBackup();
-    applySharedState(incoming,cloud.member?.profile_id);
+    const migratedPayments=applySharedState(incoming,cloud.member?.profile_id);
     cloud.lastCloudJson=incomingJson;cloud.syncReady=true;
     rememberVerifiedCloudCache();
     setCloudMessage('Aile verileri hazır. Ortak kayıtlar yüklendi.','success');
-    render();return;
+    render();if(migratedPayments)scheduleCloudSync();return;
   }
   if(cloud.localPending||cloud.writeInFlight||cloud.saveTimer||document.getElementById('modal')?.classList.contains('show')){
     cloud.pendingRemoteState=incoming;
     setCloudMessage('Başka bir cihazda değişiklik yapıldı. Formu tamamladıktan sonra güncel veriler eşitlenecek.');
     return;
   }
-  applySharedState(incoming);
+  const migratedPayments=applySharedState(incoming);
   cloud.lastCloudJson=incomingJson;
   rememberVerifiedCloudCache();
   setCloudMessage('Aile verileri eşitlendi.','success');
-  render();
+  render();if(migratedPayments)scheduleCloudSync();
 }
 
 function setupCloudRealtime(){
@@ -3169,7 +3268,14 @@ function confirmDelete(type){
   }else if(type==='recurringTransactions'){
     S.recurringTransactions=(S.recurringTransactions||[]).filter(x=>!ids.has(x.id));
   }else if(type==='payments'){
-    S.transactions=S.transactions.filter(t=>!Array.from(ids).some(id=>t.paymentId===id));
+    const selectedPayments=S.payments.filter(p=>ids.has(p.id));
+    const relatedPaymentIds=new Set(ids);
+    const selectedGroups=new Set(selectedPayments.map(p=>p.recurringGroupId).filter(Boolean));
+    selectedGroups.forEach(groupId=>{
+      const unselectedSibling=S.payments.some(p=>String(p.recurringGroupId||'')===String(groupId)&&!ids.has(p.id));
+      if(!unselectedSibling)relatedPaymentIds.add(groupId);
+    });
+    S.transactions=S.transactions.filter(t=>!relatedPaymentIds.has(t.paymentId));
     S.payments=S.payments.filter(x=>!ids.has(x.id));
   }else if(type==='goals'){
     S.goals=S.goals.filter(x=>!ids.has(x.id));
@@ -3190,7 +3296,7 @@ function confirmDelete(type){
 }
 
 function closeModal(){document.getElementById('modal').classList.remove('show');setTimeout(applyPendingRemoteIfSafe,250)}
-function applyPendingRemoteIfSafe(){if(!cloud.pendingRemoteState||cloud.localPending||cloud.writeInFlight||cloud.saveTimer||document.getElementById('modal')?.classList.contains('show'))return;const incoming=cloud.pendingRemoteState;cloud.pendingRemoteState=null;const json=stableStringify(incoming);if(json!==cloud.lastCloudJson){applySharedState(incoming);cloud.lastCloudJson=json;setCloudMessage('Aile verileri eşitlendi.','success');render()}}
+function applyPendingRemoteIfSafe(){if(!cloud.pendingRemoteState||cloud.localPending||cloud.writeInFlight||cloud.saveTimer||document.getElementById('modal')?.classList.contains('show'))return;const incoming=cloud.pendingRemoteState;cloud.pendingRemoteState=null;const json=stableStringify(incoming);if(json!==cloud.lastCloudJson){const migratedPayments=applySharedState(incoming);cloud.lastCloudJson=json;setCloudMessage('Aile verileri eşitlendi.','success');render();if(migratedPayments)scheduleCloudSync()}}
 document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
 bootstrapVerifiedCachedView();
