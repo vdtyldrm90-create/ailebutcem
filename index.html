@@ -3,7 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#f7faf9">
+<meta name="theme-color" content="#397b70">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Aile Bütçem">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <title>Aile Bütçem</title>
 <style>
 :root{--bg:#f7faf9;--fg:#273238;--card:#fff;--muted:#68777a;--primary:#397b70;--primary2:#2d665d;--income:#3f9a68;--expense:#d65b51;--gold:#c49a38;--border:#dfe7e3;--soft:#edf4f1;--danger:#c94747;--shadow:0 2px 10px rgba(30,50,45,.055);--r:16px}
@@ -2195,6 +2202,15 @@ document.addEventListener('change',function(e){
 
 try{startRateAutoRefresh();}catch(e){}
 initCloud().catch(e=>{console.error('Supabase başlatma hatası',e);cloud.initialized=true;cloud.loading=false;setCloudMessage(cloudErrorText(e),'error');render()});
+</script>
+<script>
+// PWA: register the offline app shell. Supabase data still requires internet access.
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js', { scope: './' })
+      .catch((error) => console.warn('Aile Bütçem PWA kaydı tamamlanamadı:', error));
+  });
+}
 </script>
 </body>
 </html>
