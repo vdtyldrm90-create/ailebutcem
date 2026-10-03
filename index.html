@@ -342,6 +342,8 @@ form{display:flex;flex-direction:column;gap:11px}.row2{display:grid;grid-templat
 .loan-payment-detail{display:flex;flex-wrap:wrap;align-items:baseline;gap:3px 8px;min-width:0;font-size:11px;overflow-wrap:anywhere}
 .loan-payment-detail b{font-size:11px;color:inherit}
 .loan-payment-detail small{font-size:10px;color:inherit;opacity:.85}
+.loan-payment-delete{flex:none;margin-left:4px;border:0;border-radius:6px;padding:4px 6px;background:#fff;color:#b93834;font-size:10px;font-weight:700;white-space:nowrap}
+.loan-payment-delete:hover{background:#fde9e7}
 .loan-balance-caption{font-size:9px;color:var(--muted);text-align:right;max-width:120px}
 .loan-close-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-bottom:12px}
 .loan-close-summary>div{min-width:0;padding:9px 7px;border:1px solid var(--border);border-radius:10px;background:var(--soft)}
@@ -1265,7 +1267,8 @@ body.cloud-cache-loading #main button,body.cloud-cache-loading #main input,body.
 #main .savings-overview-card .savings-card-label{font-size:12px!important;padding:4px 7px!important;margin-bottom:7px!important}
 #main .savings-label-given,
 #main .savings-label-taken{display:inline-flex!important;flex-direction:column;align-items:flex-start;gap:2px;line-height:1.08!important}
-#main .savings-label-sub{display:block;font-size:10px;line-height:1.05;font-weight:800}
+#main .savings-label-sub{display:block;font-size:10px;line-height:1.05;font-weight:400!important}
+#main .savings-overview-card .savings-card-label{font-weight:400!important}
 .savings-tools-column .add-action-panel .primary{width:120px!important;min-width:120px!important;max-width:120px!important;height:36px!important;min-height:36px!important;padding:6px 5px!important;font-size:10.5px!important;line-height:1.15;white-space:nowrap!important;display:inline-flex;align-items:center;justify-content:center;flex:none}
 #main .goal-actions{gap:5px!important;margin-top:6px!important}
 #main .goal-actions button{min-width:0!important;width:100%;min-height:32px!important;padding:6px 3px!important;font-size:10px!important;line-height:1.15;white-space:nowrap!important}
@@ -2650,7 +2653,7 @@ function loanRow(l){
     const label=isIncoming?'Tahsilat':'Geri ödeme';
     const symbol=isIncoming?'+':'−';
     const tone=isIncoming?'loan-payment-in':'loan-payment-out';
-    return `<div class="loan-payment-chip ${tone}"><span class="loan-payment-symbol">${symbol}</span><span class="loan-payment-detail"><b>${label}: ${fnum(payment.amount)} ${assetName}</b><small>${fd(payment.date)} · ${esc(member(payment.memberId||l.memberId))}</small></span></div>`;
+    return `<div class="loan-payment-chip ${tone}"><span class="loan-payment-symbol">${symbol}</span><span class="loan-payment-detail"><b>${label}: ${fnum(payment.amount)} ${assetName}</b><small>${fd(payment.date)} · ${esc(member(payment.memberId||l.memberId))}</small></span><button type="button" class="loan-payment-delete" title="Bu ödeme kaydını sil" aria-label="${label} kaydını sil" onclick="deleteLoanSettlement('${String(l.id).replace(/'/g, "\\'")}','${String(payment.id).replace(/'/g, "\\'")}')">Sil</button></div>`;
   }).join('');
   const balanceCaption=closed?'İlk borç':settled>LOAN_AMOUNT_EPSILON?'Kalan borç':'Borç tutarı';
   const actionLabel=closed?'Yeniden Aç':settled>LOAN_AMOUNT_EPSILON?'Kapama':'Borcu Kapat';
@@ -2706,6 +2709,28 @@ function confirmLoanClose(e,id){
   closeModal();
   save();
 }
+function deleteLoanSettlement(loanId,settlementId){
+  const loan=(S.loans||[]).find(x=>String(x.id)===String(loanId));
+  if(!loan||!Array.isArray(loan.settlements))return;
+  const payment=loan.settlements.find(x=>String(x.id)===String(settlementId));
+  if(!payment)return;
+  const label=loan.direction==='given'?'tahsilat':'geri ödeme';
+  if(!confirm(`${fd(payment.date)} tarihli ${fnum(payment.amount)} ${assetLabels[loan.asset]||loan.asset||'TL'} ${label} kaydı silinsin mi? Borcun kalan tutarı yeniden hesaplanacak.`))return;
+  loan.settlements=loan.settlements.filter(x=>String(x.id)!==String(settlementId));
+  const settled=loan.settlements.reduce((sum,x)=>sum+Math.max(0,Number(x.amount)||0),0);
+  const original=Math.max(0,Number(loan.amount)||0);
+  const remaining=Math.max(0,original-settled);
+  loan.closedAmount=settled;
+  loan.status=original>0&&remaining<=LOAN_AMOUNT_EPSILON?'closed':'open';
+  if(loan.status==='closed'){
+    const dates=loan.settlements.map(x=>x.date).filter(Boolean).sort();
+    loan.closedAt=dates.length?dates[dates.length-1]:(loan.date||null);
+  }else{
+    loan.closedAt=null;
+  }
+  save();
+}
+
 function toggleLoanStatus(id){
   const loan=(S.loans||[]).find(x=>x.id===id);
   if(!loan)return;
