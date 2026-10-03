@@ -1335,17 +1335,18 @@ body.cloud-cache-loading #main button,body.cloud-cache-loading #main input,body.
 .detail-history-panel{min-width:0}
 .detail-history-panel .panelhead{align-items:center;gap:10px}
 
-.movement-table-wrap{width:100%;overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:var(--card);-webkit-overflow-scrolling:touch}
-.movement-history-table{width:100%;min-width:640px;border-collapse:collapse}
-.movement-history-table th,.movement-history-table td{padding:9px 10px;border-bottom:1px solid var(--border);font-size:11px;text-align:left;white-space:nowrap;vertical-align:middle}
-.movement-history-table th{background:var(--soft);font-size:10px;color:var(--muted);font-weight:750}
+.movement-table-wrap{width:100%;max-width:100%;min-width:0;overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:var(--card);-webkit-overflow-scrolling:touch;box-sizing:border-box}
+.movement-history-table{width:100%;min-width:0;table-layout:auto;border-collapse:collapse}
+.movement-history-table th,.movement-history-table td{padding:6px 5px;border-bottom:1px solid var(--border);font-size:10px;text-align:left;white-space:normal;overflow-wrap:anywhere;vertical-align:middle}
+.movement-history-table th{background:var(--soft);font-size:9px;color:var(--muted);font-weight:750}
 .movement-history-table tbody tr:last-child td{border-bottom:0}
 .movement-history-table .movement-quantity{font-weight:750}
 .movement-sign-badge{display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:4px 8px;border:1px solid;border-radius:7px;font-weight:800;line-height:1.2;white-space:nowrap}
 .movement-sign-badge.added{color:#168348;border-color:#35ad70;background:rgba(40,180,99,.08)}
 .movement-sign-badge.removed{color:#c83232;border-color:#e06464;background:rgba(220,53,53,.07)}
-.movement-history-table .movement-select-col{width:42px;text-align:center}
+.movement-history-table .movement-select-col{width:28px;text-align:center}
 .movement-history-table .movement-select-col input{width:16px;height:16px}
+@media(max-width:520px){.movement-history-table th,.movement-history-table td{padding:5px 3px;font-size:9px}.movement-history-table th{font-size:8px}.movement-history-table .movement-select-col input{width:14px;height:14px}.goal-holdings-line{gap:0;padding-top:8px}.goal-holding-chip{padding:4px 6px;font-size:9px}}
 
 .detail-history-group{margin-top:12px;padding-top:11px;border-top:1px solid var(--border)}
 .detail-history-group h3{display:flex;align-items:center;gap:8px;margin:0 0 8px;font-size:13px}
@@ -2922,7 +2923,7 @@ function goalDetailPage(id){
     <section class="panel goal-detail-hero"><div class="goal-detail-top"><div class="goalname"><div class="pig" aria-label="Birikim">¤</div><div><h2 style="margin:0;font-size:19px">${esc(g.name)}</h2><div class="sub">${esc(member(g.memberId))}</div></div></div><span class="${completed?'goal-completed-badge':'goal-active-badge'}">${completed?'Tamamlandı':'Devam Ediyor'}</span></div>
       <div class="goal-detail-main-number"><b>${moneyInAsset(total,asset)}</b><span>%${Math.round(pct)}</span></div><div class="goal-detail-progress"><i style="width:${pct}%"></i></div><div class="goalmeta"><span>Hedef: ${moneyInAsset(target,asset)}</span><span>${completed?'Hedef tamamlandı':'Kalan: '+moneyInAsset(Math.max(0,target-total),asset)}</span></div>
       <div class="goal-detail-stat-grid"><div><small>Hedef Tutarı</small><b>${moneyInAsset(target,asset)}</b></div><div><small>Mevcut Birikim</small><b>${moneyInAsset(total,asset)}</b></div><div><small>Kalan Tutar</small><b>${moneyInAsset(Math.max(0,target-total),asset)}</b></div></div>
-      <div class="goal-detail-meta"><span><small>Başlangıç</small><b>${g.startDate?fd(g.startDate):'—'}</b></span><span><small>Hedef Tarihi</small><b>${g.targetDate?fd(g.targetDate):'Belirtilmedi'}</b></span><span><small>Hedef Sahibi</small><b>${esc(member(g.memberId))}</b></span><span><small>Durum</small><b>${completed?'Tamamlandı':'Devam Ediyor'}</b></span>${completed?`<span><small>Tamamlanma Tarihi</small><b>${completion?fd(completion):'—'}</b></span>`:''}</div>${holdRows?`<div class="goal-holdings-line"><small>Mevcut varlıklar</small><div class="goal-holding-chips">${holdRows}</div></div>`:''}
+      <div class="goal-detail-meta"><span><small>Başlangıç</small><b>${g.startDate?fd(g.startDate):'—'}</b></span><span><small>Hedef Tarihi</small><b>${g.targetDate?fd(g.targetDate):'Belirtilmedi'}</b></span><span><small>Hedef Sahibi</small><b>${esc(member(g.memberId))}</b></span><span><small>Durum</small><b>${completed?'Tamamlandı':'Devam Ediyor'}</b></span>${completed?`<span><small>Tamamlanma Tarihi</small><b>${completion?fd(completion):'—'}</b></span>`:''}</div>${holdRows?`<div class="goal-holdings-line"><div class="goal-holding-chips">${holdRows}</div></div>`:''}
       ${completed?goalCompletionDetails(g):''}
     </section>
     <section class="panel detail-history-panel"><div class="panelhead"><div><h2>Birikim Hareket Geçmişi</h2><p>Her bölümde tek tablo, tüm hareketler satır satır gösterilir.</p></div>${savingsDetailDeleteActions('movements')}</div>
@@ -2978,7 +2979,7 @@ function savingMovementTable(rows,lotState,isAddition,completed){
       const profitClass=completed||asset==='TRY'?'pl-neutral':!hasCost||remain<=0?'pl-unknown':profit>=0?'pl-positive':'pl-negative';
       extras=`<td>${hasCost?fmt(cost):'Kayıtlı değil'} TL</td><td>${fmt(currentRemain)} TL</td><td class="${profitClass}">${profitText}</td>`;
     }else extras=`<td>${fmt(current)} TL</td>`;
-    return `<tr class="${isAddition?'movement-row-added':'movement-row-removed'}">${select}<td>${fd(x.date)}</td><td>${esc(member(x.memberId))}</td><td class="movement-quantity"><span class="movement-sign-badge ${isAddition?'added':'removed'}">${isAddition?'+':'−'} ${fnum(qty)} ${esc(assetName)}</span></td>${extras}</tr>`;
+    return `<tr class="${isAddition?'movement-row-added':'movement-row-removed'}">${select}<td>${fd(x.date)}</td><td>${esc(member(x.memberId))}</td><td class="movement-quantity"><span class="${isAddition?'pl-positive':'pl-negative'}">${isAddition?'+':'−'}${fnum(qty)} ${esc(assetName)}</span></td>${extras}</tr>`;
   }).join('');
   return `<div class="movement-table-wrap"><table class="movement-history-table"><thead><tr>${selectionHead}${headers}</tr></thead><tbody>${body}</tbody></table></div>`;
 }
