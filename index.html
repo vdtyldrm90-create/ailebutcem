@@ -743,6 +743,24 @@ body.auth-pending .app,body.auth-required .app{display:none!important}
 
 </style>
 
+
+<style>
+.auth-loading-inline{padding:12px;border-radius:12px;background:var(--soft,#edf4f1);font-size:12px;line-height:1.5;color:var(--muted,#68777a)}
+.auth-guide-list{display:grid;gap:9px;margin:14px 0 18px}
+.auth-guide-step{padding:11px 12px;border:1px solid var(--border,#dfe7e3);background:var(--soft,#edf4f1);border-radius:12px}
+.auth-guide-step b{display:block;font-size:13px;color:var(--fg,#273238);margin-bottom:4px}
+.auth-guide-step p{font-size:12px;line-height:1.5;color:var(--muted,#68777a);margin:0}
+.auth-guide-actions{display:flex;gap:8px;flex-wrap:wrap}
+.auth-guide-actions button{flex:1;min-width:130px}
+.auth-access-wrap{width:min(680px,100%)}
+.auth-access-card{width:100%}
+.auth-access-card>.cloud-panel{padding:0;border:0;box-shadow:none;background:transparent}
+.auth-access-card>.cloud-panel>.cloud-topline{margin-bottom:12px}
+.auth-access-card .cloud-grid{grid-template-columns:1fr 1fr}
+.auth-access-card .cloud-panel>.cloud-note{display:block}
+@media(max-width:700px){.auth-gate{align-items:flex-start;padding:18px 12px;overflow-y:auto}.auth-card{padding:19px}.auth-access-wrap{width:100%}.auth-access-card .cloud-grid{grid-template-columns:1fr}.auth-guide-actions{flex-direction:column}.auth-guide-actions button{width:100%}}
+</style>
+
 </head>
 <body class="auth-pending">
 <div id="authGate" class="auth-gate" aria-live="polite"></div>
@@ -993,37 +1011,86 @@ function setCustomDate(kind,part,value){
 
 function renderAuthGate(){
   const gate=document.getElementById('authGate');
-  if(!gate)return;
+  if(!gate)return false;
+  const brand=`<div class="auth-brand"><div class="auth-brand-mark">₺</div><div class="auth-brand-text"><b>Aile Bütçem</b><span>Aile bütçesi · Birikim · Ödemeler</span></div></div>`;
   if(!cloud.initialized){
     document.body.classList.add('auth-pending');
     document.body.classList.remove('auth-required');
-    gate.innerHTML='<div class="auth-loading"><div class="auth-brand-mark" style="margin:0 auto 13px">₺</div><b style="display:block;color:var(--fg);margin-bottom:6px">Aile Bütçem</b><span>Oturumunuz güvenli şekilde kontrol ediliyor…</span></div>';
-    return;
+    gate.innerHTML=`<div class="auth-loading"><div class="auth-brand-mark" style="margin:0 auto 13px">₺</div><b style="display:block;color:var(--fg);margin-bottom:6px">Aile Bütçem</b><span>Oturumunuz güvenli şekilde kontrol ediliyor…</span></div>`;
+    return true;
   }
   if(cloud.session){
+    if(cloud.loading||(cloud.busy&&(!cloud.member||!cloud.syncReady))){
+      document.body.classList.add('auth-pending');
+      document.body.classList.remove('auth-required');
+      gate.innerHTML=`<div class="auth-gate-wrap"><div class="auth-brand-mark" style="margin:0 auto 15px">₺</div><section class="auth-card" style="text-align:center"><h1>Aile verileri hazırlanıyor</h1><p class="auth-intro">Hesabın ve aile bağlantın güvenli şekilde kontrol ediliyor. Lütfen bekle.</p><div class="auth-loading-inline">${esc(cloud.message||'Ortak aile alanı yükleniyor…')}</div></section></div>`;
+      return true;
+    }
+    if(!cloud.member||!cloud.syncReady){
+      document.body.classList.remove('auth-pending');
+      document.body.classList.add('auth-required');
+      const title=cloud.member?'Ortak aile verileri bekleniyor':'Aile bağlantını tamamla';
+      const intro=cloud.member
+        ? 'Aile üyeliğin oluştu. Aile yöneticisi ortak verileri başlatınca uygulama açılacak; bu sırada yerel örnek kayıtlar gösterilmez.'
+        : 'Uygulamayı kullanabilmek için bir aile oluşturmalı veya yöneticinin davet bağlantısıyla mevcut aileye katılmalısın.';
+      gate.innerHTML=`<div class="auth-gate-wrap auth-access-wrap">${brand}<section class="auth-card auth-access-card"><h1>${title}</h1><p class="auth-intro">${intro}</p>${cloudAuthUI()}</section></div>`;
+      return true;
+    }
     document.body.classList.remove('auth-pending','auth-required');
     gate.innerHTML='';
-    return;
+    return false;
   }
   document.body.classList.remove('auth-pending');
   document.body.classList.add('auth-required');
   const message=cloud.message?`<div class="auth-message ${esc(cloud.messageType||'')}">${esc(cloud.message)}</div>`:'';
   const signup=cloud.authView==='signup';
-  const form=signup
-    ? `<h1>Yeni hesap oluştur</h1><p class="auth-intro">Aile Bütçem'i kullanmak için hesabını oluştur. Aile üyelerinin göreceği adını da belirle.</p>${message}<form onsubmit="cloudSignUp(event)"><div class="field"><label for="signupDisplayName">Aile içinde görünecek adın</label><input id="signupDisplayName" name="displayName" type="text" maxlength="80" autocomplete="name" placeholder="Örn: Vedat Yıldırım" required></div><div class="field"><label for="signupEmail">E-posta adresi</label><input id="signupEmail" name="email" type="email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" placeholder="ornek@eposta.com" style="text-transform:none" required></div><div class="field"><label for="signupPassword">Şifre</label><input id="signupPassword" name="password" type="password" autocomplete="new-password" minlength="6" placeholder="En az 6 karakter" required></div><div class="field"><label for="signupPasswordConfirm">Şifreyi tekrar gir</label><input id="signupPasswordConfirm" name="passwordConfirm" type="password" autocomplete="new-password" minlength="6" placeholder="Şifreni tekrar yaz" required></div><button class="primary auth-submit" ${cloud.busy?'disabled':''}>${cloud.busy?'Lütfen bekleyin…':'Hesap Oluştur'}</button><button type="button" class="outline auth-secondary" onclick="showLoginScreen()" ${cloud.busy?'disabled':''}>Giriş ekranına dön</button></form><p class="auth-footnote">Kayıttan sonra e-posta onayı istenebilir. Gelen onay bağlantısını açıp giriş yapabilirsin.</p>`
-    : `<h1>Hesabına giriş yap</h1><p class="auth-intro">Aile bütçeni görüntülemek ve diğer aile bireyleriyle ortak kullanmak için giriş yap.</p>${message}<form onsubmit="cloudSignIn(event)"><div class="field"><label for="cloudEmail">E-posta adresi</label><input id="cloudEmail" name="email" type="email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" placeholder="ornek@eposta.com" style="text-transform:none" required></div><div class="field"><label for="cloudPassword">Şifre</label><input id="cloudPassword" name="password" type="password" autocomplete="current-password" minlength="6" placeholder="En az 6 karakter" required></div><button class="primary auth-submit" ${cloud.busy?'disabled':''}>${cloud.busy?'Lütfen bekleyin…':'Giriş Yap'}</button><button type="button" class="outline auth-secondary" onclick="showSignUpScreen()" ${cloud.busy?'disabled':''}>Yeni Hesap Oluştur</button></form><p class="auth-footnote">E-posta adresin ve şifren Supabase tarafından güvenli şekilde yönetilir.</p>`;
-  gate.innerHTML=`<div class="auth-gate-wrap"><div class="auth-brand"><div class="auth-brand-mark">₺</div><div class="auth-brand-text"><b>Aile Bütçem</b><span>Aile bütçesi · Birikim · Ödemeler</span></div></div><section class="auth-card">${form}</section></div>`;
+  const guide=cloud.authView==='guide';
+  let form='';
+  if(guide){
+    form=`<h1>Kullanım rehberi</h1><p class="auth-intro">Aile Bütçem'i kurmak ve aile bireyleriyle ortak kullanmak için bu kısa rehberi izleyebilirsin.</p>${message}
+      <div class="auth-guide-list">
+        <div class="auth-guide-step"><b>1. Hesap oluştur</b><p>Aile içinde görünecek adını, e-posta adresini, şifreni ve aile adını gir. E-posta onayı istenirse gelen bağlantıyı aç.</p></div>
+        <div class="auth-guide-step"><b>2. Kendi aileni kur</b><p>Davet bağlantısıyla gelmediysen, giriş sonrası aile adınla yeni bir ortak aile alanı otomatik oluşturulur. Yeni aile boş başlar; bu cihazdaki örnek kayıtlar buluta aktarılmaz.</p></div>
+        <div class="auth-guide-step"><b>3. Aile bireylerini davet et</b><p>Aile yöneticisi sağ üstteki çark simgesinden Aile bölümünü açıp davet bağlantısı veya QR kodu oluşturur. Bağlantı 7 gün geçerlidir ve bir kez kullanılabilir.</p></div>
+        <div class="auth-guide-step"><b>4. Davetle katıl</b><p>Davet bağlantısını açıp giriş yapabilir veya yeni hesap oluşturabilirsin. Ana giriş sayfasından kayıt oluyorsan da kayıt formundaki isteğe bağlı davet kodu/bağlantısı alanına daveti yapıştır. Geçerli davet yeni aile açmaz; seni doğrudan kurucunun ailesine bağlar ve ortak kayıtları yükler.</p></div>
+        <div class="auth-guide-step"><b>5. Birlikte kullan</b><p>Gelir-gider, planlı ödeme, birikim, elden borç ve raporlar aile üyeleri arasında internet üzerinden eşitlenir. Verileri görmek ve eşitlemek için internet bağlantısı gerekir.</p></div>
+      </div>
+      <div class="auth-guide-actions"><button type="button" class="primary" onclick="showLoginScreen()">Giriş ekranına dön</button><button type="button" class="outline" onclick="showSignUpScreen()">Yeni hesap oluştur</button></div>`;
+  }else if(signup){
+    const inviteNote=pendingInviteToken?`<div class="auth-message">Davet bağlantısıyla geldin. Aile adı alanı hesap kaydı için zorunludur; kayıt sonrası yeni aile açılmayacak, davet bağlantısındaki kurucunun ailesine katılacaksın.</div>`:'';
+    form=`<h1>Yeni hesap oluştur</h1><p class="auth-intro">Hesabını oluştururken aile içindeki görünen adını ve aile adını belirle.</p>${message}${inviteNote}<form onsubmit="cloudSignUp(event)">
+      <div class="field"><label for="signupDisplayName">Aile içinde görünecek adın</label><input id="signupDisplayName" name="displayName" type="text" maxlength="80" autocomplete="name" placeholder="Örn: Vedat Yıldırım" required></div>
+      <div class="field"><label for="signupFamilyName">Aile adı</label><input id="signupFamilyName" name="familyName" type="text" maxlength="80" autocomplete="organization" placeholder="Örn: Yıldırım Ailesi" required></div>
+      <div class="field"><label for="signupInviteToken">Mevcut aile davet kodu/bağlantısı <span style="font-weight:500">(isteğe bağlı)</span></label><input id="signupInviteToken" name="inviteToken" type="text" value="${esc(pendingInviteToken)}" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Davetle katılıyorsan buraya yapıştır"></div>
+      <p class="auth-footnote" style="margin-top:-5px">Davet kodu girersen yeni bir aile açılmaz; kurucunun ailesine katılırsın.</p>
+      <div class="field"><label for="signupEmail">E-posta adresi</label><input id="signupEmail" name="email" type="email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" placeholder="ornek@eposta.com" style="text-transform:none" required></div>
+      <div class="field"><label for="signupPassword">Şifre</label><input id="signupPassword" name="password" type="password" autocomplete="new-password" minlength="6" placeholder="En az 6 karakter" required></div>
+      <div class="field"><label for="signupPasswordConfirm">Şifreyi tekrar gir</label><input id="signupPasswordConfirm" name="passwordConfirm" type="password" autocomplete="new-password" minlength="6" placeholder="Şifreni tekrar yaz" required></div>
+      <button class="primary auth-submit" ${cloud.busy?'disabled':''}>${cloud.busy?'Lütfen bekleyin…':'Hesap Oluştur'}</button>
+      <button type="button" class="outline auth-secondary" onclick="showLoginScreen()" ${cloud.busy?'disabled':''}>Giriş ekranına dön</button>
+      <button type="button" class="ghost auth-secondary" onclick="showGuideScreen()">Kullanım Rehberi</button>
+    </form><p class="auth-footnote">Kayıttan sonra e-posta onayı istenebilir. Gelen onay bağlantısını açıp giriş yapabilirsin.</p>`;
+  }else{
+    form=`<h1>Hesabına giriş yap</h1><p class="auth-intro">Aile bütçeni görüntülemek ve aile bireyleriyle ortak kullanmak için giriş yap.</p>${message}<form onsubmit="cloudSignIn(event)">
+      <div class="field"><label for="cloudEmail">E-posta adresi</label><input id="cloudEmail" name="email" type="email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" placeholder="ornek@eposta.com" style="text-transform:none" required></div>
+      <div class="field"><label for="cloudPassword">Şifre</label><input id="cloudPassword" name="password" type="password" autocomplete="current-password" minlength="6" placeholder="Şifren" required></div>
+      <button class="primary auth-submit" ${cloud.busy?'disabled':''}>${cloud.busy?'Lütfen bekleyin…':'Giriş Yap'}</button>
+      <button type="button" class="outline auth-secondary" onclick="showSignUpScreen()" ${cloud.busy?'disabled':''}>Yeni Hesap Oluştur</button>
+      <button type="button" class="ghost auth-secondary" onclick="showGuideScreen()">Kullanım Rehberi</button>
+    </form><p class="auth-footnote">E-posta adresin ve şifren Supabase tarafından güvenli şekilde yönetilir.</p>`;
+  }
+  gate.innerHTML=`<div class="auth-gate-wrap">${brand}<section class="auth-card">${form}</section></div>`;
+  return true;
 }
 function render(){
-  renderAuthGate();
-  if(!cloud.initialized||!cloud.session)return;
+  const authBlocked=renderAuthGate();
+  if(authBlocked||!cloud.initialized||!cloud.session||!cloud.member||!cloud.syncReady)return;
   document.getElementById('memberSelect').innerHTML=S.members.map(m=>`<option value="${m.id}" ${m.id===S.active?'selected':''}>${esc(m.name)}</option>`).join('');
   nav();
   let m=document.getElementById('main');
   m.innerHTML=tab==='ozet'?home():tab==='islemler'?transactions():tab==='odemeler'?payments():tab==='birikim'?savings():tab==='raporlar'?reports():family();
   if(tab==='aile'&&cloud.inviteUrl)setTimeout(renderCloudQr,0);
 }
-
 function reportSetMode(mode){reportMode=mode==='yearly'?'yearly':'monthly';render()}
 function reportSetYear(year){const n=Number(year);if(Number.isFinite(n))reportYear=n;render()}
 function reportSetMonth(month){const n=Number(month);if(Number.isInteger(n)&&n>=0&&n<=11)reportMonth=n;render()}
@@ -1840,6 +1907,14 @@ function setupCloudRealtime(){
       if(!incoming||typeof incoming!=='object')return;
       const incomingJson=stableStringify(incoming);
       if(incomingJson===cloud.lastCloudJson||incomingJson===cloud.pendingWriteJson)return;
+      if(!cloud.syncReady){
+        if(!Object.keys(incoming).length)return;
+        rememberLocalBackup();
+        applySharedState(incoming,cloud.member?.profile_id);
+        cloud.lastCloudJson=incomingJson;cloud.syncReady=true;
+        setCloudMessage('Aile verileri hazır. Ortak kayıtlar yüklendi.','success');
+        render();return;
+      }
       if(cloud.localPending||cloud.writeInFlight||cloud.saveTimer||document.getElementById('modal')?.classList.contains('show')){
         cloud.pendingRemoteState=incoming;
         setCloudMessage('Başka bir cihazda değişiklik yapıldı. Formu tamamladıktan sonra güncel veriler eşitlenecek.');
@@ -1922,6 +1997,30 @@ async function loadExistingInvite(){
   if(!error&&data?.length){cloud.inviteToken=data[0].token;cloud.inviteUrl=buildInviteUrl(data[0].token)}
 }
 function buildInviteUrl(token){return window.location.origin+window.location.pathname+'?invite='+encodeURIComponent(token)}
+async function createFamilyFromSignup(familyName,displayName){
+  if(!sb||!cloud.user||cloud.member)return;
+  const name=String(familyName||'').trim().replace(/\s+/g,' ');
+  const visibleName=String(displayName||'').trim().replace(/\s+/g,' ');
+  if(!name||!visibleName)return;
+  const profileId=uid();
+  cloud.busy=true;setCloudMessage('Aile alanı oluşturuluyor…');render();
+  const {data,error}=await sb.rpc('create_family',{p_name:name,p_profile_id:profileId,p_display_name:visibleName});
+  if(error){
+    cloud.busy=false;
+    try{await loadCurrentFamily()}catch(e){}
+    if(!cloud.member)setCloudMessage('Aile otomatik oluşturulamadı: '+cloudErrorText(error),'error');
+    render();return;
+  }
+  cloud.family={id:data.family_id,name,owner_id:cloud.user.id};
+  cloud.member={family_id:data.family_id,user_id:cloud.user.id,profile_id:profileId,display_name:visibleName,role:'owner'};
+  cloud.busy=false;
+  // Yeni hesaplar örnek/yerel kayıtları içeri aktarmadan boş aileyle başlar.
+  await initializeEmptyFamily(false);
+}
+function clearPendingInviteFromUrl(){
+  pendingInviteToken='';
+  try{history.replaceState({},'',window.location.pathname)}catch(e){}
+}
 async function handleCloudSession(session){
   const newId=session?.user?.id||null;
   cloud.session=session||null;cloud.user=session?.user||null;
@@ -1936,9 +2035,23 @@ async function handleCloudSession(session){
     cloud.loading=false;render();return;
   }
   render();
-  try{await loadCurrentFamily()}
-  catch(error){console.error('Supabase aile bağlantısı kurulamadı',error);setCloudMessage('Supabase bağlantısı sırasında hata: '+cloudErrorText(error),'error')}
-  finally{cloud.loading=false;render()}
+  try{
+    await loadCurrentFamily();
+    if(!cloud.member){
+      // Davet bağlantısıyla geldiyse yeni aile kurma; otomatik olarak kurucunun ailesine katıl.
+      if(pendingInviteToken){
+        await joinCloudFamilyByToken(pendingInviteToken,true);
+      }else{
+        const familyName=String(cloud.user?.user_metadata?.family_name||'').trim();
+        const displayName=String(cloud.user?.user_metadata?.display_name||'').trim();
+        if(familyName&&displayName)await createFamilyFromSignup(familyName,displayName);
+      }
+    }else if(pendingInviteToken){
+      // Zaten aile üyesiyse mevcut ailesini koru; eski davet bağlantısını tekrar kullanma.
+      clearPendingInviteFromUrl();
+    }
+  }catch(error){console.error('Supabase aile bağlantısı kurulamadı',error);setCloudMessage('Supabase bağlantısı sırasında hata: '+cloudErrorText(error),'error');}
+  finally{cloud.loading=false;render();}
 }
 async function initCloud(){
   if(!sb){cloud.initialized=true;cloud.loading=false;setCloudMessage('Supabase JavaScript kitaplığı yüklenemedi. İnternet bağlantısını kontrol edip sayfayı yenile.','error');render();return}
@@ -1959,32 +2072,34 @@ async function cloudSignIn(e){
   await handleCloudSession(data.session);
 }
 function showSignUpScreen(){
-  cloud.authView='signup';
-  setCloudMessage('');
-  render();
+  cloud.authView='signup';setCloudMessage('');render();
 }
 function showLoginScreen(){
-  cloud.authView='login';
-  setCloudMessage('');
-  render();
+  cloud.authView='login';setCloudMessage('');render();
+}
+function showGuideScreen(){
+  cloud.authView='guide';setCloudMessage('');render();
 }
 async function cloudSignUp(e){
   if(e)e.preventDefault();
   const displayName=(byId('signupDisplayName')?.value||'').trim().replace(/\s+/g,' ');
+  const familyName=(byId('signupFamilyName')?.value||'').trim().replace(/\s+/g,' ');
   const email=(byId('signupEmail')?.value||'').trim().toLowerCase();
   const password=byId('signupPassword')?.value||'';
   const confirmPassword=byId('signupPasswordConfirm')?.value||'';
-  if(!displayName||!email||!password||!confirmPassword){setCloudMessage('Aile içinde görünecek adını, e-posta adresini ve tüm şifre alanlarını doldur.','error');render();return}
-  if(displayName.length>80){setCloudMessage('Görünür ad en fazla 80 karakter olabilir.','error');render();return}
-  if(password.length<6){setCloudMessage('Şifre en az 6 karakter olmalı.','error');render();return}
-  if(password!==confirmPassword){setCloudMessage('Şifreler eşleşmiyor. Lütfen tekrar kontrol et.','error');render();return}
+  const signupInvite=(byId('signupInviteToken')?.value||'').trim();
+  pendingInviteToken=signupInvite?extractInviteToken(signupInvite):'';
+  if(!displayName||!familyName||!email||!password||!confirmPassword){setCloudMessage('Aile içi görünen ad, aile adı, e-posta ve tüm şifre alanları zorunludur.','error');render();return;}
+  if(displayName.length>80||familyName.length>80){setCloudMessage('Görünen ad ve aile adı en fazla 80 karakter olabilir.','error');render();return;}
+  if(password.length<6){setCloudMessage('Şifre en az 6 karakter olmalı.','error');render();return;}
+  if(password!==confirmPassword){setCloudMessage('Şifreler eşleşmiyor. Lütfen tekrar kontrol et.','error');render();return;}
   cloud.busy=true;setCloudMessage('Hesap oluşturuluyor…');render();
   const redirect=window.location.origin+window.location.pathname+(pendingInviteToken?'?invite='+encodeURIComponent(pendingInviteToken):'');
-  const {data,error}=await sb.auth.signUp({email,password,options:{data:{display_name:displayName},emailRedirectTo:redirect}});
+  const {data,error}=await sb.auth.signUp({email,password,options:{data:{display_name:displayName,family_name:familyName},emailRedirectTo:redirect}});
   cloud.busy=false;
-  if(error){setCloudMessage(cloudErrorText(error),'error');render();return}
-  if(data.session){setCloudMessage('Hesap oluşturuldu.','success');await handleCloudSession(data.session)}
-  else{setCloudMessage('Hesap oluşturuldu. E-postana gönderilen onay bağlantısını aç. Ardından giriş ekranına dönüp giriş yap.','success');render()}
+  if(error){setCloudMessage(cloudErrorText(error),'error');render();return;}
+  if(data.session){setCloudMessage(pendingInviteToken?'Hesap oluşturuldu. Davet edilen aileye bağlanılıyor…':'Hesap oluşturuldu. Aile alanın hazırlanıyor…','success');await handleCloudSession(data.session);}
+  else{setCloudMessage(pendingInviteToken?'Hesap oluşturuldu. E-postandaki onay bağlantısını açıp giriş yap; ardından davet eden ailenin ortak verilerine otomatik bağlanacaksın.':'Hesap oluşturuldu. E-postandaki onay bağlantısını açıp giriş yap; ardından aile alanın otomatik hazırlanacak.','success');render();}
 }
 async function cloudSignOut(){
   if(!sb)return;
@@ -2024,29 +2139,37 @@ function extractInviteToken(value){
   const match=raw.match(/[?&]invite=([^&#]+)/i);
   return match?decodeURIComponent(match[1]):raw;
 }
-async function joinCloudFamily(e){
-  e.preventDefault();if(!sb||!cloud.user)return;
-  const token=extractInviteToken(byId('cloudInviteToken')?.value||pendingInviteToken);
-  const displayName=currentVisibleName();
-  if(!token||!displayName){setCloudMessage('Önce Aile ayarlarından aile içinde görünecek adını kaydet.','error');render();return}
-  const profileId=uid();cloud.busy=true;setCloudMessage('Davet doğrulanıyor…');render();
+async function joinCloudFamilyByToken(value,automatic=false){
+  if(!sb||!cloud.user)return false;
+  const token=extractInviteToken(value||pendingInviteToken);
+  const displayName=currentVisibleName()||String(cloud.user?.user_metadata?.display_name||'').trim();
+  if(!token||!displayName){setCloudMessage('Davet kodu ve aile içinde görünecek ad gerekli.','error');render();return false;}
+  const profileId=uid();cloud.busy=true;setCloudMessage(automatic?'Davet edilen aileye bağlanılıyor…':'Davet doğrulanıyor…');render();
   const {data,error}=await sb.rpc('accept_family_invite',{p_token:token,p_profile_id:profileId,p_display_name:displayName});
-  if(error){cloud.busy=false;setCloudMessage(cloudErrorText(error),'error');render();return}
-  pendingInviteToken='';
-  try{history.replaceState({},'',window.location.pathname)}catch(e){}
+  if(error){cloud.busy=false;setCloudMessage('Davet kabul edilemedi: '+cloudErrorText(error),'error');render();return false;}
+  clearPendingInviteFromUrl();
   cloud.member={family_id:data.family_id,user_id:cloud.user.id,profile_id:profileId,display_name:displayName,role:'member'};
   const {data:familyData,error:familyError}=await sb.from('families').select('id,name,owner_id,created_at').eq('id',data.family_id).single();
-  if(familyError){cloud.busy=false;setCloudMessage(cloudErrorText(familyError),'error');render();return}
+  if(familyError){cloud.busy=false;cloud.syncReady=false;setCloudMessage('Aile üyeliği oluştu ancak aile bilgisi alınamadı: '+cloudErrorText(familyError),'error');render();return false;}
   cloud.family=familyData;
-  const {data:stateRow,error:stateError}=await sb.from('family_state').select('state,updated_at').eq('family_id',data.family_id).single();
-  if(stateError){cloud.busy=false;setCloudMessage(cloudErrorText(stateError),'error');render();return}
-  if(!stateRow?.state||!Object.keys(stateRow.state).length){cloud.busy=false;setCloudMessage('Aile verileri henüz yönetici tarafından başlatılmamış. Yönetici Aile sekmesinden başlatmalı.','error');render();return}
-  rememberLocalBackup();cloud.syncReady=false;const remoteStateJson=stableStringify(stateRow.state);applySharedState(stateRow.state,profileId);
+  const {data:stateRow,error:stateError}=await sb.from('family_state').select('state,updated_at').eq('family_id',data.family_id).maybeSingle();
+  if(stateError){cloud.busy=false;cloud.syncReady=false;await refreshCloudRoster();setupCloudRealtime();setCloudMessage('Aile üyeliği oluştu ancak ortak veriler alınamadı: '+cloudErrorText(stateError),'error');render();return false;}
+  if(!stateRow?.state||!Object.keys(stateRow.state).length){
+    cloud.busy=false;cloud.syncReady=false;await refreshCloudRoster();setupCloudRealtime();
+    setCloudMessage('Aileye katıldın. Kurucu ortak verileri başlatınca aile kayıtları otomatik yüklenecek.','');render();return true;
+  }
+  rememberLocalBackup();cloud.syncReady=false;
+  const remoteStateJson=stableStringify(stateRow.state);applySharedState(stateRow.state,profileId);
   if(!S.members.some(m=>m.id===profileId))S.members.push({id:profileId,name:displayName});
   S.active=profileId;S.family={id:familyData.id,name:familyData.name,inviteToken:''};
   persistLocalOnly();cloud.lastCloudJson=remoteStateJson;cloud.syncReady=true;cloud.busy=false;
-  await refreshCloudRoster();setupCloudRealtime();setCloudMessage('Aileye katıldın. Ortak veriler eşitlendi.','success');
-  save();
+  await refreshCloudRoster();setupCloudRealtime();setCloudMessage('Aileye katıldın. Kurucunun ortak verileri yüklendi.','success');
+  save();return true;
+}
+async function joinCloudFamily(e){
+  if(e)e.preventDefault();
+  const token=byId('cloudInviteToken')?.value||pendingInviteToken;
+  await joinCloudFamilyByToken(token,false);
 }
 async function initializeEmptyFamily(importLocal){
   if(!sb||!cloud.user||cloud.member?.role!=='owner'||!cloud.family)return;
@@ -2100,11 +2223,34 @@ async function saveFamilyName(e){
 function cloudAuthUI(){
   if(!sb)return `<section class="panel cloud-panel"><h2>Ortak Aile Ağı</h2><p class="sub">Supabase bağlantısı yüklenemedi. İnternet bağlantısını kontrol edip sayfayı yenile.</p></section>`;
   if(cloud.loading)return `<section class="panel cloud-panel"><div class="cloud-topline"><h2>Ortak Aile Ağı</h2><span class="cloud-pill">Bağlanıyor…</span></div><p class="sub">Hesap ve aile üyeliği kontrol ediliyor.</p></section>`;
-  if(!cloud.session)return `<section class="panel cloud-panel"><h2>Ortak Aile Ağı</h2><p class="sub">Giriş ve hesap oluşturma işlemleri artık uygulama açılış ekranından yapılır.</p></section>`;
-  if(!cloud.member){const visibleName=currentVisibleName();return `<section class="panel cloud-panel"><div class="cloud-topline"><div><h2>Ortak Aile Ağı</h2><p class="sub">Giriş yapıldı: ${esc(cloud.user?.email||'')}</p></div><button class="outline" type="button" onclick="cloudSignOut()">Çıkış Yap</button></div>${cloud.message?`<div class="cloud-message ${cloud.messageType}">${esc(cloud.message)}</div>`:''}<div class="cloud-grid"><div class="cloud-subpanel"><h3>Yeni Aile Oluştur</h3><p>Aileyi oluşturduğunda yönetici olursun. Yerel kayıtlarını ilk ortak veri olarak aktarabilirsin.</p><form onsubmit="createCloudFamily(event)"><div class="field"><label>Aile Adı</label><input id="cloudFamilyName" maxlength="80" value="${esc(S.family?.name||'Ailem')}" required></div><label class="cloud-note" style="display:flex;gap:8px;align-items:flex-start"><input id="cloudImportLocal" type="checkbox" ${LOCAL_DATA_EXISTED?'checked':''} style="margin-top:2px"> Bu cihazdaki mevcut gelir/gider, ödeme, birikim ve borç kayıtlarını ortak aileye aktar. ${LOCAL_DATA_EXISTED?'':'Bu cihazda daha önce kaydedilmiş yerel veri bulunamadı.'}</label><button class="primary" ${cloud.busy||!visibleName?'disabled':''}>Aile Oluştur</button></form></div><div class="cloud-subpanel"><h3>Davet Koduyla Katıl</h3><p>Aile yöneticisinin gönderdiği davet bağlantısını veya kodunu buraya gir.</p><form onsubmit="joinCloudFamily(event)"><div class="field"><label>Davet kodu veya bağlantısı</label><input id="cloudInviteToken" value="${esc(pendingInviteToken)}" placeholder="Davet kodu / bağlantı" required></div><p class="cloud-note">Aile içinde görünecek adın: <b>${esc(visibleName||'Henüz belirlenmedi')}</b>. Adını değiştirmek için bu sayfadaki “Ailede Görünen Ad” alanını kullan.</p><button class="primary" ${cloud.busy||!visibleName?'disabled':''}>Aileye Katıl</button></form></div></div><p class="cloud-note">Aynı hesap yalnızca bir aileye bağlanacak şekilde tasarlanmıştır. Katıldıktan sonra aile kayıtları bu cihazdaki yerel durumun yerini alır; önce bir yerel yedek oluşturulur.</p></section>`;}
+  if(!cloud.session)return `<section class="panel cloud-panel"><h2>Ortak Aile Ağı</h2><p class="sub">Giriş ve hesap oluşturma işlemleri uygulama açılış ekranından yapılır.</p></section>`;
+  if(!cloud.member){
+    const visibleName=currentVisibleName();
+    return `<section class="panel cloud-panel">
+      <div class="cloud-topline"><div><h2>Ortak Aile Ağı</h2><p class="sub">Giriş yapıldı: ${esc(cloud.user?.email||'')}</p></div><button class="outline" type="button" onclick="cloudSignOut()">Çıkış Yap</button></div>
+      ${cloud.message?`<div class="cloud-message ${cloud.messageType} ">${esc(cloud.message)}</div>`:''}
+      <div class="cloud-grid">
+        <div class="cloud-subpanel"><h3>Yeni Aile Oluştur</h3><p>Aile adı hesap oluştururken belirlenir. Eski bir hesabın varsa burada yeni bir aile kurabilirsin. Emin değilsen yerel kayıt aktarımını kapalı bırak.</p>
+          <form onsubmit="createCloudFamily(event)"><div class="field"><label>Aile Adı</label><input id="cloudFamilyName" maxlength="80" value="${esc(cloud.user?.user_metadata?.family_name||S.family?.name||'Ailem')}" required></div>
+          <label class="cloud-note" style="display:flex;gap:8px;align-items:flex-start"><input id="cloudImportLocal" type="checkbox" style="margin-top:2px"> Bu cihazdaki mevcut gelir/gider, ödeme, birikim ve borç kayıtlarını ortak aileye aktar. Örnek kayıtları taşımamak için emin değilsen boş bırak.</label>
+          <button class="primary" ${cloud.busy||!visibleName?'disabled':''}>Aile Oluştur</button></form>
+        </div>
+        <div class="cloud-subpanel"><h3>Davet Koduyla Katıl</h3><p>Aile yöneticisinin gönderdiği davet bağlantısını veya kodunu kullan. Geçerli davetle katıldığında kurucunun ortak verileri yüklenir.</p>
+          <form onsubmit="joinCloudFamily(event)"><div class="field"><label>Davet kodu veya bağlantısı</label><input id="cloudInviteToken" value="${esc(pendingInviteToken)}" placeholder="Davet kodu / bağlantı" required></div>
+          <p class="cloud-note">Aile içinde görünecek adın: <b>${esc(visibleName||'Henüz belirlenmedi')}</b>.</p><button class="primary" ${cloud.busy||!visibleName?'disabled':''}>Aileye Katıl</button></form>
+        </div>
+      </div>
+      <p class="cloud-note">Ortak aileye bağlanmadan önce uygulama kayıt ekranlarını açmaz; böylece yerel örnek veriler gerçek aile verileriyle karışmaz.</p>
+    </section>`;
+  }
   const roster=(cloud.roster||[]).map((m,i)=>`<div class="cloud-person"><div class="avatar" style="background:${['#397b70','#6d7db5','#b47b45','#8c5d8f'][i%4]}">${esc((m.display_name||'?').slice(0,1).toUpperCase())}</div><div class="cloud-person-main"><b>${esc(m.display_name||'Aile üyesi')}</b><small>${m.role==='owner'?'Yönetici':'Üye'} · ${fd(String(m.joined_at||date()).slice(0,10))}</small></div>${cloud.member?.role==='owner'&&m.role!=='owner'?`<button class="ghost" onclick="removeCloudMember('${m.user_id}')">Erişimi Kaldır</button>`:''}</div>`).join('');
   const emptyState=!cloud.syncReady;
-  return `<section class="panel cloud-panel"><div class="cloud-topline"><div><h2>Ortak Aile Ağı</h2><p class="sub">${esc(cloud.user?.email||'')} · ${esc(cloud.family?.name||'Ailem')}</p></div><div class="cloud-actions"><span class="cloud-pill ${cloud.syncReady?'online':'offline'}">${cloud.syncReady?'Bağlı · Otomatik eşitleme':'Başlatma bekleniyor'}</span><button class="outline" type="button" onclick="cloudSignOut()">Çıkış Yap</button></div></div>${cloud.message?`<div class="cloud-message ${cloud.messageType}">${esc(cloud.message)}</div>`:''}${!emptyState?(cloud.member?.role==='owner'?`<div class="cloud-subpanel" style="margin-top:12px"><h3>Aile ayarları</h3><form onsubmit="saveFamilyName(event)" class="family-name-form"><div class="field"><label>Aile Adı</label><input id="familyNameInput" value="${esc(cloud.family?.name||'Ailem')}" maxlength="80" required></div><button class="primary">Kaydet</button></form></div>`:`<div class="cloud-subpanel" style="margin-top:12px"><h3>Aile</h3><p>Ortak aile: <b>${esc(cloud.family?.name||'Ailem')}</b></p><p class="cloud-note">Aile adını yalnızca yönetici değiştirebilir.</p></div>`):''}${emptyState?`<div class="cloud-subpanel"><h3>Ortak verileri başlat</h3><p>Aile oluşturulmuş ancak ortak kayıtlar henüz başlatılmamış. Bu adım, mevcut cihazdaki kayıtları ortak aileye aktarabilir.</p><label class="cloud-note" style="display:flex;gap:8px;align-items:flex-start;margin-bottom:10px"><input id="cloudInitImport" type="checkbox" ${LOCAL_DATA_EXISTED?'checked':''} style="margin-top:2px"> Bu cihazdaki kayıtları aktar.</label><button class="primary" onclick="initializeEmptyFamily(!!byId('cloudInitImport')?.checked)" ${cloud.busy?'disabled':''}>Ortak Verileri Başlat</button></div>`:`<div class="cloud-grid"><div class="cloud-subpanel"><h3>Aile daveti</h3><p>Bağlantı 7 gün geçerlidir ve bir kez kullanılabilir. Gönderdiğin kişi e-posta hesabıyla giriş yaparak katılabilir.</p><div class="cloud-invite-grid"><div id="cloudInviteQr" class="cloud-qr">${cloud.inviteUrl?'QR hazırlanıyor…':'Henüz davet oluşturulmadı.'}</div><div class="cloud-invite-info"><div class="cloud-actions"><button class="primary" type="button" onclick="createCloudInvite()" ${cloud.busy?'disabled':''}>${cloud.inviteUrl?'Yeni Davet Oluştur':'Davet Oluştur'}</button>${cloud.inviteUrl?`<button class="outline" type="button" onclick="copyCloudInvite()">Bağlantıyı Kopyala</button>`:''}</div>${cloud.inviteUrl?`<p class="cloud-note" style="overflow-wrap:anywhere;margin-top:9px">${esc(cloud.inviteUrl)}</p>`:''}</div></div></div><div class="cloud-subpanel"><h3>Aile üyeleri (${cloud.roster.length})</h3><div class="cloud-roster">${roster||'<p>Henüz aile üyesi yok.</p>'}</div></div></div>`}<p class="cloud-note" style="margin-top:10px">Veriler Supabase'e gönderilir. Aile üyeleri aynı kayıtları görür. Aynı anda birden çok cihazda yapılan değişikliklerde bu tek kayıtlı JSON modelinde son kaydedilen durum geçerli olabilir; önemli değişiklikleri tamamlandıktan sonra diğer cihazlarda kontrol edin.</p></section>`;
+  const statePanel=emptyState
+    ? (cloud.member?.role==='owner'
+      ? `<div class="cloud-subpanel"><h3>Ortak verileri başlat</h3><p>Aile oluşturulmuş ancak ortak kayıtlar henüz başlatılmamış. Emin değilsen örnek kayıtları aktarmamak için kutuyu boş bırak.</p><label class="cloud-note" style="display:flex;gap:8px;align-items:flex-start;margin-bottom:10px"><input id="cloudInitImport" type="checkbox" style="margin-top:2px"> Bu cihazdaki mevcut kayıtları aktar.</label><button class="primary" onclick="initializeEmptyFamily(!!byId('cloudInitImport')?.checked)" ${cloud.busy?'disabled':''}>Ortak Verileri Başlat</button></div>`
+      : `<div class="cloud-subpanel"><h3>Kurucu verileri bekleniyor</h3><p>Aile üyeliğin tamamlandı. Aile yöneticisi ortak verileri başlatınca kayıtlar otomatik yüklenecek. Bu sırada yerel veya örnek kayıtlar gösterilmez.</p></div>`)
+    : `<div class="cloud-grid"><div class="cloud-subpanel"><h3>Aile daveti</h3><p>Bağlantı 7 gün geçerlidir ve bir kez kullanılabilir. Gönderdiğin kişi davet bağlantısından kayıt olarak veya giriş yaparak katılabilir.</p><div class="cloud-invite-grid"><div id="cloudInviteQr" class="cloud-qr">${cloud.inviteUrl?'QR hazırlanıyor…':'Henüz davet oluşturulmadı.'}</div><div class="cloud-invite-info"><div class="cloud-actions"><button class="primary" type="button" onclick="createCloudInvite()" ${cloud.busy?'disabled':''}>${cloud.inviteUrl?'Yeni Davet Oluştur':'Davet Oluştur'}</button>${cloud.inviteUrl?`<button class="outline" type="button" onclick="copyCloudInvite()">Bağlantıyı Kopyala</button>`:''}</div>${cloud.inviteUrl?`<p class="cloud-note" style="overflow-wrap:anywhere;margin-top:9px">${esc(cloud.inviteUrl)}</p>`:''}</div></div></div><div class="cloud-subpanel"><h3>Aile üyeleri (${cloud.roster.length})</h3><div class="cloud-roster">${roster||'<p>Henüz aile üyesi yok.</p>'}</div></div></div>`;
+  return `<section class="panel cloud-panel"><div class="cloud-topline"><div><h2>Ortak Aile Ağı</h2><p class="sub">${esc(cloud.user?.email||'')} · ${esc(cloud.family?.name||'Ailem')}</p></div><div class="cloud-actions"><span class="cloud-pill ${cloud.syncReady?'online':'offline'}">${cloud.syncReady?'Bağlı · Otomatik eşitleme':'Başlatma bekleniyor'}</span><button class="outline" type="button" onclick="cloudSignOut()">Çıkış Yap</button></div></div>${cloud.message?`<div class="cloud-message ${cloud.messageType||''}">${esc(cloud.message)}</div>`:''}${!emptyState?(cloud.member?.role==='owner'?`<div class="cloud-subpanel" style="margin-top:12px"><h3>Aile ayarları</h3><form onsubmit="saveFamilyName(event)" class="family-name-form"><div class="field"><label>Aile Adı</label><input id="familyNameInput" value="${esc(cloud.family?.name||'Ailem')}" maxlength="80" required></div><button class="primary">Kaydet</button></form></div>`:`<div class="cloud-subpanel" style="margin-top:12px"><h3>Aile</h3><p>Ortak aile: <b>${esc(cloud.family?.name||'Ailem')}</b></p><p class="cloud-note">Aile adını yalnızca yönetici değiştirebilir.</p></div>`):''}${statePanel}<p class="cloud-note" style="margin-top:10px">Veriler Supabase'e gönderilir. Aile üyeleri aynı kayıtları görür. Aynı anda birden çok cihazda yapılan değişikliklerde son kaydedilen durum geçerli olabilir.</p></section>`;
 }
 function profileNamePanel(){
   if(!cloud.session)return '';
