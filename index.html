@@ -894,6 +894,108 @@ body.auth-pending .app,body.auth-required .app{display:none!important}
 }
 </style>
 
+
+<style id="section-card-shading">
+/* Tüm sekmelerde içerik bölümlerini yumuşak gölge ve hafif yüzey tonlarıyla ayır */
+#main .panel:not(.report-category-panel){
+  box-shadow:0 7px 20px rgba(28,54,43,.065),0 1px 3px rgba(28,54,43,.035);
+  border-color:#e2ebe6;
+}
+#main .panel:not(.report-category-panel):not(.stat){
+  background-image:linear-gradient(145deg,rgba(255,255,255,.98),rgba(249,252,250,.98));
+}
+#main .panelhead{position:relative}
+#main .panelhead h2{letter-spacing:-.12px}
+#main .panel:hover:not(.report-category-panel){box-shadow:0 9px 24px rgba(28,54,43,.085),0 2px 5px rgba(28,54,43,.04)}
+
+/* Ana Sayfa: son işlemler, kurlar ve birikim hedefleri ayrı ayrı ayırt edilsin */
+#main .grid2>.panel{
+  background:linear-gradient(145deg,#fff 0%,#f3faf6 100%);
+  border-color:#dcebe2;
+  box-shadow:0 8px 22px rgba(35,105,70,.075),0 1px 3px rgba(35,105,70,.035);
+}
+#main .grid2>.stack>.panel:first-child{
+  background:linear-gradient(145deg,#fff 0%,#f1f8fb 100%);
+  border-color:#dce9ef;
+  box-shadow:0 8px 22px rgba(45,99,134,.07),0 1px 3px rgba(45,99,134,.035);
+}
+#main .grid2>.stack>.panel:last-child{
+  background:linear-gradient(145deg,#fff 0%,#f7f3fc 100%);
+  border-color:#e8def6;
+  box-shadow:0 8px 22px rgba(104,72,158,.07),0 1px 3px rgba(104,72,158,.035);
+}
+#main .home-loan-mini{
+  background:linear-gradient(145deg,#fff 0%,#fff8eb 100%);
+  border-color:#f0dfbd;
+  box-shadow:0 7px 20px rgba(154,103,25,.065),0 1px 3px rgba(154,103,25,.03);
+}
+#main .home-summary-wrap .stat:not(.net){box-shadow:0 6px 16px rgba(35,80,57,.055)}
+
+/* İşlemler: ekleme alanı yeşil, işlem geçmişi serin mavi, düzenli planlar mint */
+#main .transactions-add-card{
+  background:linear-gradient(145deg,#fff 0%,#eef8f1 100%);
+  border-color:#d4eadb;
+  box-shadow:0 8px 22px rgba(35,120,73,.075),0 1px 3px rgba(35,120,73,.035);
+}
+#main .tx-history-panel{
+  background:linear-gradient(145deg,#fff 0%,#f1f7fc 100%);
+  border-color:#dce8f3;
+  box-shadow:0 8px 22px rgba(45,96,151,.065),0 1px 3px rgba(45,96,151,.03);
+}
+#main .regular-tx-panel{
+  background:linear-gradient(145deg,#fff 0%,#f0faf4 100%);
+  border-color:#d9eee1;
+  box-shadow:0 8px 22px rgba(35,120,73,.06),0 1px 3px rgba(35,120,73,.03);
+}
+
+/* Ödemeler: ekleme alanı sıcak altın, ödeme listesi açık mavi */
+#main .split>.panel.add-action-panel{
+  background:linear-gradient(145deg,#fff 0%,#fff7e9 100%);
+  border-color:#f1dfbd;
+  box-shadow:0 8px 22px rgba(154,103,25,.07),0 1px 3px rgba(154,103,25,.03);
+}
+#main .split>.panel:not(.add-action-panel){
+  background:linear-gradient(145deg,#fff 0%,#f3f8fc 100%);
+  border-color:#dce8f3;
+  box-shadow:0 8px 22px rgba(45,96,151,.06),0 1px 3px rgba(45,96,151,.03);
+}
+#main .alert{
+  box-shadow:0 5px 14px rgba(154,103,25,.045);
+}
+#main .alert.danger{box-shadow:0 5px 14px rgba(185,56,52,.055)}
+
+/* Birikim: özet kartları ve araç alanları pastel tonlarla ayrışsın */
+#main .savings-overview-card:nth-child(1){background:linear-gradient(145deg,#fff 0%,#f5f0fc 100%);border-color:#e4d9f3;box-shadow:0 7px 18px rgba(109,80,170,.075)}
+#main .savings-overview-card:nth-child(2){background:linear-gradient(145deg,#fff 0%,#eff6fd 100%);border-color:#d7e6f6;box-shadow:0 7px 18px rgba(45,96,151,.065)}
+#main .savings-overview-card:nth-child(3){background:linear-gradient(145deg,#fff 0%,#fff7e9 100%);border-color:#f0dfbd;box-shadow:0 7px 18px rgba(154,103,25,.065)}
+#main .savings-overview-card:nth-child(4){background:linear-gradient(145deg,#fff 0%,#edf8f5 100%);border-color:#d5ebe4;box-shadow:0 7px 18px rgba(32,119,128,.065)}
+#main .savings-tools-column>.panel.add-action-panel:first-child{background:linear-gradient(145deg,#fff 0%,#f5f0fc 100%);border-color:#e4d9f3;box-shadow:0 8px 20px rgba(109,80,170,.06)}
+#main .savings-tools-column>.panel.add-action-panel:nth-child(2){background:linear-gradient(145deg,#fff 0%,#fff7e9 100%);border-color:#f0dfbd;box-shadow:0 8px 20px rgba(154,103,25,.055)}
+#main .savings-tools-column>.panel:not(.add-action-panel){background:linear-gradient(145deg,#fff 0%,#eef8f8 100%);border-color:#d8ebeb;box-shadow:0 8px 20px rgba(32,119,128,.055)}
+#main .goal.panel{background:linear-gradient(145deg,#fff 0%,#faf7fe 100%);border-color:#e8e0f4;box-shadow:0 7px 18px rgba(109,80,170,.06)}
+#main .saving-history-panel{background:linear-gradient(145deg,#fff 0%,#f1f8f5 100%);border-color:#dcece4;box-shadow:0 8px 22px rgba(35,120,73,.06)}
+#main .loan-records-panel{background:linear-gradient(145deg,#fff 0%,#fff8ed 100%);border-color:#f0e2c8;box-shadow:0 8px 22px rgba(154,103,25,.06)}
+
+/* Raporlar: seçim, grafik ve özet bölümleri birbirinden net ayrışsın */
+#main .report-controls{background:linear-gradient(145deg,#fff 0%,#f2f7fc 100%);border-color:#dce8f3;box-shadow:0 8px 22px rgba(45,96,151,.06)}
+#main .report-chart-panel{background:linear-gradient(145deg,#fff 0%,#f1f9f6 100%);border-color:#dcece5;box-shadow:0 8px 22px rgba(32,119,128,.06)}
+#main .report-breakdown{background:linear-gradient(145deg,#fff 0%,#f7f9fc 100%);border-color:#e0e7ef;box-shadow:0 8px 22px rgba(45,96,151,.05)}
+#main .report-stat-grid .stat{box-shadow:0 7px 18px rgba(30,60,45,.055)}
+
+/* Aile ve profil kartları */
+#main .cloud-panel{background:linear-gradient(145deg,#fff 0%,#eff7f4 100%);border-color:#d8e9e1;box-shadow:0 8px 20px rgba(35,105,70,.055)}
+#main .cloud-subpanel{background:linear-gradient(145deg,#fff 0%,#f6f9fc 100%);border-color:#e1e8ef;box-shadow:0 5px 14px rgba(45,96,151,.045)}
+
+/* Listeler kartların içinde hafifçe ayrışsın; satır düzeni bozulmasın */
+#main .list .item{border-bottom-color:rgba(114,139,127,.18)}
+#main .list .item:hover{background:rgba(226,239,231,.32);border-radius:10px}
+#main .rate{box-shadow:inset 0 1px 0 rgba(255,255,255,.85),0 2px 6px rgba(30,60,45,.025)}
+@media(max-width:800px){
+  #main .panel:not(.report-category-panel){box-shadow:0 5px 15px rgba(28,54,43,.055),0 1px 3px rgba(28,54,43,.025)}
+  #main .panel:hover:not(.report-category-panel){box-shadow:0 5px 15px rgba(28,54,43,.055),0 1px 3px rgba(28,54,43,.025)}
+}
+</style>
+
 </head>
 <body class="auth-pending">
 <div id="authGate" class="auth-gate" aria-live="polite"></div>
