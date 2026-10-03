@@ -706,6 +706,34 @@ body.auth-pending .app,body.auth-required .app{display:none!important}
   .bottom button{font-size:clamp(9.5px,2.65vw,10.5px)!important;letter-spacing:-.25px!important}
   .bottom .ni{font-size:18px!important;line-height:18px!important}
 }
+
+/* Rapor kategori dağılımları: gelir ve gider için belirgin ama yumuşak tonlar */
+.report-category-panel{position:relative;overflow:hidden;border-top:3px solid var(--report-accent);background:linear-gradient(145deg,#fff 0%,var(--report-panel-bg) 100%);border-color:var(--report-border)}
+.report-income-breakdown{--report-accent:#34875b;--report-accent-soft:#e7f5eb;--report-panel-bg:#f7fcf8;--report-border:#cde6d4}
+.report-expense-breakdown{--report-accent:#c65349;--report-accent-soft:#fae9e6;--report-panel-bg:#fff8f6;--report-border:#efd0ca}
+.report-category-panel .report-distribution-head h2{color:var(--report-accent);display:flex;align-items:center;gap:8px}
+.report-category-panel .report-distribution-head h2:before{content:"";width:10px;height:10px;border-radius:50%;background:var(--report-accent);box-shadow:0 0 0 4px var(--report-accent-soft);flex:none}
+.report-category-panel .report-category-filter select{border-color:var(--report-border);background:var(--card);box-shadow:0 1px 2px #1e322d08}
+.report-category-panel .report-category-filter select:focus{outline:2px solid var(--report-accent-soft);border-color:var(--report-accent)}
+.report-category-panel .report-table th{color:var(--report-accent)}
+.report-income-breakdown .report-table tbody tr:nth-child(odd) td{background:#f6fbf7}
+.report-expense-breakdown .report-table tbody tr:nth-child(odd) td{background:#fff7f5}
+.report-category-panel .report-mobile-row{border-bottom-color:var(--report-border)}
+.report-category-panel .report-mobile-row .amount{color:var(--report-accent);background:var(--report-accent-soft);border-radius:8px;padding:5px 8px;font-weight:800;white-space:nowrap}
+.report-category-panel .report-table td:last-child{color:var(--report-accent);font-weight:750}
+
+/* Alt sekmeler: biraz daha büyük, beşli düzende ekrana sığar */
+@media(max-width:800px){
+  .bottom{grid-template-columns:repeat(5,minmax(0,1fr))!important;min-height:72px!important;padding:6px 4px calc(6px + env(safe-area-inset-bottom))!important}
+  .bottom button{min-width:0!important;min-height:58px!important;padding:7px 0!important;font-size:clamp(10px,3.1vw,13px)!important;line-height:1.1!important;font-weight:800!important;letter-spacing:-.25px!important;white-space:nowrap!important;overflow:visible!important}
+  .bottom .ni{font-size:22px!important;line-height:22px!important;margin-bottom:4px!important}
+  main{padding-bottom:calc(118px + env(safe-area-inset-bottom))!important}
+}
+@media(max-width:390px){
+  .bottom button{font-size:clamp(10px,3vw,11.5px)!important;letter-spacing:-.3px!important}
+  .bottom .ni{font-size:20px!important;line-height:20px!important}
+}
+
 </style>
 
 </head>
@@ -1120,7 +1148,8 @@ function reportDistributionPanel(data,type,selectedCategory){
   const rowsHtml=shown.map(r=>`<tr><td>${esc(r.category)}</td><td class="number">${fmt(r.actual)}</td><td class="number">${fmt(r.planned)}</td><td class="number"><b>${fmt(r.total)}</b></td></tr>`).join('');
   const mobileRows=shown.map(r=>`<div class="report-mobile-row"><div class="itemmain"><b>${esc(r.category)}</b><div class="sub">Gerçekleşen ${fmt(r.actual)} · Planlanan ${fmt(r.planned)}</div></div><div class="amount">${fmt(r.total)}</div></div>`).join('');
   const table=shown.length?`<div class="report-table-wrap"><table class="table report-table"><thead><tr><th>Kategori</th><th class="number">Gerçekleşen ${word}</th><th class="number">Planlanan ${word}</th><th class="number">Toplam</th></tr></thead><tbody>${rowsHtml}</tbody></table></div><div class="report-mobile-list">${mobileRows}</div>`:`<div class="empty">Bu dönem için ${word} kategorisi bulunmuyor.</div>`;
-  return `<section class="panel report-breakdown"><div class="panelhead report-distribution-head"><div><h2>${heading}</h2><p>Gerçekleşen ve planlanan tutarları kategoriye göre inceleyin.</p></div><label class="field report-category-filter"><span class="sub">Kategori</span><select aria-label="${heading} kategorisi" onchange="reportSetCategory('${type}',this.value)">${options}</select></label></div>${table}</section>`;
+  const panelTone=isIncome?'report-income-breakdown':'report-expense-breakdown';
+  return `<section class="panel report-breakdown report-category-panel ${panelTone}"><div class="panelhead report-distribution-head"><div><h2>${heading}</h2><p>Gerçekleşen ve planlanan tutarları kategoriye göre inceleyin.</p></div><label class="field report-category-filter"><span class="sub">Kategori</span><select aria-label="${heading} kategorisi" onchange="reportSetCategory('${type}',this.value)">${options}</select></label></div>${table}</section>`;
 }
 function reportYearBreakdown(rows,total){
   const rowHtml=r=>`<tr><td>${r.name}</td><td class="number">${fmt(r.actualIncome)}</td><td class="number">${fmt(r.actualExpense)}</td><td class="number">${fmt(r.plannedIncome)}</td><td class="number">${fmt(r.plannedExpense)}</td><td class="number">${fmt(r.actualIncome-r.actualExpense)}</td></tr>`;
