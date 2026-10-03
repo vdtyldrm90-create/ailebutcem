@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aile-butcem-pwa-v7';
+const CACHE_NAME = 'aile-butcem-pwa-v8';
 const APP_SHELL = [
   './',
   './index.html',
@@ -43,46 +43,46 @@ self.addEventListener('fetch', (event) => {
   // This can help the app shell load after a prior visit, but cloud features need internet.
   if (request.destination === 'script' &&
       (url.hostname === 'cdn.jsdelivr.net' || url.hostname === 'cdnjs.cloudflare.com')) {
+    const cachePromise = caches.open(CACHE_NAME);
+    const refreshPromise = cachePromise.then(cache => fetch(request).then(response => {
+      if (response && (response.ok || response.type === 'opaque')) cache.put(request, response.clone()).catch(() => {});
+      return response;
+    }).catch(() => null));
+    event.waitUntil(refreshPromise.then(() => undefined));
     event.respondWith((async () => {
-      const cache = await caches.open(CACHE_NAME);
-      try {
-        const response = await fetch(request);
-        if (response && (response.ok || response.type === 'opaque')) {
-          cache.put(request, response.clone()).catch(() => {});
-        }
-        return response;
-      } catch (_) {
-        const cached = await cache.match(request);
-        return cached || new Response('Uygulama kitaplığı çevrimdışı kullanılamıyor. İnternet bağlantını açıp tekrar dene.', {
-          status: 503,
-          headers: { 'Content-Type': 'text/plain; charset=utf-8' }
-        });
-      }
+      const cache = await cachePromise;
+      const cached = await cache.match(request);
+      if (cached) return cached;
+      const response = await refreshPromise;
+      return response || new Response('Uygulama kitaplığı çevrimdışı kullanılamıyor. İnternet bağlantını açıp tekrar dene.', {
+        status: 503,
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+      });
     })());
     return;
   }
 
   if (url.origin !== self.location.origin) return;
 
-  // Always check the network for page navigations so deployments update promptly.
+  // Serve the cached app shell immediately, and refresh it in the background.
+  // The active tab is restored by the page, so refreshes return to the current section.
   if (request.mode === 'navigate') {
+    const cachePromise = caches.open(CACHE_NAME);
+    const indexUrl = new URL('./index.html', self.registration.scope).href;
+    const refreshPromise = cachePromise.then(cache => fetch(request).then(response => {
+      if (response && response.ok) cache.put(indexUrl, response.clone()).catch(() => {});
+      return response;
+    }).catch(() => null));
+    event.waitUntil(refreshPromise.then(() => undefined));
     event.respondWith((async () => {
-      try {
-        const response = await fetch(request);
-        if (response && response.ok) {
-          const cache = await caches.open(CACHE_NAME);
-          const indexUrl = new URL('./index.html', self.registration.scope).href;
-          cache.put(indexUrl, response.clone()).catch(() => {});
-        }
-        return response;
-      } catch (_) {
-        const cached = await caches.match(request) ||
-          await caches.match(new URL('./index.html', self.registration.scope).href);
-        return cached || new Response(
-          '<!doctype html><html lang="tr"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aile Bütçem</title><body style="font-family:system-ui;padding:2rem;background:#f7faf9;color:#273238"><h2>Aile Bütçem</h2><p>Uygulama açılabilmek için internet bağlantısı bekliyor. İnternete bağlanıp tekrar dene.</p></body></html>',
-          { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
-        );
-      }
+      const cache = await cachePromise;
+      const cached = await cache.match(indexUrl) || await cache.match(request);
+      if (cached) return cached;
+      const response = await refreshPromise;
+      return response || new Response(
+        '<!doctype html><html lang="tr"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aile Bütçem</title><body style="font-family:system-ui;padding:2rem;background:#f7faf9;color:#273238"><h2>Aile Bütçem</h2><p>Uygulama açılabilmek için internet bağlantısı bekliyor. İnternete bağlanıp tekrar dene.</p></body></html>',
+        { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+      );
     })());
     return;
   }

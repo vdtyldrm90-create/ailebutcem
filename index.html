@@ -300,6 +300,13 @@ form{display:flex;flex-direction:column;gap:11px}.row2{display:grid;grid-templat
 }
 @media(max-width:390px){.savings-overview-card .value{font-size:15px}.savings-overview-card{padding:11px}}
 
+
+.settings-wrap{position:relative;flex:none}
+.settings-menu{position:absolute;right:0;top:calc(100% + 8px);width:min(220px,calc(100vw - 24px));display:grid;gap:3px;padding:7px;background:var(--card);border:1px solid var(--border);border-radius:13px;box-shadow:0 10px 28px rgba(24,45,39,.16);z-index:70}
+.settings-menu[hidden]{display:none!important}
+.settings-menu button{width:100%;display:flex;align-items:center;gap:10px;border:0;background:transparent;color:var(--fg);text-align:left;padding:11px 10px;border-radius:9px;font-size:13px;font-weight:650}
+.settings-menu button:hover,.settings-menu button:focus-visible{background:var(--soft);outline:0}
+.settings-menu-icon{width:24px;flex:none;text-align:center;color:var(--primary);font-size:16px}
 </style>
 
 <style>
@@ -766,7 +773,7 @@ body.auth-pending .app,body.auth-required .app{display:none!important}
 <body class="auth-pending">
 <div id="authGate" class="auth-gate" aria-live="polite"></div>
 <div class="app">
-<header><div class="head"><div class="brand"><div class="logo">₺</div><div><b>Aile Bütçem</b><span>Bütçe · Birikim · Ödemeler</span></div></div><div class="head-actions"><select id="memberSelect" class="profile" aria-label="İşlem profili"></select><button id="installAppBtn" class="install-btn" type="button" onclick="installPwa()" aria-label="Uygulamayı yükle veya ana ekrana ekle" title="Uygulamayı yükle / ana ekrana ekle">⇩</button><button id="familySettingsBtn" class="settings-btn" type="button" onclick="go('aile')" aria-label="Aile ve profil ayarları" title="Aile ve profil ayarları">⚙</button></div></div>
+<header><div class="head"><div class="brand"><div class="logo">₺</div><div><b>Aile Bütçem</b><span>Bütçe · Birikim · Ödemeler</span></div></div><div class="head-actions"><select id="memberSelect" class="profile" aria-label="İşlem profili"></select><div class="settings-wrap"><button id="familySettingsBtn" class="settings-btn" type="button" onclick="toggleSettingsMenu()" aria-label="Ayarlar" title="Ayarlar" aria-haspopup="true" aria-expanded="false">⚙</button><div id="settingsMenu" class="settings-menu" role="menu" hidden><button type="button" role="menuitem" onclick="openFamilySettings()"><span class="settings-menu-icon">👥</span><span>Aile ve Profil</span></button><button type="button" role="menuitem" onclick="closeSettingsMenu();installPwa()"><span class="settings-menu-icon">⇩</span><span>Masaüstüne ekle</span></button></div></div></div></div>
 <nav class="desktop-nav" id="desktopNav"></nav></header>
 <main id="main"></main>
 <nav class="bottom" id="bottomNav"></nav>
@@ -820,7 +827,18 @@ goals:[
 {id:'g1',name:'Hac Birikimi',target:450000,memberId:'m-ahmet',holdings:{TRY:60000,USD:2500,EUR:0,GOLD24:25}},
 {id:'g2',name:'Araba Birikimi',target:1200000,memberId:'m-ayse',holdings:{TRY:180000,USD:0,EUR:3000,GOLD24:0}},
 {id:'g3',name:'Kurban Birikimi',target:35000,memberId:'m-zeynep',holdings:{TRY:14000,USD:0,EUR:0,GOLD24:2}}]});
-let S=JSON.parse(localStorage.getItem(KEY)||'null')||seed(),tab='ozet',txFilter='tumu',payFilter='tumu';
+const ACTIVE_TAB_KEY='aile-butcem-active-tab-v1';
+function readActiveTab(){
+  const allowed=['ozet','islemler','odemeler','birikim','raporlar','aile'];
+  try{const saved=sessionStorage.getItem(ACTIVE_TAB_KEY);if(allowed.includes(saved))return saved}catch(e){}
+  try{const saved=localStorage.getItem(ACTIVE_TAB_KEY);if(allowed.includes(saved))return saved}catch(e){}
+  return 'ozet';
+}
+function rememberActiveTab(value){
+  try{sessionStorage.setItem(ACTIVE_TAB_KEY,value)}catch(e){}
+  try{localStorage.setItem(ACTIVE_TAB_KEY,value)}catch(e){}
+}
+let S=JSON.parse(localStorage.getItem(KEY)||'null')||seed(),tab=readActiveTab(),txFilter='tumu',payFilter='tumu';
 let reportMode='monthly',reportYear=new Date().getFullYear(),reportMonth=new Date().getMonth(),reportIncomeCategory='*',reportExpenseCategory='*';
 let deleteMode={transactions:false,recurringTransactions:false,payments:false,goals:false,movements:false,loans:false};
 let dateFilters={transactions:'month',recurringTransactions:'month',payments:'month',movements:'month',home:'month'};
@@ -983,7 +1001,20 @@ function moneyInAsset(n,asset){
 }
 const tabs=[['ozet','Ana Sayfa','⌂'],['islemler','İşlemler','↕'],['odemeler','Ödemeler','◷'],['birikim','Birikim','◇'],['raporlar','Raporlar','▤']];
 function nav(){document.getElementById('desktopNav').innerHTML=tabs.map(x=>`<button class="navbtn ${tab===x[0]?'active':''}" onclick="go('${x[0]}')">${x[2]} ${x[1]}</button>`).join('');document.getElementById('bottomNav').innerHTML=tabs.map(x=>`<button class="${tab===x[0]?'active':''}" onclick="go('${x[0]}')"><span class="ni">${x[2]}</span>${x[1]}</button>`).join('');const gear=byId('familySettingsBtn');if(gear){gear.classList.toggle('active',tab==='aile');gear.setAttribute('aria-current',tab==='aile'?'page':'false')}}
-function go(t){tab=t;render()}
+function closeSettingsMenu(){
+  const menu=byId('settingsMenu'),button=byId('familySettingsBtn');
+  if(menu)menu.hidden=true;
+  if(button)button.setAttribute('aria-expanded','false');
+}
+function toggleSettingsMenu(){
+  const menu=byId('settingsMenu'),button=byId('familySettingsBtn');
+  if(!menu)return;
+  menu.hidden=!menu.hidden;
+  if(button)button.setAttribute('aria-expanded',menu.hidden?'false':'true');
+}
+function openFamilySettings(){closeSettingsMenu();go('aile')}
+document.addEventListener('click',event=>{if(!event.target.closest('.settings-wrap'))closeSettingsMenu()});
+function go(t){tab=t;rememberActiveTab(t);closeSettingsMenu();render()}
 document.getElementById('memberSelect').onchange=e=>{S.active=e.target.value;save()}
 
 document.addEventListener('paste',e=>{if(e.target&&e.target.matches&&e.target.matches('[data-money]'))setTimeout(()=>formatMoneyInput(e.target),0)},true);
@@ -1282,6 +1313,7 @@ function homeLoansMini(){
 }
 function goLoans(){
   tab='birikim';
+  rememberActiveTab(tab);
   render();
   setTimeout(()=>document.getElementById('loansPanel')?.scrollIntoView({behavior:'smooth',block:'start'}),60);
 }
@@ -2128,7 +2160,7 @@ function showStartupInstallNudge(){
   const title=byId('modalTitle'),body=byId('modalBody');
   if(!title||!body)return;
   title.textContent='Aile Bütçem’i ana ekrana ekle';
-  body.innerHTML=`<div class="stack install-nudge-content"><p>Aile Bütçem’i telefonunda veya bilgisayarında uygulama gibi açmak ister misin?</p><div class="install-nudge-benefits"><span>✓ Ana ekranda kendi simgesi</span><span>✓ Adres çubuğu olmadan uygulama görünümü</span><span>✓ Tek dokunuşla hızlı erişim</span></div><div class="install-nudge-actions"><button type="button" class="primary" onclick="installFromStartupNudge()">Ana ekrana ekle</button><button type="button" class="outline" onclick="dismissStartupInstallNudge()">Şimdi değil</button></div><small>Kurulum onayı cihazında gösterilir. İstediğin zaman üstteki indirme simgesinden tekrar deneyebilirsin.</small></div>`;
+  body.innerHTML=`<div class="stack install-nudge-content"><p>Aile Bütçem’i telefonunda veya bilgisayarında uygulama gibi açmak ister misin?</p><div class="install-nudge-benefits"><span>✓ Ana ekranda kendi simgesi</span><span>✓ Adres çubuğu olmadan uygulama görünümü</span><span>✓ Tek dokunuşla hızlı erişim</span></div><div class="install-nudge-actions"><button type="button" class="primary" onclick="installFromStartupNudge()">Ana ekrana ekle</button><button type="button" class="outline" onclick="dismissStartupInstallNudge()">Şimdi değil</button></div><small>Kurulum onayı cihazında gösterilir. İstediğin zaman sağ üstteki çark menüsünden “Masaüstüne ekle” seçeneğini kullanabilirsin.</small></div>`;
   modal.classList.add('show');
   pwaInstallNudgeShownThisPage=true;
 }
