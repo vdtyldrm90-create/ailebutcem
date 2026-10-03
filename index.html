@@ -291,6 +291,16 @@ form{display:flex;flex-direction:column;gap:11px}.row2{display:grid;grid-templat
 .savings-bottom-grid .panelhead{flex-wrap:wrap}
 .saving-history-panel .list,.loan-records-panel .list{min-height:340px;max-height:none;overflow:visible}
 .savings-bottom-grid .loan-row{align-items:flex-start}
+.saving-movement-item{align-items:flex-start}
+.movement-pl-detail{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:6px;font-size:10px;line-height:1.45;color:var(--muted)}
+.movement-pl-detail span{white-space:normal}
+.movement-pl-detail b{font-size:10px}
+.movement-pl-detail small{display:block;flex-basis:100%;font-size:9px;color:var(--muted)}
+.pl-positive{color:#237849!important}
+.pl-negative{color:#b93834!important}
+.pl-neutral{color:#64748b!important}
+.pl-unknown{color:#91651b!important}
+.savings-total-pl{font-weight:800!important}
 .loan-duration{display:block;color:var(--primary);font-weight:700;margin-top:4px}
 @media(max-width:800px){
   .savings-overview-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
@@ -1261,10 +1271,67 @@ function byId(id){return document.getElementById(id)}
 function fd(s){return new Date(s+'T12:00:00').toLocaleDateString('tr-TR',{day:'2-digit',month:'short',year:'numeric'})}
 function esc(s){return String(s??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]))}
 function member(id){return S.members.find(x=>x.id===id)?.name||'Aile'}
-function holdingsValue(h){return Object.entries(h||{}).reduce((sum,[k,v])=>sum+(Number(v)||0)*(rates[k]||0),0)}
+// What the user could receive by selling/bozdurmak an asset today.
+function currentExitRate(asset){
+  if(!asset||asset==='TRY')return 1;
+  const q=rateQuotes[asset]||{};
+  const value=Number(q.buy??q.value??q.sell??rates[asset]??0);
+  return Number.isFinite(value)&&value>0?value:(Number(rates[asset])||0);
+}
+// What the user would pay to buy the same asset again today.
+function currentPurchaseRate(asset){
+  if(!asset||asset==='TRY')return 1;
+  const q=rateQuotes[asset]||{};
+  const value=Number(q.sell??q.value??q.buy??rates[asset]??0);
+  return Number.isFinite(value)&&value>0?value:(Number(rates[asset])||0);
+}
+function movementCostRate(m){
+  if((m?.asset||'TRY')==='TRY')return 1;
+  const value=Number(m?.costRate);
+  return Number.isFinite(value)&&value>0?value:0;
+}
+// Use FIFO to reduce older purchased lots when an asset is withdrawn.
+// Old movements without an entered purchase price still reduce quantity,
+// but are excluded from profit/loss because their actual cost is unknown.
+function acquisitionLotState(){
+  const timeline=(S.savingMovements||[]).map((m,index)=>({...m,__index:index}));
+  timeline.sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))||String(a.createdAt||'').localeCompare(String(b.createdAt||''))||(b.__index-a.__index));
+  const lotsByKey=new Map(),byMovementId=new Map();
+  for(const m of timeline){
+    const asset=m.asset||'TRY',key=String(m.goalId)+'::'+asset,qty=Math.max(0,Number(m.quantity)||0);
+    if(Number(m.sign)>0){
+      const lot={id:m.id,goalId:m.goalId,asset,remaining:qty,costRate:movementCostRate(m),movement:m};
+      if(!lotsByKey.has(key))lotsByKey.set(key,[]);
+      lotsByKey.get(key).push(lot);
+      byMovementId.set(String(m.id),lot);
+    }else if(Number(m.sign)<0){
+      let toRemove=qty;
+      for(const lot of (lotsByKey.get(key)||[])){
+        if(toRemove<=0)break;
+        const used=Math.min(lot.remaining,toRemove);
+        lot.remaining=Math.max(0,lot.remaining-used);toRemove-=used;
+      }
+    }
+  }
+  return {lotsByKey,byMovementId};
+}
+function trackedProfitLoss(lotState=acquisitionLotState()){
+  let cost=0,value=0,repurchase=0,quantity=0;
+  for(const lots of lotState.lotsByKey.values())for(const lot of lots){
+    if(lot.remaining<=0||!(lot.costRate>0)||lot.asset==='TRY')continue;
+    quantity+=lot.remaining;cost+=lot.remaining*lot.costRate;
+    value+=lot.remaining*currentExitRate(lot.asset);
+    repurchase+=lot.remaining*currentPurchaseRate(lot.asset);
+  }
+  const profit=value-cost;
+  return {cost,value,repurchase,profit,percent:cost>0?profit/cost*100:0,quantity};
+}
+function signedMoney(n){return (n>0?'+':n<0?'−':'')+fmt(Math.abs(Number(n)||0))}
+function signedPercent(n){return (n>0?'+':n<0?'−':'')+fnum(Math.abs(Number(n)||0))+'%'}
+function holdingsValue(h){return Object.entries(h||{}).reduce((sum,[k,v])=>sum+(Number(v)||0)*currentExitRate(k),0)}
 function goalValueInTarget(g){
   const asset=g?.targetAsset||'TRY';
-  const rate=rates[asset]||1;
+  const rate=currentPurchaseRate(asset)||1;
   return holdingsValue(g?.holdings)/rate;
 }
 function goalIsCompleted(g){
@@ -1674,14 +1741,14 @@ async function fetchText(url){
   if(!r.ok)throw new Error('HTTP '+r.status);
   return await r.text();
 }
-function applyCurrencyRates(usdTry,eurTry,source){
+function applyCurrencyRates(usdTry,eurTry,source,spread={}){
   if(usdTry>0){
     rates.USD=usdTry;
-    rateQuotes.USD={...(rateQuotes.USD||{}),label:'Dolar',value:usdTry,suffix:'TL'};
+    rateQuotes.USD={...(rateQuotes.USD||{}),label:'Dolar',value:usdTry,buy:Number(spread.usdBuy)||usdTry,sell:Number(spread.usdSell)||usdTry,suffix:'TL'};
   }
   if(eurTry>0){
     rates.EUR=eurTry;
-    rateQuotes.EUR={...(rateQuotes.EUR||{}),label:'Euro',value:eurTry,suffix:'TL'};
+    rateQuotes.EUR={...(rateQuotes.EUR||{}),label:'Euro',value:eurTry,buy:Number(spread.eurBuy)||eurTry,sell:Number(spread.eurSell)||eurTry,suffix:'TL'};
   }
   if(source)window._fxRateSource=source;
 }
@@ -1710,12 +1777,13 @@ async function fetchTcmbToday(){
   const nodes=[...doc.getElementsByTagName('Currency')];
   const get=(code)=>{
     const n=nodes.find(x=>x.getAttribute('CurrencyCode')===code);
-    if(!n)return 0;
+    if(!n)return {buy:0,sell:0};
     const sell=parseRateNumber(n.getElementsByTagName('ForexSelling')[0]?.textContent);
     const buy=parseRateNumber(n.getElementsByTagName('ForexBuying')[0]?.textContent);
-    return sell||buy;
+    return {buy:buy||sell,sell:sell||buy};
   };
-  return {usd:get('USD'),eur:get('EUR')};
+  const usd=get('USD'),eur=get('EUR');
+  return {usd:usd.sell||usd.buy,eur:eur.sell||eur.buy,usdBuy:usd.buy,usdSell:usd.sell,eurBuy:eur.buy,eurSell:eur.sell};
 }
 async function fetchOpenCurrencyFallback(){
   const urls=[
@@ -1763,11 +1831,11 @@ async function refreshRates(showMessage=false){
   try{
     try{
       const fx=await fetchTcmbToday();
-      if(fx.usd>0&&fx.eur>0){applyCurrencyRates(fx.usd,fx.eur,'TCMB');fxOk=true;fxSource='TCMB';}
+      if(fx.usd>0&&fx.eur>0){applyCurrencyRates(fx.usd,fx.eur,'TCMB',fx);fxOk=true;fxSource='TCMB';}
       else throw new Error('Eksik TCMB kuru');
     }catch(e){
       const fx=await fetchOpenCurrencyFallback();
-      applyCurrencyRates(fx.usd,fx.eur,'Currency API (CC0)');fxOk=true;fxSource='Currency API (CC0)';
+      applyCurrencyRates(fx.usd,fx.eur,'Currency API (CC0)',{usdBuy:fx.usd,usdSell:fx.usd,eurBuy:fx.eur,eurSell:fx.eur});fxOk=true;fxSource='Currency API (CC0)';
     }
     try{
       const gold=await fetchGoldApi();
@@ -1815,7 +1883,7 @@ window.addEventListener('pageshow',()=>{
 });
 window.addEventListener('pagehide',stopRateAutoRefresh);
 
-function ratesPanel(){return `<section class="panel"><div class="panelhead"><div><h2>Güncel Kurlar</h2><p id="rateUpdatedText">${esc(rateUpdated)} · Otomatik veri</p></div></div><div class="rategrid live-rates"><div class="rate"><small>Dolar / TL</small><b>₺${fnum(rateQuotes.USD.value)}</b></div><div class="rate"><small>Euro / TL</small><b>₺${fnum(rateQuotes.EUR.value)}</b></div><div class="rate"><small>22 Ayar Altın</small><b>₺${fnum(rateQuotes.GOLD22.sell)}</b><span class="rate-detail">Gösterge · ₺/gr</span></div><div class="rate"><small>24 Ayar Altın</small><b>₺${fnum(rateQuotes.GOLD24.sell)}</b><span class="rate-detail">Gösterge · ₺/gr</span></div><div class="rate"><small>Çeyrek Altın</small><b>₺${fnum(rateQuotes.CEYREK.sell)}</b><span class="rate-detail">Hesaplanan · 22 ayar</span></div><div class="rate"><small>Yarım Altın</small><b>₺${fnum(rateQuotes.YARIM.sell)}</b><span class="rate-detail">Hesaplanan · 22 ayar</span></div><div class="rate"><small>Tam Altın</small><b>₺${fnum(rateQuotes.TAM.sell)}</b><span class="rate-detail">Hesaplanan · 22 ayar</span></div></div><p class="sub rate-note">Altın fiyatı canlı veri kaynağından otomatik yenilenir. USD ve EUR için TCMB’nin en son yayımladığı günlük gösterge kurlar kullanılır. Sistem arka planda otomatik kontrol yapar.</p></section>`}
+function ratesPanel(){return `<section class="panel"><div class="panelhead"><div><h2>Güncel Kurlar</h2><p id="rateUpdatedText">${esc(rateUpdated)} · Otomatik veri</p></div></div><div class="rategrid live-rates"><div class="rate"><small>Dolar / TL</small><b>₺${fnum(currentPurchaseRate('USD'))}</b><span class="rate-detail">Bozdurma ₺${fnum(currentExitRate('USD'))} · Yeniden alım</span></div><div class="rate"><small>Euro / TL</small><b>₺${fnum(currentPurchaseRate('EUR'))}</b><span class="rate-detail">Bozdurma ₺${fnum(currentExitRate('EUR'))} · Yeniden alım</span></div><div class="rate"><small>22 Ayar Altın</small><b>₺${fnum(currentPurchaseRate('GOLD22'))}</b><span class="rate-detail">Bozdurma ₺${fnum(currentExitRate('GOLD22'))} · TL/gr</span></div><div class="rate"><small>24 Ayar Altın</small><b>₺${fnum(currentPurchaseRate('GOLD24'))}</b><span class="rate-detail">Bozdurma ₺${fnum(currentExitRate('GOLD24'))} · TL/gr</span></div><div class="rate"><small>Çeyrek Altın</small><b>₺${fnum(currentPurchaseRate('CEYREK'))}</b><span class="rate-detail">Bozdurma ₺${fnum(currentExitRate('CEYREK'))} · hesaplanan</span></div><div class="rate"><small>Yarım Altın</small><b>₺${fnum(currentPurchaseRate('YARIM'))}</b><span class="rate-detail">Bozdurma ₺${fnum(currentExitRate('YARIM'))} · hesaplanan</span></div><div class="rate"><small>Tam Altın</small><b>₺${fnum(currentPurchaseRate('TAM'))}</b><span class="rate-detail">Bozdurma ₺${fnum(currentExitRate('TAM'))} · hesaplanan</span></div></div><p class="sub rate-note">Büyük değer aynı miktarı yeniden almak için referans fiyattır; bozdurma değeri altının alış veya dövizin alış göstergesine göre hesaplanır. Altın kaynağı spot fiyat verdiğinden gerçek kuyumcu alış-satış farkı tam yansımayabilir. Fiyatlar gösterge niteliğindedir; gerçek banka/kuyumcu fiyatları farklı olabilir.</p></section>`}
 function days(d){return Math.ceil((new Date(d+'T12:00:00')-new Date(new Date().toDateString()))/86400000)}
 function due(p){let d=days(p.dueDate);return p.status==='odendi'?'<span class="badge ok">Ödendi</span>':d<0?'<span class="badge late">Gecikti</span>':d<=3?'<span class="badge warn">Yaklaşıyor</span>':`<span class="badge">${d} gün</span>`}
 function paymentRow(p,full=false){
@@ -1889,10 +1957,19 @@ function openSavingMoveModal(id,sign){
   showFormModal(sign>0?'Birikim Ekle':'Birikim Çıkar',savingMoveForm(goal,sign));
   const asset=document.getElementById('asset-'+id);
   if(asset)asset.value=goal.targetAsset||'TRY';
+  toggleSavingCostField(id,sign);
+}
+function toggleSavingCostField(id,sign){
+  const asset=byId('asset-'+id)?.value||'TRY',wrap=byId('costRateWrap-'+id),input=byId('costRate-'+id),label=byId('costRateLabel-'+id),hint=byId('costRateHint-'+id);
+  const show=Number(sign)>0&&asset!=='TRY';
+  if(wrap)wrap.style.display=show?'':'none';
+  if(input){input.required=show;input.disabled=!show;if(input.dataset.asset!==asset){input.value='';input.dataset.asset=asset;}input.placeholder='Örn. '+moneyText(currentPurchaseRate(asset));}
+  if(label)label.textContent=`Gerçek alış fiyatı (TL / 1 ${assetLabels[asset]||asset})`;
+  if(hint)hint.textContent=asset.startsWith('GOLD')?'Altın için gram başına; çeyrek, yarım ve tam altın için adet başına ödediğin TL tutarını gir.':`Bir ${assetLabels[asset]||asset} için gerçekten ödediğin TL tutarını gir. Örnek gösterim güncel referans fiyattır.`;
 }
 function savingMoveForm(g,sign){
-  const verb=sign>0?'Ekle':'Çıkar';
-  return `<form class="saving-move-form ${sign>0?'saving-move-add':'saving-move-remove'}" onsubmit="submitSavingMove(event,'${g.id}',${sign})"><div class="field"><label>Birikim Hedefi</label><input value="${esc(g.name)}" readonly></div><div class="row2"><div class="field"><label>Miktar</label><input id="amt-${g.id}" type="number" min="0.001" step="0.001" placeholder="Miktar" required></div><div class="field"><label>Kur Türü</label><select id="asset-${g.id}" aria-label="Kur Türü" class="goal-asset-select">${assetOptions}</select></div><div class="field"><label>Tarih</label><input id="saveDate-${g.id}" type="date" value="${date()}" required></div></div><button class="primary">Birikime ${verb}</button></form>`;
+  const verb=sign>0?'Ekle':'Çıkar',defaultAsset=g.targetAsset||'TRY';
+  return `<form class="saving-move-form ${sign>0?'saving-move-add':'saving-move-remove'}" onsubmit="submitSavingMove(event,'${g.id}',${sign})"><div class="field"><label>Birikim Hedefi</label><input value="${esc(g.name)}" readonly></div><div class="row2"><div class="field"><label>Miktar</label><input id="amt-${g.id}" type="number" min="0.001" step="0.001" placeholder="Miktar" required></div><div class="field"><label>Kur Türü</label><select id="asset-${g.id}" aria-label="Kur Türü" class="goal-asset-select" onchange="toggleSavingCostField('${g.id}',${sign})">${assetOptions}</select></div><div class="field"><label>Tarih</label><input id="saveDate-${g.id}" type="date" value="${date()}" required></div></div><div id="costRateWrap-${g.id}" class="field" style="display:none"><label id="costRateLabel-${g.id}">Gerçek alış fiyatı (TL / birim)</label><input id="costRate-${g.id}" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00"><small id="costRateHint-${g.id}" class="sub">Birim başına gerçekten ödediğin TL tutarını gir.</small></div><div class="sub">Döviz veya altın eklerken gerçek alış fiyatın istenir. Kâr/zarar, güncel tahmini bozdurma değeriyle karşılaştırılır.</div><button class="primary">Birikime ${verb}</button></form>`;
 }
 function submitSavingMove(e,id,sign){e.preventDefault();adjust(id,sign);}
 
@@ -2140,12 +2217,13 @@ function loansPanel(){
 }
 function savings(){
   const total=S.goals.reduce((a,g)=>a+holdingsValue(g.holdings),0);
+  const lotState=acquisitionLotState(),pl=trackedProfitLoss(lotState);
   const history=(S.savingMovements||[]).filter(x=>dateInRange(x.date,dateFilters.movements,window._filterDates?.movements?.start,window._filterDates?.movements?.end)).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const completedGoals=S.goals.filter(goalIsCompleted),activeGoals=S.goals.filter(g=>!goalIsCompleted(g)),shownGoals=savingsFilter==='completed'?completedGoals:activeGoals;
   const loans=S.loans||[],activeGiven=loans.filter(l=>l.direction==='given'&&l.status!=='closed'),activeTaken=loans.filter(l=>l.direction==='taken'&&l.status!=='closed');
   return `<div class="stack savings-page">${title('Birikim Hedefleri','TL, döviz ve altın birikimlerinizi güncel kurla izleyin.')}
     <div class="savings-overview-grid">
-      <section class="panel stat savings-overview-card"><small>Toplam Birikim</small><div class="value">${fmt(total)}</div><small>${activeGoals.length} devam eden hedef</small></section>
+      <section class="panel stat savings-overview-card"><small>Toplam Birikim</small><div class="value">${fmt(total)}</div><small>Bugünkü tahmini bozdurma değeri · ${activeGoals.length} devam eden hedef</small>${pl.cost>0?`<small class="savings-total-pl ${pl.profit>=0?'pl-positive':'pl-negative'}">Takip edilen K/Z: ${signedMoney(pl.profit)} (${signedPercent(pl.percent)})</small>`:''}</section>
       <section class="panel stat savings-overview-card"><small>Verdiğim (Alacağım)</small><div class="value">${fmt(loanTotal('given'))}</div><small>${activeGiven.length} açık kayıt</small></section>
       <section class="panel stat savings-overview-card"><small>Aldığım (Ödeyeceğim)</small><div class="value">${fmt(loanTotal('taken'))}</div><small>${activeTaken.length} açık kayıt</small></section>
       <section class="panel stat savings-overview-card"><small>Net Alacak</small><div class="value">${fmt(loanTotal('given')-loanTotal('taken'))}</div><small>Kurla TL karşılığı</small></section>
@@ -2159,14 +2237,32 @@ function savings(){
       <section class="savings-goals-column"><div class="panelhead" style="margin-bottom:8px"><div><h2>Birikim Hedefleri</h2><p>Hedeflerinizi durumlarına göre görüntüleyin.</p></div>${deleteMode.goals?`<div style="display:flex;gap:6px"><button class="secondary" onclick="cancelDeleteMode('goals')">İptal</button><button class="dangerbtn" onclick="askDelete('goals')" ${deleteSelected.goals.size?'':'disabled'}>Seçili Sil (${deleteSelected.goals.size})</button></div>`:`<button class="secondary" onclick="enterDeleteMode('goals')">Sil</button>`}</div><div class="segment saving-tabs"><button class="${savingsFilter==='active'?'active':''}" onclick="savingsFilter='active';render()">Devam Eden (${activeGoals.length})</button><button class="${savingsFilter==='completed'?'active':''}" onclick="savingsFilter='completed';render()">Tamamlanan (${completedGoals.length})</button></div><section class="goalgrid">${shownGoals.map(g=>goalCard(g)).join('')||empty()}</section></section>
     </div>
     <div class="savings-bottom-grid">
-      <section class="panel saving-history-panel"><div class="panelhead saving-history-head"><div><h2>Birikim Hareket Geçmişi</h2><p>Seçtiğiniz tarih aralığındaki birikim işlemleri.</p></div><div class="saving-history-actions">${dateFilterUI('movements')}${deleteMode.movements?`<div class="saving-history-delete-actions"><button class="secondary" onclick="cancelDeleteMode('movements')">İptal</button><button class="dangerbtn" onclick="askDelete('movements')" ${deleteSelected.movements.size?'':'disabled'}>Seçili Sil (${deleteSelected.movements.size})</button></div>`:`<button class="secondary" onclick="enterDeleteMode('movements')">Sil</button>`}</div></div><div class="list saving-history-list">${history.length?history.map(savingRow).join(''):empty()}</div></section>
+      <section class="panel saving-history-panel"><div class="panelhead saving-history-head"><div><h2>Birikim Hareket Geçmişi</h2><p>Seçtiğiniz tarih aralığındaki birikim işlemleri.</p></div><div class="saving-history-actions">${dateFilterUI('movements')}${deleteMode.movements?`<div class="saving-history-delete-actions"><button class="secondary" onclick="cancelDeleteMode('movements')">İptal</button><button class="dangerbtn" onclick="askDelete('movements')" ${deleteSelected.movements.size?'':'disabled'}>Seçili Sil (${deleteSelected.movements.size})</button></div>`:`<button class="secondary" onclick="enterDeleteMode('movements')">Sil</button>`}</div></div><div class="list saving-history-list">${history.length?history.map(x=>savingRow(x,lotState)).join(''):empty()}</div></section>
       ${loansPanel()}
     </div>
   </div>`;
 }
-function savingRow(x){
-  let g=S.goals.find(g=>g.id===x.goalId),completed=g?goalIsCompleted(g):false;
-  return `<div class="item ${deleteMode.movements?'selectable-item':''}">${deleteMode.movements?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.movements.has(x.id)?'checked':''} onchange="toggleDeleteSelection('movements','${x.id}')"><span></span></label>`:''}<div class="icon ${x.sign>0?'in':'out'}">${x.sign>0?'+':'−'}</div><div class="itemmain"><b>${esc(x.goalName)}</b><div class="sub">${fd(x.date)} · ${assetLabels[x.asset]||x.asset} · Kur/Fiyat: ${fmt(x.rate||0)} · ${esc(member(x.memberId))}${completed?` · <span class="goal-completed-badge">Tamamlandı</span>`:''}</div></div><div class="amount ${x.sign>0?'in':'out'}">${x.sign>0?'+':'−'}${fnum(x.quantity)} ${assetLabels[x.asset]||x.asset}</div></div>`}
+function savingRow(x,lotState=acquisitionLotState()){
+  const g=S.goals.find(g=>g.id===x.goalId),completed=g?goalIsCompleted(g):false,asset=x.asset||'TRY';
+  let detail='';
+  if(Number(x.sign)>0&&asset==='TRY'){
+    detail='<div class="movement-pl-detail pl-neutral">TL birikiminde kur farkı hesaplanmaz.</div>';
+  }else if(Number(x.sign)>0){
+    const lot=lotState.byMovementId.get(String(x.id));
+    if(!(Number(x.costRate)>0)){
+      detail='<div class="movement-pl-detail pl-unknown">Bu eski kayıtta gerçek alış fiyatı tutulmadığından kâr/zarar hesaplanamıyor.</div>';
+    }else if(!lot||lot.remaining<=0){
+      detail=`<div class="movement-pl-detail pl-neutral">Birim alış: ${fmt(x.costRate)} · Bu alımdan kalan miktar yok.</div>`;
+    }else{
+      const remain=lot.remaining,cost=remain*lot.costRate,current=remain*currentExitRate(asset),repurchase=remain*currentPurchaseRate(asset),profit=current-cost,pct=cost>0?profit/cost*100:0;
+      detail=`<div class="movement-pl-detail"><span>Alış: ${fmt(lot.costRate)} / birim</span><span>Kalan maliyet: ${fmt(cost)}</span><span>Bugün bozdurma: ${fmt(current)}</span><span>Bugün yeniden alım: ${fmt(repurchase)}</span><b class="${profit>=0?'pl-positive':'pl-negative'}">K/Z: ${signedMoney(profit)} (${signedPercent(pct)})</b>${remain<Number(x.quantity)?`<small>Kalan miktar: ${fnum(remain)} / ${fnum(x.quantity)} ${assetLabels[asset]||asset} · Çıkarılan miktar en eski alımlardan düşülür.</small>`:''}</div>`;
+    }
+  }else{
+    detail=`<div class="movement-pl-detail pl-neutral">Birikimden çıkarılan miktar: ${fnum(x.quantity)} ${assetLabels[asset]||asset}. Bu hareket için bozdurma fiyatı kaydedilmediğinden gerçekleşen K/Z hesaplanmaz.</div>`;
+  }
+  const rateLine=asset==='TRY'?'TL hareketi':Number(x.sign)>0&&Number(x.costRate)>0?`Alış maliyeti: ${fmt(x.costRate)} / birim`:`Kayıt kuru: ${fmt(x.rate||0)}`;
+  return `<div class="item saving-movement-item ${deleteMode.movements?'selectable-item':''}">${deleteMode.movements?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.movements.has(x.id)?'checked':''} onchange="toggleDeleteSelection('movements','${x.id}')"><span></span></label>`:''}<div class="icon ${x.sign>0?'in':'out'}">${x.sign>0?'+':'−'}</div><div class="itemmain"><b>${esc(x.goalName)}</b><div class="sub">${fd(x.date)} · ${assetLabels[asset]||asset} · ${rateLine} · ${esc(member(x.memberId))}${completed?` · <span class="goal-completed-badge">Tamamlandı</span>`:''}</div>${detail}</div><div class="amount ${x.sign>0?'in':'out'}">${x.sign>0?'+':'−'}${fnum(x.quantity)} ${assetLabels[asset]||asset}</div></div>`;
+}
 function deleteSavingMovement(id){let x=(S.savingMovements||[]).find(m=>m.id===id);if(!x)return;let g=S.goals.find(g=>g.id===x.goalId);if(g){g.holdings[x.asset]=Math.max(0,(g.holdings[x.asset]||0)-x.quantity*x.sign)}S.savingMovements=S.savingMovements.filter(m=>m.id!==id);save()}
 function goalForm(){return `<form class="goal-form" onsubmit="addGoal(event)"><div class="field"><label>Hedef Adı</label><input id="gName" placeholder="Örn: Tatil birikimi" required></div><div class="row2"><div class="field"><label>Hedef Tutarı</label><input id="gTarget" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="0,00" required></div><div class="field"><label>Hedef Kur Türü</label><select id="gAsset">${assetOptions}</select></div><div class="field"><label>Hedefe Başlama Tarihi</label><input id="gStartDate" type="date" value="${date()}" required></div><div class="field"><label>Sahibi</label><select id="gMember">${S.members.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select></div></div><button class="primary">Hedef Oluştur</button></form>`}
 function addGoal(e){e.preventDefault();let target=parseMoney(byId('gTarget')?.value),name=(byId('gName')?.value||'').trim();if(target<=0||!name)return;S.goals.push({id:uid(),name:name,target:target,targetAsset:byId('gAsset')?.value||'TRY',startDate:byId('gStartDate')?.value||date(),completionDate:null,memberId:byId('gMember')?.value||S.active,holdings:{TRY:0,USD:0,EUR:0,GOLD22:0,GOLD24:0,CEYREK:0,YARIM:0,TAM:0}});closeModal();save()}
@@ -2184,7 +2280,23 @@ function goalCard(g,compact=false){
     ${!compact&&!completed?`<div class="goal-actions goal-modal-actions"><button class="primary" onclick="openSavingMoveModal('${g.id}',1)">+ Birikim Ekle</button><button class="outline" onclick="openSavingMoveModal('${g.id}',-1)">Birikim Çıkar</button></div>`:''}
   </article>`
 }
-function adjust(id,sign){let g=S.goals.find(x=>x.id===id),assetEl=byId('asset-'+id),amtEl=byId('amt-'+id),dateEl=byId('saveDate-'+id),a=assetEl?.value,v=Number(amtEl?.value)||0,saveDate=dateEl?.value||date();if(!g||!a||v<=0)return;let beforeTotal=goalValueInTarget(g),qty=sign>0?v:-v;g.holdings[a]=Math.max(0,(g.holdings[a]||0)+qty);let afterTotal=goalValueInTarget(g);S.savingMovements=S.savingMovements||[];S.savingMovements.unshift({id:uid(),goalId:id,goalName:g.name,asset:a,quantity:v,sign:sign,date:saveDate,rate:rates[a]||1,memberId:g.memberId});if(beforeTotal<Number(g.target||0)&&afterTotal>=Number(g.target||0))g.completionDate=saveDate;if(afterTotal<Number(g.target||0))g.completionDate=null;if(amtEl)amtEl.value='';closeModal();save()}
+function adjust(id,sign){
+  let g=S.goals.find(x=>x.id===id),assetEl=byId('asset-'+id),amtEl=byId('amt-'+id),dateEl=byId('saveDate-'+id),costEl=byId('costRate-'+id),a=assetEl?.value,v=Number(amtEl?.value)||0,saveDate=dateEl?.value||date();
+  if(!g||!a||v<=0)return;
+  let costRate=1;
+  if(Number(sign)>0&&a!=='TRY'){
+    costRate=parseRateNumber(costEl?.value);
+    if(!(costRate>0)){alert('Döviz veya altın birikimi için birim başına gerçek alış fiyatını TL olarak gir.');costEl?.focus();return;}
+  }
+  let beforeTotal=goalValueInTarget(g),qty=sign>0?v:-v;
+  g.holdings[a]=Math.max(0,(g.holdings[a]||0)+qty);
+  let afterTotal=goalValueInTarget(g);
+  S.savingMovements=S.savingMovements||[];
+  S.savingMovements.unshift({id:uid(),goalId:id,goalName:g.name,asset:a,quantity:v,sign:sign,date:saveDate,rate:currentPurchaseRate(a),costRate:Number(sign)>0?costRate:null,memberId:g.memberId,createdAt:new Date().toISOString()});
+  if(beforeTotal<Number(g.target||0)&&afterTotal>=Number(g.target||0))g.completionDate=saveDate;
+  if(afterTotal<Number(g.target||0))g.completionDate=null;
+  if(amtEl)amtEl.value='';closeModal();save();
+}
 function delGoal(id){S.goals=S.goals.filter(g=>g.id!==id);save()}
 
 function cloudPayload(){
