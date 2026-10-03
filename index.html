@@ -769,6 +769,34 @@ body.auth-pending .app,body.auth-required .app{display:none!important}
 .install-nudge-content>p{margin:0;color:var(--fg);font-size:14px;line-height:1.55}.install-nudge-benefits{display:grid;gap:8px;padding:12px;border-radius:12px;background:var(--soft);color:var(--primary2);font-size:12px;font-weight:650}.install-nudge-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.install-nudge-actions button{min-height:42px}.install-nudge-content>small{color:var(--muted);font-size:10px;line-height:1.45}@media(max-width:420px){.install-nudge-actions{grid-template-columns:1fr}.install-nudge-content>p{font-size:13px}}
 </style>
 
+
+<style>
+/* Hafif, sekmeye özel vurgu renkleri */
+.desktop-nav .navbtn{display:inline-flex;align-items:center;gap:7px;transition:background .16s ease,color .16s ease}
+.desktop-nav .navicon{font-size:16px;line-height:1;font-weight:800}
+.bottom button .ni{transition:color .16s ease}
+.bottom button.navtab-ozet .ni,.desktop-nav .navtab-ozet .navicon{color:#4b83bd}
+.bottom button.navtab-islemler .ni,.desktop-nav .navtab-islemler .navicon{color:#278252}
+.bottom button.navtab-odemeler .ni,.desktop-nav .navtab-odemeler .navicon{color:#b7791f}
+.bottom button.navtab-birikim .ni,.desktop-nav .navtab-birikim .navicon{color:#795bb5}
+.bottom button.navtab-raporlar .ni,.desktop-nav .navtab-raporlar .navicon{color:#25818a}
+.desktop-nav .navbtn.navtab-ozet.active,.bottom button.navtab-ozet.active{background:#e9f2fb!important;color:#356ea9!important}
+.desktop-nav .navbtn.navtab-islemler.active,.bottom button.navtab-islemler.active{background:#e7f5ec!important;color:#237849!important}
+.desktop-nav .navbtn.navtab-odemeler.active,.bottom button.navtab-odemeler.active{background:#fff3df!important;color:#9a6719!important}
+.desktop-nav .navbtn.navtab-birikim.active,.bottom button.navtab-birikim.active{background:#f0ebfa!important;color:#6d50aa!important}
+.desktop-nav .navbtn.navtab-raporlar.active,.bottom button.navtab-raporlar.active{background:#e6f4f5!important;color:#207780!important}
+.desktop-nav .navbtn.active .navicon{color:inherit}
+.bottom button.active .ni{color:inherit!important}
+/* İşlem geçmişi filtresinde gelir yeşil, gider kırmızı */
+.tx-history-actions .segment button[onclick*="txFilter='gelir'"]{color:#278252!important}
+.tx-history-actions .segment button[onclick*="txFilter='gelir'"]:hover{background:#e7f5ec;color:#237849!important}
+.tx-history-actions .segment button[onclick*="txFilter='gelir'"].active{background:#e0f2e6!important;color:#237849!important;box-shadow:inset 0 0 0 1px #b8e0c6,0 1px 3px #00000008!important}
+.tx-history-actions .segment button[onclick*="txFilter='gider'"]{color:#c44743!important}
+.tx-history-actions .segment button[onclick*="txFilter='gider'"]:hover{background:#fff0ef;color:#b93834!important}
+.tx-history-actions .segment button[onclick*="txFilter='gider'"].active{background:#fde9e7!important;color:#b93834!important;box-shadow:inset 0 0 0 1px #f3c4c0,0 1px 3px #00000008!important}
+@media(max-width:800px){.bottom button{transition:background .16s ease,color .16s ease}.bottom .nav-label{display:block}}
+</style>
+
 </head>
 <body class="auth-pending">
 <div id="authGate" class="auth-gate" aria-live="polite"></div>
@@ -1000,7 +1028,7 @@ function moneyInAsset(n,asset){
   return `${value.toLocaleString('tr-TR',{minimumFractionDigits:0,maximumFractionDigits:3})} ${assetLabels[a]||a}`;
 }
 const tabs=[['ozet','Ana Sayfa','⌂'],['islemler','İşlemler','↕'],['odemeler','Ödemeler','◷'],['birikim','Birikim','◇'],['raporlar','Raporlar','▤']];
-function nav(){document.getElementById('desktopNav').innerHTML=tabs.map(x=>`<button class="navbtn ${tab===x[0]?'active':''}" onclick="go('${x[0]}')">${x[2]} ${x[1]}</button>`).join('');document.getElementById('bottomNav').innerHTML=tabs.map(x=>`<button class="${tab===x[0]?'active':''}" onclick="go('${x[0]}')"><span class="ni">${x[2]}</span>${x[1]}</button>`).join('');const gear=byId('familySettingsBtn');if(gear){gear.classList.toggle('active',tab==='aile');gear.setAttribute('aria-current',tab==='aile'?'page':'false')}}
+function nav(){document.getElementById('desktopNav').innerHTML=tabs.map(x=>`<button class="navbtn navtab-${x[0]} ${tab===x[0]?'active':''}" onclick="go('${x[0]}')"><span class="navicon">${x[2]}</span><span>${x[1]}</span></button>`).join('');document.getElementById('bottomNav').innerHTML=tabs.map(x=>`<button class="navtab-${x[0]} ${tab===x[0]?'active':''}" onclick="go('${x[0]}')"><span class="ni">${x[2]}</span><span class="nav-label">${x[1]}</span></button>`).join('');const gear=byId('familySettingsBtn');if(gear){gear.classList.toggle('active',tab==='aile');gear.setAttribute('aria-current',tab==='aile'?'page':'false')}}
 function closeSettingsMenu(){
   const menu=byId('settingsMenu'),button=byId('familySettingsBtn');
   if(menu)menu.hidden=true;
