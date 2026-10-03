@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aile-butcem-pwa-v11';
+const CACHE_NAME = 'aile-butcem-pwa-v15';
 const APP_SHELL = [
   './',
   './index.html',
@@ -102,4 +102,17 @@ self.addEventListener('fetch', (event) => {
       }
     })());
   }
+});
+
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil((async () => {
+    const target = new URL('./', self.registration.scope).href;
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of windows) {
+      if (client.url.startsWith(self.registration.scope) && 'focus' in client) return client.focus();
+    }
+    return self.clients.openWindow(target);
+  })());
 });

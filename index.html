@@ -306,7 +306,7 @@ form{display:flex;flex-direction:column;gap:11px}.row2{display:grid;grid-templat
 .settings-menu[hidden]{display:none!important}
 .settings-menu button{width:100%;display:flex;align-items:center;gap:10px;border:0;background:transparent;color:var(--fg);text-align:left;padding:11px 10px;border-radius:9px;font-size:13px;font-weight:650}
 .settings-menu button:hover,.settings-menu button:focus-visible{background:var(--soft);outline:0}
-.settings-menu-icon{width:24px;flex:none;text-align:center;color:var(--primary);font-size:16px}
+.settings-menu-icon{width:24px;flex:none;text-align:center;color:var(--primary);font-size:16px}.settings-menu-copy{display:flex;flex-direction:column;gap:2px;min-width:0}.settings-menu-copy small{font-size:10px;line-height:1.25;font-weight:500;color:var(--muted)}
 </style>
 
 <style>
@@ -996,24 +996,74 @@ body.auth-pending .app,body.auth-required .app{display:none!important}
 }
 </style>
 
+
+<style>
+/* Bulut senkronizasyonu sürerken uygulamayı hemen göster; yüklemeyi ince bir bilgi satırına indir. */
+.cache-sync-banner{margin:8px 12px 12px;padding:9px 12px;border:1px solid #dce9e3;border-radius:12px;background:linear-gradient(90deg,#edf7f1,#f3f7fb);color:#567167;font-size:11px;line-height:1.45;box-shadow:0 3px 10px rgba(35,75,55,.035)}
+.family-toast-host{position:fixed;right:12px;bottom:calc(86px + env(safe-area-inset-bottom));z-index:1800;display:flex;flex-direction:column;gap:8px;width:min(360px,calc(100vw - 24px));pointer-events:none}
+.family-change-toast{display:flex;align-items:flex-start;gap:10px;padding:12px 13px;border:1px solid #d9e9df;border-radius:15px;background:rgba(255,255,255,.97);color:#263a31;box-shadow:0 12px 34px rgba(24,55,39,.18);backdrop-filter:blur(12px);pointer-events:auto;animation:familyToastIn .18s ease-out}
+.family-change-toast .toast-bell{width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;border-radius:11px;background:#e5f3e9;color:#26734a;font-size:17px}
+.family-change-toast .toast-copy{flex:1;min-width:0}.family-change-toast .toast-copy b{display:block;font-size:12px;line-height:1.35;margin:1px 0 3px}.family-change-toast .toast-copy p{font-size:12px;line-height:1.4;color:#63746b;margin:0}
+.family-change-toast .toast-close{border:0;background:transparent;color:#7a8981;padding:0 2px;font-size:19px;line-height:1;cursor:pointer}
+@keyframes familyToastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media(min-width:801px){.family-toast-host{bottom:22px}}
+body.cloud-cache-loading #main button,body.cloud-cache-loading #main input,body.cloud-cache-loading #main select,body.cloud-cache-loading #main textarea{pointer-events:none;opacity:.72}
+</style>
+
 </head>
 <body class="auth-pending">
 <div id="authGate" class="auth-gate" aria-live="polite"></div>
 <div class="app">
-<header><div class="head"><div class="brand"><div class="logo">₺</div><div><b>Aile Bütçem</b><span>Bütçe · Birikim · Ödemeler</span></div></div><div class="head-actions"><select id="memberSelect" class="profile" aria-label="İşlem profili"></select><div class="settings-wrap"><button id="familySettingsBtn" class="settings-btn" type="button" onclick="toggleSettingsMenu()" aria-label="Ayarlar" title="Ayarlar" aria-haspopup="true" aria-expanded="false">⚙</button><div id="settingsMenu" class="settings-menu" role="menu" hidden><button type="button" role="menuitem" onclick="openFamilySettings()"><span class="settings-menu-icon">👥</span><span>Aile ve Profil</span></button><button type="button" role="menuitem" onclick="closeSettingsMenu();installPwa()"><span class="settings-menu-icon">⇩</span><span>Masaüstüne ekle</span></button></div></div></div></div>
+<header><div class="head"><div class="brand"><div class="logo">₺</div><div><b>Aile Bütçem</b><span>Bütçe · Birikim · Ödemeler</span></div></div><div class="head-actions"><select id="memberSelect" class="profile" aria-label="İşlem profili"></select><div class="settings-wrap"><button id="familySettingsBtn" class="settings-btn" type="button" onclick="toggleSettingsMenu()" aria-label="Ayarlar" title="Ayarlar" aria-haspopup="true" aria-expanded="false">⚙</button><div id="settingsMenu" class="settings-menu" role="menu" hidden><button type="button" role="menuitem" onclick="openFamilySettings()"><span class="settings-menu-icon">👥</span><span>Aile ve Profil</span></button><button type="button" role="menuitem" onclick="toggleFamilyNotifications()"><span class="settings-menu-icon">🔔</span><span class="settings-menu-copy"><span id="familyNotificationMenuLabel">Telefon bildirimlerini aç</span><small id="familyNotificationMenuStatus">Bu cihazda kapalı</small></span></button><button type="button" role="menuitem" onclick="closeSettingsMenu();installPwa()"><span class="settings-menu-icon">⇩</span><span>Masaüstüne ekle</span></button></div></div></div></div>
 <nav class="desktop-nav" id="desktopNav"></nav></header>
 <main id="main"></main>
 <nav class="bottom" id="bottomNav"></nav>
 </div>
 <div class="modal" id="modal"><div class="modalbox"><div class="modalhead"><b id="modalTitle"></b><button class="close" onclick="closeModal()">×</button></div><div id="modalBody"></div></div></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<div id="familyToastHost" class="family-toast-host" aria-live="polite" aria-atomic="false"></div>
 <script>
 const KEY='aile-butcem-v0-single-v1';
+const CLOUD_CACHE_MARKER_KEY=KEY+'-verified-cloud-cache-v1';
+const CLOUD_STATE_CACHE_PREFIX=KEY+'-verified-cloud-state-v1-';
 const LOCAL_DATA_EXISTED=!!localStorage.getItem(KEY);
 const SUPABASE_URL='https://lakbtousqphmqpzoyzcr.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_N1roEOU-xp89NrnV2X6KIg_RIHjtupY';
-const sb=(window.supabase&&window.supabase.createClient)?window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY):null;
+let sb=(window.supabase&&window.supabase.createClient)?window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY):null;
+let supabaseLoadPromise=null;
+let qrCodeLoadPromise=null;
+const SUPABASE_AUTH_STORAGE_KEY='sb-'+new URL(SUPABASE_URL).hostname.split('.')[0]+'-auth-token';
+function loadExternalScriptOnce(src,marker){
+  return new Promise((resolve,reject)=>{
+    const existing=document.querySelector('script['+marker+']');
+    if(existing){
+      if(existing.dataset.loaded==='1'){resolve();return;}
+      existing.addEventListener('load',()=>resolve(),{once:true});
+      existing.addEventListener('error',()=>reject(new Error('Kitaplık yüklenemedi: '+src)),{once:true});
+      return;
+    }
+    const script=document.createElement('script');
+    script.src=src;script.async=true;script.setAttribute(marker,'');
+    script.addEventListener('load',()=>{script.dataset.loaded='1';resolve();},{once:true});
+    script.addEventListener('error',()=>{script.remove();reject(new Error('Kitaplık yüklenemedi: '+src))},{once:true});
+    document.head.appendChild(script);
+  });
+}
+function ensureSupabaseClient(){
+  if(sb)return Promise.resolve(sb);
+  if(window.supabase&&window.supabase.createClient){sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);return Promise.resolve(sb)}
+  if(!supabaseLoadPromise)supabaseLoadPromise=loadExternalScriptOnce('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2','data-aile-supabase-loader').then(()=>{
+    if(!window.supabase||!window.supabase.createClient)throw new Error('Supabase kitaplığı kullanılamıyor.');
+    sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);return sb;
+  }).catch(err=>{supabaseLoadPromise=null;throw err});
+  return supabaseLoadPromise;
+}
+function ensureQrCodeLibrary(){
+  if(window.QRCode)return Promise.resolve(window.QRCode);
+  if(!qrCodeLoadPromise)qrCodeLoadPromise=loadExternalScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js','data-aile-qrcode-loader').then(()=>{
+    if(!window.QRCode)throw new Error('QR kitaplığı kullanılamıyor.');return window.QRCode;
+  }).catch(err=>{qrCodeLoadPromise=null;throw err});
+  return qrCodeLoadPromise;
+}
 let cloud={initialized:false,session:null,user:null,member:null,family:null,roster:[],loading:false,busy:false,syncReady:false,channel:null,saveTimer:null,writeInFlight:false,writeAgain:false,lastCloudJson:'',pendingWriteJson:'',pendingRemoteState:null,message:'',messageType:'',inviteToken:'',inviteUrl:'',handledUserId:undefined,localPending:false,authView:'login'};
 let pendingInviteToken='';
 let pendingInviteFamilyName='';
@@ -1022,7 +1072,7 @@ let pwaInstallCompleted=!!(window.matchMedia&&window.matchMedia('(display-mode: 
 const PWA_INSTALL_NUDGE_KEY='aile-butcem-install-nudge-until-v1';
 let pwaInstallNudgeTimer=null;
 let pwaInstallNudgeShownThisPage=false;
-try{const initialInviteParams=new URLSearchParams(window.location.search);pendingInviteToken=(initialInviteParams.get('invite')||'').trim();pendingInviteFamilyName=(initialInviteParams.get('family')||'').trim();if(pendingInviteToken)cloud.authView='signup'}catch(e){}
+try{const initialInviteParams=new URLSearchParams(window.location.search);pendingInviteToken=(initialInviteParams.get('invite')||'').trim();pendingInviteFamilyName=(initialInviteParams.get('family')||'').trim();if(pendingInviteToken)cloud.authView='invite-choice'}catch(e){}
 window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();deferredInstallPrompt=event;scheduleStartupInstallNudge(1400);});
 window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;pwaInstallCompleted=true;hideStartupInstallNudge();setCloudMessage('Aile Bütçem cihazına yüklendi.','success');});
 let rates={TRY:1,USD:49.0170,EUR:55.5892,GOLD22:6191.826,GOLD24:6587.048,CEYREK:11170.053,YARIM:22340.107,TAM:44680.213};
@@ -1236,6 +1286,7 @@ function closeSettingsMenu(){
 function toggleSettingsMenu(){
   const menu=byId('settingsMenu'),button=byId('familySettingsBtn');
   if(!menu)return;
+  refreshNotificationMenuLabel();
   menu.hidden=!menu.hidden;
   if(button)button.setAttribute('aria-expanded',menu.hidden?'false':'true');
 }
@@ -1287,13 +1338,25 @@ function renderAuthGate(){
     return true;
   }
   if(cloud.session){
+    const cachedSafe=canUseVerifiedCloudCache();
     if(cloud.loading||(cloud.busy&&(!cloud.member||!cloud.syncReady))){
+      if(cachedSafe){
+        document.body.classList.remove('auth-pending','auth-required');
+        gate.innerHTML='';
+        return false;
+      }
       document.body.classList.add('auth-pending');
       document.body.classList.remove('auth-required');
       gate.innerHTML=`<div class="auth-gate-wrap"><div class="auth-brand-mark" style="margin:0 auto 15px">₺</div><section class="auth-card" style="text-align:center"><h1>Aile verileri hazırlanıyor</h1><p class="auth-intro">Hesabın ve aile bağlantın güvenli şekilde kontrol ediliyor. Lütfen bekle.</p><div class="auth-loading-inline">${esc(cloud.message||'Ortak aile alanı yükleniyor…')}</div></section></div>`;
       return true;
     }
     if(!cloud.member||!cloud.syncReady){
+      // Ağ hatasında daha önce doğrulanmış, aynı kullanıcıya ait veriyi salt-okunur şekilde göster.
+      if(cachedSafe&&cloud.messageType==='error'){
+        document.body.classList.remove('auth-pending','auth-required');
+        gate.innerHTML='';
+        return false;
+      }
       document.body.classList.remove('auth-pending');
       document.body.classList.add('auth-required');
       const title=cloud.member?'Ortak aile verileri bekleniyor':'Aile bağlantını tamamla';
@@ -1312,8 +1375,16 @@ function renderAuthGate(){
   const message=cloud.message?`<div class="auth-message ${esc(cloud.messageType||'')}">${esc(cloud.message)}</div>`:'';
   const signup=cloud.authView==='signup';
   const guide=cloud.authView==='guide';
+  const inviteChoice=cloud.authView==='invite-choice'&&!!pendingInviteToken;
   let form='';
-  if(guide){
+  if(inviteChoice){
+    const invitedFamilyName=pendingInviteFamilyName||'davet edilen aile';
+    form=`<h1>Aile davetin hazır</h1><p class="auth-intro">${esc(invitedFamilyName)} ailesine katılmak için devam et. Hesabın varsa giriş yap; henüz hesabın yoksa yeni hesap oluştur. Davet bilgisi seçim boyunca korunacak.</p>${message}
+      <button type="button" class="primary auth-submit" onclick="showLoginScreen()">Hesabım var · Giriş yap</button>
+      <button type="button" class="outline auth-secondary" onclick="showSignUpScreen()">Yeni hesap oluştur</button>
+      <button type="button" class="ghost auth-secondary" onclick="showGuideScreen()">Kullanım rehberi</button>
+      <p class="auth-footnote">Yeni hesap oluşturursan aile adı girmen gerekmez. Kayıt tamamlanınca bu davetin ait olduğu aileye katılacaksın.</p>`;
+  }else if(guide){
     form=`<h1>Kullanım rehberi</h1><p class="auth-intro">Aile Bütçem'i kurmak ve aile bireyleriyle ortak kullanmak için bu kısa rehberi izleyebilirsin.</p>${message}
       <div class="auth-guide-list">
         <div class="auth-guide-step"><b>1. Hesap oluştur</b><p>Aile içinde görünecek adını, e-posta adresini, şifreni ve kendi aileni kuruyorsan aile adını gir. E-posta onayı istenirse gelen bağlantıyı aç.</p></div>
@@ -1322,7 +1393,7 @@ function renderAuthGate(){
         <div class="auth-guide-step"><b>4. Davetle katıl</b><p>Davet bağlantısını veya QR kodunu açtığında kayıt ekranı otomatik açılır. Davet edilen ailenin adı gösterilir; aile adı girmen gerekmez. Görünen adını, e-posta adresini ve şifreni yaz. Kurucunun ortak kayıtları hesabına yüklenir.</p></div>
         <div class="auth-guide-step"><b>5. Birlikte kullan</b><p>Gelir-gider, planlı ödeme, birikim, elden borç ve raporlar aile üyeleri arasında internet üzerinden eşitlenir. Verileri görmek ve eşitlemek için internet bağlantısı gerekir.</p></div>
       </div>
-      <div class="auth-guide-actions"><button type="button" class="primary" onclick="showLoginScreen()">Giriş ekranına dön</button><button type="button" class="outline" onclick="showSignUpScreen()">Yeni hesap oluştur</button><button type="button" class="ghost" onclick="installPwa()">Uygulamayı yükle / kısayol ekle</button></div>`;
+      <div class="auth-guide-actions"><button type="button" class="primary" onclick="${pendingInviteToken?'showInviteChoiceScreen()':'showLoginScreen()'}">${pendingInviteToken?'Davet seçeneklerine dön':'Giriş ekranına dön'}</button><button type="button" class="outline" onclick="showSignUpScreen()">Yeni hesap oluştur</button><button type="button" class="ghost" onclick="installPwa()">Uygulamayı yükle / kısayol ekle</button></div>`;
   }else if(signup){
     const inviteAttached=!!pendingInviteToken;
     const inviteNote=inviteAttached?`<div class="auth-message">Davet bağlantısı algılandı. Yeni bir aile oluşturulmayacak; kayıt tamamlanınca mevcut aileye katılacaksın.</div>`:'';
@@ -1337,12 +1408,14 @@ function renderAuthGate(){
       <div class="field"><label for="signupPassword">Şifre</label><input id="signupPassword" name="password" type="password" autocomplete="new-password" minlength="6" placeholder="En az 6 karakter" required></div>
       <div class="field"><label for="signupPasswordConfirm">Şifreyi tekrar gir</label><input id="signupPasswordConfirm" name="passwordConfirm" type="password" autocomplete="new-password" minlength="6" placeholder="Şifreni tekrar yaz" required></div>
       <button class="primary auth-submit" ${cloud.busy?'disabled':''}>${cloud.busy?'Lütfen bekleyin…':'Hesap Oluştur'}</button>
-      <button type="button" class="outline auth-secondary" onclick="showLoginScreen()" ${cloud.busy?'disabled':''}>Giriş ekranına dön</button>
+      <button type="button" class="outline auth-secondary" onclick="${inviteAttached?'showInviteChoiceScreen()':'showLoginScreen()'}" ${cloud.busy?'disabled':''}>${inviteAttached?'Davet seçeneklerine dön':'Giriş ekranına dön'}</button>
       <button type="button" class="ghost auth-secondary" onclick="showGuideScreen()">Kullanım Rehberi</button>
       <button type="button" class="ghost auth-secondary" onclick="installPwa()">Uygulamayı yükle / kısayol ekle</button>
     </form><p class="auth-footnote">Kayıttan sonra e-posta onayı istenebilir. Gelen onay bağlantısını açıp giriş yapabilirsin.</p>`;
   }else{
-    form=`<h1>Hesabına giriş yap</h1><p class="auth-intro">Aile bütçeni görüntülemek ve aile bireyleriyle ortak kullanmak için giriş yap.</p>${message}<form onsubmit="cloudSignIn(event)">
+    const loginIntro=pendingInviteToken?`Davet edilen ${esc(pendingInviteFamilyName||'aile')} ailesine katılmak için mevcut hesabınla giriş yap.`:'Aile bütçeni görüntülemek ve aile bireyleriyle ortak kullanmak için giriş yap.';
+    const loginInviteNote=pendingInviteToken?`<div class="auth-message">Davet bilgisi korunuyor. Giriş yaptıktan sonra bu aile daveti kontrol edilecek.</div>`:'';
+    form=`<h1>Hesabına giriş yap</h1><p class="auth-intro">${loginIntro}</p>${message}${loginInviteNote}<form onsubmit="cloudSignIn(event)">
       <div class="field"><label for="cloudEmail">E-posta adresi</label><input id="cloudEmail" name="email" type="email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" placeholder="ornek@eposta.com" style="text-transform:none" required></div>
       <div class="field"><label for="cloudPassword">Şifre</label><input id="cloudPassword" name="password" type="password" autocomplete="current-password" minlength="6" placeholder="Şifren" required></div>
       <button class="primary auth-submit" ${cloud.busy?'disabled':''}>${cloud.busy?'Lütfen bekleyin…':'Giriş Yap'}</button>
@@ -1356,12 +1429,20 @@ function renderAuthGate(){
 }
 function render(){
   const authBlocked=renderAuthGate();
-  if(authBlocked||!cloud.initialized||!cloud.session||!cloud.member||!cloud.syncReady)return;
+  const cachedSafe=canUseVerifiedCloudCache();
+  if(authBlocked||!cloud.initialized||!cloud.session||((!cloud.member||!cloud.syncReady)&&!cachedSafe))return;
+  const showCacheBanner=cachedSafe&&(!cloud.member||!cloud.syncReady||cloud.loading);
+  document.body.classList.toggle('cloud-cache-loading',showCacheBanner);
   document.getElementById('memberSelect').innerHTML=S.members.map(m=>`<option value="${m.id}" ${m.id===S.active?'selected':''}>${esc(m.name)}</option>`).join('');
   nav();
   let m=document.getElementById('main');
   m.innerHTML=tab==='ozet'?home():tab==='islemler'?transactions():tab==='odemeler'?payments():tab==='birikim'?savings():tab==='raporlar'?reports():family();
+  if(showCacheBanner){
+    const note=cloud.messageType==='error'?'Bağlantı kurulamadı; son kayıtlı görünüm gösteriliyor. İnternet geldiğinde yeniden açıp eşitleyebilirsin.':'Son kayıtlı görünüm gösteriliyor; aile verileri arka planda eşitleniyor…';
+    m.insertAdjacentHTML('afterbegin',`<div class="cache-sync-banner" role="status">${esc(note)}</div>`);
+  }
   if(tab==='aile'&&cloud.inviteUrl)setTimeout(renderCloudQr,0);
+  refreshNotificationMenuLabel();
 }
 function reportSetMode(mode){reportMode=mode==='yearly'?'yearly':'monthly';render()}
 function reportSetYear(year){const n=Number(year);if(Number.isFinite(n))reportYear=n;render()}
@@ -2128,6 +2209,70 @@ function rememberLocalBackup(){
   }catch(e){console.warn('Yerel yedek oluşturulamadı',e)}
 }
 function setCloudMessage(message,type=''){cloud.message=message||'';cloud.messageType=type;}
+function notificationPreferenceKey(){return 'aile-butcem-notifications-v1-'+String(cloud.user?.id||'anonymous')}
+function familyNotificationsEnabled(){return !!(cloud.user?.id&&('Notification' in window)&&Notification.permission==='granted'&&localStorage.getItem(notificationPreferenceKey())==='1')}
+function refreshNotificationMenuLabel(){
+  const label=byId('familyNotificationMenuLabel'),status=byId('familyNotificationMenuStatus'),enabled=familyNotificationsEnabled();
+  if(label)label.textContent=enabled?'Telefon bildirimlerini kapat':'Telefon bildirimlerini aç';
+  if(status)status.textContent=!('Notification' in window)?'Bu tarayıcı desteklemiyor':Notification.permission==='denied'?'Tarayıcı izni kapalı':enabled?'Bu cihazda açık':'Bu cihazda kapalı';
+}
+async function toggleFamilyNotifications(){
+  closeSettingsMenu();
+  if(!cloud.user?.id){setCloudMessage('Bildirim ayarları için önce giriş yap.','error');render();return}
+  const key=notificationPreferenceKey();
+  if(familyNotificationsEnabled()){
+    localStorage.setItem(key,'0');setCloudMessage('Telefon bildirimleri bu cihazda kapatıldı. Uygulama içi bildirimler açık kalır.','success');render();return;
+  }
+  if(!('Notification' in window)){setCloudMessage('Bu tarayıcı telefon bildirimi desteklemiyor. Uygulama açıkken aile değişiklikleri ekranda görünür.','error');render();return}
+  let permission=Notification.permission;
+  if(permission==='default'){
+    try{permission=await Notification.requestPermission()}catch(e){permission='denied'}
+  }
+  if(permission!=='granted'){
+    setCloudMessage(permission==='denied'?'Bildirim izni tarayıcı ayarlarında kapalı. Site izinlerinden telefon bildirimlerine izin verebilirsin.':'Bildirim izni verilmedi. Uygulama içi bildirimler açık kalır.','error');render();return;
+  }
+  localStorage.setItem(key,'1');setCloudMessage('Telefon bildirimleri bu cihazda açıldı. Diğer aile üyeleri de kendi cihazlarında açmalıdır.','success');render();
+}
+function showFamilyChangeToast(actor,description){
+  const host=byId('familyToastHost');if(!host)return;
+  const toast=document.createElement('div');toast.className='family-change-toast';
+  toast.innerHTML=`<div class="toast-bell" aria-hidden="true">🔔</div><div class="toast-copy"><b>${esc(actor)} · Aile güncellemesi</b><p>${esc(description)}</p></div><button class="toast-close" type="button" aria-label="Bildirimi kapat">×</button>`;
+  toast.querySelector('.toast-close').addEventListener('click',()=>toast.remove());
+  host.prepend(toast);
+  while(host.children.length>3)host.lastElementChild.remove();
+  setTimeout(()=>toast.remove(),7500);
+}
+function describeFamilyChange(before,after){
+  const oldState=before||{},newState=after||{};
+  const rules=[
+    ['loans','elden borç'],['savingMovements','birikim hareketi'],['payments','planlı ödeme'],
+    ['recurringTransactions','düzenli gelir/gider planı'],['transactions','gelir/gider işlemi'],['goals','birikim hedefi']
+  ];
+  for(const [key,label] of rules){
+    const a=Array.isArray(oldState[key])?oldState[key]:[],b=Array.isArray(newState[key])?newState[key]:[];
+    if(b.length>a.length)return `Yeni ${label} ekledi.`;
+    if(b.length<a.length)return `${label} kaydını sildi veya kaldırdı.`;
+    if(stableStringify(a)!==stableStringify(b))return `${label} kayıtlarını güncelledi.`;
+  }
+  return 'Ortak aile kayıtlarını güncelledi.';
+}
+function maybeShowSystemFamilyNotification(actor,description){
+  if(!familyNotificationsEnabled())return;
+  if(document.visibilityState==='visible'&&document.hasFocus())return;
+  const title='Aile Bütçem';
+  const options={body:`${actor}: ${description}`,icon:'./icon-192.png',badge:'./icon-192.png',tag:`family-change-${cloud.family?.id||'family'}-${Date.now()}`,data:{url:location.href}};
+  const fallback=()=>{try{new Notification(title,options)}catch(e){console.warn('Sistem bildirimi gösterilemedi',e)}};
+  if('serviceWorker' in navigator)navigator.serviceWorker.ready.then(reg=>reg.showNotification(title,options)).catch(fallback);else fallback();
+}
+function notifyFamilyChange(updatedBy,incoming){
+  if(!updatedBy||updatedBy===cloud.user?.id)return;
+  const member=cloud.roster.find(m=>m.user_id===updatedBy);
+  const actor=member?.display_name||'Bir aile üyesi';
+  const description=describeFamilyChange(S,incoming);
+  showFamilyChangeToast(actor,description);
+  maybeShowSystemFamilyNotification(actor,description);
+}
+
 function cloudErrorText(error){
   const raw=String(error?.message||error?.error_description||error||'Bilinmeyen hata');
   if(/Invalid login credentials/i.test(raw))return 'E-posta veya şifre hatalı.';
@@ -2144,6 +2289,83 @@ function persistLocalOnly(){
   S.rateData={updated:rateUpdated,quotes:rateQuotes};
   localStorage.setItem(KEY,JSON.stringify(S));
 }
+// Yalnızca daha önce doğrulanmış aynı kullanıcı/aile önbelleğini anında göster.
+// Böylece başka bir hesap, bu cihazda kalan önceki ailenin verilerini göremez.
+function cloudStateCacheKey(userId){return CLOUD_STATE_CACHE_PREFIX+String(userId||'')}
+function readVerifiedCloudStateCache(userId){
+  if(!userId)return null;
+  try{
+    const snapshot=JSON.parse(localStorage.getItem(cloudStateCacheKey(userId))||'null');
+    if(!snapshot||snapshot.userId!==userId||!snapshot.familyId||String(snapshot.familyId).startsWith('local-'))return null;
+    if(snapshot.state?.family?.id!==snapshot.familyId)return null;
+    if(!snapshot.member||snapshot.member.user_id!==userId||snapshot.member.family_id!==snapshot.familyId)return null;
+    if(!snapshot.family||snapshot.family.id!==snapshot.familyId)return null;
+    return snapshot;
+  }catch(e){return null}
+}
+function restoreVerifiedCloudStateCache(user,sessionObject=null){
+  const snapshot=readVerifiedCloudStateCache(user?.id);
+  if(!snapshot)return false;
+  try{
+    S=JSON.parse(JSON.stringify(snapshot.state));
+    S.members=Array.isArray(S.members)?S.members:[];
+    S.transactions=Array.isArray(S.transactions)?S.transactions:[];
+    S.recurringTransactions=Array.isArray(S.recurringTransactions)?S.recurringTransactions:[];
+    S.payments=Array.isArray(S.payments)?S.payments:[];
+    S.goals=Array.isArray(S.goals)?S.goals:[];
+    S.savingMovements=Array.isArray(S.savingMovements)?S.savingMovements:[];
+    S.loans=Array.isArray(S.loans)?S.loans:[];
+    S.family={id:snapshot.familyId,name:snapshot.family.name||S.family?.name||'Ailem',inviteToken:''};
+    S.rateData=S.rateData||{updated:rateUpdated,quotes:JSON.parse(JSON.stringify(rateQuotes))};
+    if(!S.members.some(m=>m.id===snapshot.member.profile_id))S.members.push({id:snapshot.member.profile_id,name:snapshot.member.display_name||'Aile üyesi'});
+    if(!S.members.some(m=>m.id===S.active))S.active=snapshot.member.profile_id;
+    cloud.initialized=true;cloud.session=sessionObject||{user};cloud.user=user;cloud.member=snapshot.member;cloud.family=snapshot.family;cloud.roster=Array.isArray(snapshot.roster)?snapshot.roster:[];cloud.loading=true;cloud.syncReady=false;
+    if(S.rateData?.quotes){Object.assign(rateQuotes,S.rateData.quotes);Object.keys(rates).forEach(k=>{if(k==='TRY')return;const q=rateQuotes[k];if(q){const value=Number(q.value??q.sell);if(Number.isFinite(value)&&value>0)rates[k]=value}})}
+    rateUpdated=S.rateData.updated||rateUpdated;
+    localStorage.setItem(KEY,JSON.stringify(S));
+    localStorage.setItem(CLOUD_CACHE_MARKER_KEY,JSON.stringify({userId:user.id,familyId:snapshot.familyId,verifiedAt:snapshot.verifiedAt||Date.now()}));
+    return true;
+  }catch(e){console.warn('Doğrulanmış aile önbelleği açılamadı',e);return false}
+}
+function readVerifiedCloudCacheMarker(){
+  try{return JSON.parse(localStorage.getItem(CLOUD_CACHE_MARKER_KEY)||'null')}catch(e){return null}
+}
+function canUseVerifiedCloudCache(){
+  const marker=readVerifiedCloudCacheMarker();
+  return !!(cloud.user?.id && marker?.userId===cloud.user.id && marker?.familyId && S.family?.id===marker.familyId && !String(marker.familyId).startsWith('local-') && localStorage.getItem(KEY));
+}
+function rememberVerifiedCloudCache(){
+  if(!cloud.user?.id||!cloud.member||!cloud.family?.id||!S.family?.id||S.family.id!==cloud.family.id||String(cloud.family.id).startsWith('local-'))return;
+  const verifiedAt=Date.now();
+  try{
+    localStorage.setItem(CLOUD_CACHE_MARKER_KEY,JSON.stringify({userId:cloud.user.id,familyId:cloud.family.id,verifiedAt}));
+    localStorage.setItem(cloudStateCacheKey(cloud.user.id),JSON.stringify({
+      userId:cloud.user.id,familyId:cloud.family.id,verifiedAt,state:S,
+      member:{family_id:cloud.member.family_id,user_id:cloud.member.user_id,profile_id:cloud.member.profile_id,display_name:cloud.member.display_name,role:cloud.member.role,joined_at:cloud.member.joined_at},
+      family:{id:cloud.family.id,name:cloud.family.name,owner_id:cloud.family.owner_id,created_at:cloud.family.created_at},
+      roster:Array.isArray(cloud.roster)?cloud.roster:[]
+    }));
+  }catch(e){console.warn('Aile önbelleği güncellenemedi',e)}
+}
+function forgetVerifiedCloudCache(){
+  try{localStorage.removeItem(CLOUD_CACHE_MARKER_KEY)}catch(e){}
+}
+// Açılış optimizasyonu: yalnızca Supabase'in yerel oturumundaki kullanıcı, son doğrulanmış aile önbelleğiyle eşleşiyorsa ekranı anında göster.
+function bootstrapVerifiedCachedView(){
+  let storedRaw=null;
+  try{storedRaw=localStorage.getItem(SUPABASE_AUTH_STORAGE_KEY)}catch(e){}
+  if(!storedRaw){cloud.initialized=true;return}
+  let stored=null;
+  try{stored=JSON.parse(storedRaw)}catch(e){}
+  const cachedUser=stored?.user||stored?.currentSession?.user||stored?.session?.user||null;
+  if(cachedUser?.id&&restoreVerifiedCloudStateCache(cachedUser))return;
+  const marker=readVerifiedCloudCacheMarker();
+  const safe=!!(cachedUser?.id&&marker?.userId===cachedUser.id&&marker?.familyId&&S.family?.id===marker.familyId&&localStorage.getItem(KEY));
+  if(safe){
+    cloud.initialized=true;cloud.session={user:cachedUser};cloud.user=cachedUser;cloud.loading=true;
+  }
+}
+
 function applySharedState(data,preferredActive=null){
   const oldActive=preferredActive||S.active;
   const localRates=S.rateData||{updated:rateUpdated,quotes:rateQuotes};
@@ -2174,34 +2396,41 @@ function teardownCloudChannel(){
   if(cloud.channel&&sb){try{sb.removeChannel(cloud.channel)}catch(e){}}
   cloud.channel=null;
 }
+function handleRemoteFamilyState(payload){
+  const incoming=payload?.new?.state;
+  if(!incoming||typeof incoming!=='object')return;
+  const incomingJson=stableStringify(incoming);
+  if(incomingJson===cloud.lastCloudJson||incomingJson===cloud.pendingWriteJson)return;
+  const wasReady=cloud.syncReady;
+  if(wasReady){notifyFamilyChange(payload?.new?.updated_by,incoming)}
+  if(!cloud.syncReady){
+    if(!Object.keys(incoming).length)return;
+    rememberLocalBackup();
+    applySharedState(incoming,cloud.member?.profile_id);
+    cloud.lastCloudJson=incomingJson;cloud.syncReady=true;
+    rememberVerifiedCloudCache();
+    setCloudMessage('Aile verileri hazır. Ortak kayıtlar yüklendi.','success');
+    render();return;
+  }
+  if(cloud.localPending||cloud.writeInFlight||cloud.saveTimer||document.getElementById('modal')?.classList.contains('show')){
+    cloud.pendingRemoteState=incoming;
+    setCloudMessage('Başka bir cihazda değişiklik yapıldı. Formu tamamladıktan sonra güncel veriler eşitlenecek.');
+    return;
+  }
+  applySharedState(incoming);
+  cloud.lastCloudJson=incomingJson;
+  rememberVerifiedCloudCache();
+  setCloudMessage('Aile verileri eşitlendi.','success');
+  render();
+}
+
 function setupCloudRealtime(){
   if(!sb||!cloud.family?.id)return;
   teardownCloudChannel();
   const fid=cloud.family.id;
   cloud.channel=sb.channel('family-sync-'+fid)
-    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'family_state',filter:'family_id=eq.'+fid},payload=>{
-      const incoming=payload?.new?.state;
-      if(!incoming||typeof incoming!=='object')return;
-      const incomingJson=stableStringify(incoming);
-      if(incomingJson===cloud.lastCloudJson||incomingJson===cloud.pendingWriteJson)return;
-      if(!cloud.syncReady){
-        if(!Object.keys(incoming).length)return;
-        rememberLocalBackup();
-        applySharedState(incoming,cloud.member?.profile_id);
-        cloud.lastCloudJson=incomingJson;cloud.syncReady=true;
-        setCloudMessage('Aile verileri hazır. Ortak kayıtlar yüklendi.','success');
-        render();return;
-      }
-      if(cloud.localPending||cloud.writeInFlight||cloud.saveTimer||document.getElementById('modal')?.classList.contains('show')){
-        cloud.pendingRemoteState=incoming;
-        setCloudMessage('Başka bir cihazda değişiklik yapıldı. Formu tamamladıktan sonra güncel veriler eşitlenecek.');
-        return;
-      }
-      applySharedState(incoming);
-      cloud.lastCloudJson=incomingJson;
-      setCloudMessage('Aile verileri eşitlendi.','success');
-      render();
-    })
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'family_state',filter:'family_id=eq.'+fid},handleRemoteFamilyState)
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'family_state',filter:'family_id=eq.'+fid},handleRemoteFamilyState)
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'families',filter:'id=eq.'+fid},payload=>{
       if(payload?.new?.name){cloud.family.name=payload.new.name;S.family={id:fid,name:payload.new.name,inviteToken:''};persistLocalOnly();render();}
     })
@@ -2220,6 +2449,7 @@ async function syncCloudNow(){
   cloud.writeInFlight=false;cloud.pendingWriteJson='';
   if(error){setCloudMessage('Buluta kaydedilemedi: '+cloudErrorText(error),'error');cloud.localPending=false;render();return}
   cloud.lastCloudJson=json;cloud.localPending=false;
+  rememberVerifiedCloudCache();
   if(cloud.pendingRemoteState){cloud.pendingRemoteState=null;}
   if(cloud.writeAgain){cloud.writeAgain=false;scheduleCloudSync();return}
   if(stableStringify(cloudPayload())!==cloud.lastCloudJson){scheduleCloudSync();return}
@@ -2238,16 +2468,23 @@ async function loadCurrentFamily(){
   if(memberError)throw memberError;
   const membership=members?.[0]||null;
   if(!membership){
+    forgetVerifiedCloudCache();
     teardownCloudChannel();cloud.member=null;cloud.family=null;cloud.roster=[];cloud.syncReady=false;cloud.lastCloudJson='';cloud.inviteToken='';cloud.inviteUrl='';
     return;
   }
   cloud.member=membership;
-  const {data:familyData,error:familyError}=await sb.from('families').select('id,name,owner_id,created_at').eq('id',membership.family_id).single();
-  if(familyError)throw familyError;
-  const {data:stateRow,error:stateError}=await sb.from('family_state').select('state,updated_at').eq('family_id',membership.family_id).maybeSingle();
-  if(stateError)throw stateError;
+  // Aile bilgisi ve ortak durum birbirinden bağımsız olduğundan paralel iste.
+  const [familyResult,stateResult]=await Promise.all([
+    sb.from('families').select('id,name,owner_id,created_at').eq('id',membership.family_id).single(),
+    sb.from('family_state').select('state,updated_at').eq('family_id',membership.family_id).maybeSingle()
+  ]);
+  if(familyResult.error)throw familyResult.error;
+  if(stateResult.error)throw stateResult.error;
+  const familyData=familyResult.data,stateRow=stateResult.data;
   cloud.family=familyData;
-  await refreshCloudRoster();
+  // Roster ve davet kodu ilk ekranın açılmasını bekletmesin; arka planda tamamlanır.
+  refreshCloudRoster().then(()=>{if(tab==='aile')render()}).catch(e=>console.warn('Aile listesi yenilenemedi',e));
+  loadExistingInvite().then(()=>{if(tab==='aile')render()}).catch(e=>console.warn('Davet bilgisi yenilenemedi',e));
   if(stateRow?.state&&typeof stateRow.state==='object'&&Object.keys(stateRow.state).length){
     const sameFamily=S.family?.id===familyData.id;
     if(!sameFamily)rememberLocalBackup();
@@ -2256,19 +2493,19 @@ async function loadCurrentFamily(){
     applySharedState(stateRow.state,sameFamily?null:membership.profile_id);
     cloud.lastCloudJson=remoteStateJson;
     cloud.syncReady=true;
+    rememberVerifiedCloudCache();
     if(stableStringify(cloudPayload())!==remoteStateJson)scheduleCloudSync();
     const changed=processDueRecurringTransactions();
     if(changed)save();
     setupCloudRealtime();
-    await loadExistingInvite();
     setCloudMessage('Ortak aile ağı bağlı. Değişiklikler otomatik eşitlenir.','success');
   }else{
     cloud.syncReady=false;
+    forgetVerifiedCloudCache();
     setupCloudRealtime();
-    setCloudMessage(membership.role==='owner'?'Ortak aile verileri henüz başlatılmamış. Aşağıdan yerel kayıtları aktarabilir veya boş başlayabilirsin.':'Aile verileri henüz yönetici tarafından başlatılmamış. Aile yöneticisinin Aile sekmesinden başlatması gerekiyor.','');
+    setCloudMessage(membership.role==='owner'?'Ortak aile verileri henüz başlatılmamış. Aşağıdan yerel kayıtları aktarabilir veya boş başlayabilirsin.':'Aile verileri henüz yönetici tarafından başlatılmamış. Aile sekmesinden başlatması gerekiyor.','');
   }
-}
-async function loadExistingInvite(){
+}async function loadExistingInvite(){
   if(!sb||!cloud.family||!cloud.user)return;
   const {data,error}=await sb.from('family_invites').select('token,expires_at,created_at').eq('family_id',cloud.family.id).eq('created_by',cloud.user.id).is('used_at',null).gt('expires_at',new Date().toISOString()).order('created_at',{ascending:false}).limit(1);
   // Önceki sürümlerde UUID uzunluğunda kodlar üretilebiliyordu. Bunları otomatik göstermeyip yöneticinin kısa kod oluşturmasına izin ver.
@@ -2311,9 +2548,12 @@ async function handleCloudSession(session){
   cloud.session=session||null;cloud.user=session?.user||null;
   if(newId===cloud.handledUserId){render();return}
   cloud.handledUserId=newId;
+  if(newId)restoreVerifiedCloudStateCache(session.user,session);
   cloud.loading=!!newId;cloud.message='';cloud.messageType='';
   if(!newId){
     cloud.authView='login';
+    forgetVerifiedCloudCache();
+    document.body.classList.remove('cloud-cache-loading');
     const hadCloudFamily=!!cloud.member;
     teardownCloudChannel();cloud.member=null;cloud.family=null;cloud.roster=[];cloud.syncReady=false;cloud.inviteToken='';cloud.inviteUrl='';
     if(hadCloudFamily){S=localOnlyState(uid(),'Yerel profil');persistLocalOnly();}
@@ -2339,28 +2579,36 @@ async function handleCloudSession(session){
   finally{cloud.loading=false;render();}
 }
 async function initCloud(){
-  if(!sb){cloud.initialized=true;cloud.loading=false;setCloudMessage('Supabase JavaScript kitaplığı yüklenemedi. İnternet bağlantısını kontrol edip sayfayı yenile.','error');render();return}
-  const {data,error}=await sb.auth.getSession();
-  if(error)console.warn('Oturum okunamadı',error);
-  cloud.initialized=true;
-  await handleCloudSession(data?.session||null);
-  sb.auth.onAuthStateChange((_event,session)=>{setTimeout(()=>{handleCloudSession(session).catch(err=>console.error(err))},0)});
+  try{
+    await ensureSupabaseClient();
+    const {data,error}=await sb.auth.getSession();
+    if(error)console.warn('Oturum okunamadı',error);
+    cloud.initialized=true;
+    await handleCloudSession(data?.session||null);
+    sb.auth.onAuthStateChange((_event,session)=>{setTimeout(()=>{handleCloudSession(session).catch(err=>console.error(err))},0)});
+  }catch(error){
+    console.error('Supabase başlatılamadı',error);
+    cloud.initialized=true;cloud.loading=false;setCloudMessage('Supabase bağlantısı başlatılamadı. İnternet bağlantını kontrol edip tekrar dene.','error');render();
+  }
 }
 async function cloudSignIn(e){
   e.preventDefault();const email=(byId('cloudEmail')?.value||'').trim().toLowerCase(),password=byId('cloudPassword')?.value||'';
   if(!email||!password)return;
   cloud.busy=true;setCloudMessage('Giriş yapılıyor…');render();
-  const {data,error}=await sb.auth.signInWithPassword({email,password});
-  cloud.busy=false;
-  if(error){setCloudMessage(cloudErrorText(error),'error');render();return}
-  setCloudMessage('Giriş başarılı. Aile bağlantısı kontrol ediliyor.','success');
-  await handleCloudSession(data.session);
+  try{await ensureSupabaseClient();const {data,error}=await sb.auth.signInWithPassword({email,password});cloud.busy=false;
+    if(error){setCloudMessage(cloudErrorText(error),'error');render();return}
+    setCloudMessage('Giriş başarılı. Aile bağlantısı kontrol ediliyor.','success');await handleCloudSession(data.session);
+  }catch(error){cloud.busy=false;setCloudMessage(cloudErrorText(error),'error');render()}
 }
 function showSignUpScreen(){
   cloud.authView='signup';setCloudMessage('');render();
 }
 function showLoginScreen(){
   cloud.authView='login';setCloudMessage('');render();
+}
+function showInviteChoiceScreen(){
+  if(!pendingInviteToken){showLoginScreen();return}
+  cloud.authView='invite-choice';setCloudMessage('');render();
 }
 function showGuideScreen(){
   cloud.authView='guide';setCloudMessage('');render();
@@ -2451,12 +2699,15 @@ async function cloudSignUp(e){
   if(password.length<6){setCloudMessage('Şifre en az 6 karakter olmalı.','error');render();return;}
   if(password!==confirmPassword){setCloudMessage('Şifreler eşleşmiyor. Lütfen tekrar kontrol et.','error');render();return;}
   cloud.busy=true;setCloudMessage('Hesap oluşturuluyor…');render();
-  const redirect=pendingInviteToken?buildInviteUrl(pendingInviteToken,pendingInviteFamilyName):window.location.origin+window.location.pathname;
-  const {data,error}=await sb.auth.signUp({email,password,options:{data:{display_name:displayName,family_name:hasInvite?'':familyName},emailRedirectTo:redirect}});
-  cloud.busy=false;
-  if(error){setCloudMessage(cloudErrorText(error),'error');render();return;}
-  if(data.session){setCloudMessage(pendingInviteToken?'Hesap oluşturuldu. Davet edilen aileye bağlanılıyor…':'Hesap oluşturuldu. Aile alanın hazırlanıyor…','success');await handleCloudSession(data.session);}
-  else{setCloudMessage(pendingInviteToken?'Hesap oluşturuldu. E-postandaki onay bağlantısını açıp giriş yap; ardından davet eden ailenin ortak verilerine otomatik bağlanacaksın.':'Hesap oluşturuldu. E-postandaki onay bağlantısını açıp giriş yap; ardından aile alanın otomatik hazırlanacak.','success');render();}
+  try{
+    await ensureSupabaseClient();
+    const redirect=pendingInviteToken?buildInviteUrl(pendingInviteToken,pendingInviteFamilyName):window.location.origin+window.location.pathname;
+    const {data,error}=await sb.auth.signUp({email,password,options:{data:{display_name:displayName,family_name:hasInvite?'':familyName},emailRedirectTo:redirect}});
+    cloud.busy=false;
+    if(error){setCloudMessage(cloudErrorText(error),'error');render();return;}
+    if(data.session){setCloudMessage(pendingInviteToken?'Hesap oluşturuldu. Davet edilen aileye bağlanılıyor…':'Hesap oluşturuldu. Aile alanın hazırlanıyor…','success');await handleCloudSession(data.session);}
+    else{setCloudMessage(pendingInviteToken?'Hesap oluşturuldu. E-postandaki onay bağlantısını açıp giriş yap; ardından davet eden ailenin ortak verilerine otomatik bağlanacaksın.':'Hesap oluşturuldu. E-postandaki onay bağlantısını açıp giriş yap; ardından aile alanın otomatik hazırlanacak.','success');render();}
+  }catch(error){cloud.busy=false;setCloudMessage(cloudErrorText(error),'error');render()}
 }
 async function cloudSignOut(){
   if(!sb)return;
@@ -2533,8 +2784,8 @@ async function joinCloudFamilyByToken(value,automatic=false){
   const remoteStateJson=stableStringify(stateRow.state);applySharedState(stateRow.state,profileId);
   if(!S.members.some(m=>m.id===profileId))S.members.push({id:profileId,name:displayName});
   S.active=profileId;S.family={id:familyData.id,name:familyData.name,inviteToken:''};
-  persistLocalOnly();cloud.lastCloudJson=remoteStateJson;cloud.syncReady=true;cloud.busy=false;
-  await refreshCloudRoster();setupCloudRealtime();setCloudMessage('Aileye katıldın. Kurucunun ortak verileri yüklendi.','success');
+  persistLocalOnly();cloud.lastCloudJson=remoteStateJson;cloud.syncReady=true;cloud.busy=false;rememberVerifiedCloudCache();
+  refreshCloudRoster().then(()=>{if(tab==='aile')render()}).catch(e=>console.warn('Aile listesi yenilenemedi',e));setupCloudRealtime();setCloudMessage('Aileye katıldın. Kurucunun ortak verileri yüklendi.','success');
   save();return true;
 }
 async function joinCloudFamily(e){
@@ -2552,7 +2803,7 @@ async function initializeEmptyFamily(importLocal){
   const {error}=await sb.from('family_state').upsert({family_id:cloud.family.id,state:cloudPayload(),updated_by:cloud.user.id,updated_at:new Date().toISOString()},{onConflict:'family_id'});
   cloud.busy=false;
   if(error){setCloudMessage('Ortak veriler başlatılamadı: '+cloudErrorText(error),'error');render();return}
-  persistLocalOnly();cloud.lastCloudJson=stableStringify(cloudPayload());cloud.syncReady=true;setupCloudRealtime();await refreshCloudRoster();setCloudMessage(importLocal?'Mevcut kayıtlar ortak aileye aktarıldı.':'Boş ortak aile başlatıldı.','success');render();
+  persistLocalOnly();cloud.lastCloudJson=stableStringify(cloudPayload());cloud.syncReady=true;rememberVerifiedCloudCache();setupCloudRealtime();refreshCloudRoster().then(()=>{if(tab==='aile')render()}).catch(e=>console.warn('Aile listesi yenilenemedi',e));setCloudMessage(importLocal?'Mevcut kayıtlar ortak aileye aktarıldı.':'Boş ortak aile başlatıldı.','success');render();
 }
 async function createCloudInvite(){
   if(!sb||!cloud.user||!cloud.family||!cloud.member||!cloud.syncReady)return;
@@ -2582,11 +2833,12 @@ async function copyCloudInvite(){
   try{await navigator.clipboard.writeText(cloud.inviteUrl);setCloudMessage('Davet bağlantısı panoya kopyalandı.','success');render()}
   catch(e){const ta=document.createElement('textarea');ta.value=cloud.inviteUrl;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();setCloudMessage('Davet bağlantısı kopyalandı.','success');render()}
 }
-function renderCloudQr(){
+async function renderCloudQr(){
   const el=byId('cloudInviteQr');if(!el)return;el.innerHTML='';
   if(!cloud.inviteUrl){el.textContent='Davet bağlantısı oluşturulunca QR burada görünür.';return}
-  if(window.QRCode){new QRCode(el,{text:cloud.inviteUrl,width:180,height:180,colorDark:'#273238',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M})}
-  else{el.textContent='QR kitaplığı yüklenemedi. Davet bağlantısını kopyalayabilirsin.'}
+  el.textContent='QR hazırlanıyor…';
+  try{await ensureQrCodeLibrary();if(!el.isConnected)return;el.innerHTML='';new QRCode(el,{text:cloud.inviteUrl,width:180,height:180,colorDark:'#273238',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M})}
+  catch(e){if(el.isConnected)el.textContent='QR kitaplığı yüklenemedi. Davet bağlantısını kopyalayabilirsin.'}
 }
 async function removeCloudMember(userId){
   if(!sb||cloud.member?.role!=='owner'||!cloud.family||userId===cloud.user?.id)return;
@@ -2721,6 +2973,7 @@ function closeModal(){document.getElementById('modal').classList.remove('show');
 function applyPendingRemoteIfSafe(){if(!cloud.pendingRemoteState||cloud.localPending||cloud.writeInFlight||cloud.saveTimer||document.getElementById('modal')?.classList.contains('show'))return;const incoming=cloud.pendingRemoteState;cloud.pendingRemoteState=null;const json=stableStringify(incoming);if(json!==cloud.lastCloudJson){applySharedState(incoming);cloud.lastCloudJson=json;setCloudMessage('Aile verileri eşitlendi.','success');render()}}
 document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+bootstrapVerifiedCachedView();
 if(processDueRecurringTransactions())save();else render();
 try{updateTxSubmitLabel();}catch(e){}
 
