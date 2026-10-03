@@ -333,26 +333,17 @@ form{display:flex;flex-direction:column;gap:11px}.row2{display:grid;grid-templat
 .home-list-filter{margin:8px 0 10px;display:flex;justify-content:flex-end}
 .home-payments-preview .list{max-height:none;overflow:visible}
 .loan-settlement-amount{font-weight:700;color:var(--primary);margin-top:4px}
-.loan-payment-history{display:flex;flex-direction:column;gap:5px;margin:8px 0 5px;min-width:0}
-.loan-payment-chip{display:flex;align-items:center;gap:7px;width:fit-content;max-width:100%;padding:5px 8px;border:1px solid;border-radius:10px;min-width:0}
-.loan-payment-in{background:#edf8f0;border-color:#c8e8d1;color:#237849}
-.loan-payment-out{background:#fff0ef;border-color:#f4ceca;color:#b43b35}
-.loan-payment-symbol{display:inline-flex;align-items:center;justify-content:center;flex:0 0 20px;width:20px;height:20px;border-radius:50%;font-weight:800;font-size:14px;background:currentColor;color:#fff;}
-.loan-payment-in .loan-payment-symbol{background:#2f8955;color:#fff}.loan-payment-out .loan-payment-symbol{background:#c24a42;color:#fff}
-.loan-payment-detail{display:flex;flex-wrap:wrap;align-items:baseline;gap:3px 8px;min-width:0;font-size:11px;overflow-wrap:anywhere}
-.loan-payment-detail b{font-size:11px;color:inherit}
-.loan-payment-detail small{font-size:10px;color:inherit;opacity:.85}
-.loan-payment-select{flex:none;display:flex;align-items:center;justify-content:center;margin-right:2px}
-.loan-balance-caption{font-size:9px;color:var(--muted);text-align:right;max-width:120px}
-.loan-close-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-bottom:12px}
-.loan-close-summary>div{min-width:0;padding:9px 7px;border:1px solid var(--border);border-radius:10px;background:var(--soft)}
-.loan-close-summary small,.loan-close-summary b{display:block;overflow-wrap:anywhere}
-.loan-close-summary small{font-size:10px;color:var(--muted);line-height:1.25;margin-bottom:4px}
-.loan-close-summary b{font-size:12px;line-height:1.25}
-.loan-close-preview{padding:8px 10px;border-radius:9px;background:#f0f5fb;color:#345b81;font-weight:700}
-@media(max-width:520px){.loan-payment-chip{padding:4px 6px}.loan-payment-detail{font-size:10px}.loan-payment-detail b{font-size:10px}.loan-payment-detail small{font-size:9px}.loan-close-summary{gap:5px}.loan-close-summary>div{padding:8px 5px}.loan-close-summary small{font-size:9px}.loan-close-summary b{font-size:11px}}
-
 @media(max-width:720px){.home-list-head-actions{width:100%;justify-content:flex-start}.home-list-head-actions .date-filter{width:100%}.home-list-filter{justify-content:flex-start}.home-list-head-actions .date-filter button,.home-list-filter .date-filter button{flex:1}}
+
+
+.loan-settlement-list{margin-top:10px;padding:9px 10px;background:#f8fafc;border:1px solid #e8edf3;border-radius:12px;display:grid;gap:7px;max-width:100%}
+.loan-settlement-list>small{color:#64748b;font-size:11px}
+.loan-settlement-row{display:flex;align-items:center;gap:7px;padding-top:6px;border-top:1px solid #e8edf3;min-width:0}
+.settlement-dot{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:#dcfce7;color:#15803d;font-weight:900;flex:none}
+.loan-settlement-row .settlement-info{display:flex;flex-direction:column;min-width:0;gap:2px}
+.settlement-info b{font-size:12px}.settlement-info small{font-size:10px;color:#64748b;overflow-wrap:anywhere}
+.loan-row-side{min-width:120px}
+@media(max-width:700px){.loan-row{align-items:flex-start;flex-wrap:wrap}.loan-row .itemmain{min-width:0;flex:1}.loan-row-side{width:100%;margin-left:42px;display:flex;align-items:center;justify-content:space-between;gap:7px;flex-wrap:wrap}.loan-row-side button{font-size:11px;min-height:34px}.loan-settlement-list{margin-left:0}}
 
 </style>
 
@@ -1254,60 +1245,7 @@ body.cloud-cache-loading #main button,body.cloud-cache-loading #main input,body.
 }
 </style>
 
-
-<style id="saving-detail-and-actions-tweaks">
-/* Keep per-movement details compact; show profit and percent clearly on additions. */
-.saving-movement-item>.amount{max-width:58px!important;flex:0 0 58px!important;font-size:8.5px!important;line-height:1.2;white-space:normal!important;overflow-wrap:anywhere;text-align:right}
-.movement-financial-grid.movement-add-grid{grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:2px 3px!important;padding:5px 3px!important}
-.movement-financial-grid.movement-withdrawal-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:3px 6px!important;padding:5px 6px!important}
-.movement-financial-grid small{font-size:7px!important;line-height:1.15!important;letter-spacing:-.1px}
-.movement-financial-grid b{font-size:7.5px!important;line-height:1.2!important;letter-spacing:-.15px;overflow-wrap:anywhere;word-break:break-word}
-.movement-financial-grid .movement-profit-pct{display:block;font-size:7px!important;line-height:1.15;font-weight:800;color:inherit;margin-top:1px;white-space:normal}
-#main .savings-overview-card .savings-card-label{font-size:12px!important;padding:4px 7px!important;margin-bottom:7px!important}
-#main .savings-label-given,
-#main .savings-label-taken{display:inline-flex!important;flex-direction:column;align-items:flex-start;gap:2px;line-height:1.08!important}
-#main .savings-label-sub{display:block;font-size:10px;line-height:1.05;font-weight:400!important}
-#main .savings-overview-card .savings-card-label{font-weight:400!important}
-.savings-tools-column .add-action-panel .primary{width:120px!important;min-width:120px!important;max-width:120px!important;height:36px!important;min-height:36px!important;padding:6px 5px!important;font-size:10.5px!important;line-height:1.15;white-space:nowrap!important;display:inline-flex;align-items:center;justify-content:center;flex:none}
-#main .goal-actions{gap:5px!important;margin-top:6px!important}
-#main .goal-actions button{min-width:0!important;width:100%;min-height:32px!important;padding:6px 3px!important;font-size:10px!important;line-height:1.15;white-space:nowrap!important}
-@media(max-width:520px){
-  .saving-movement-item{gap:5px!important}
-  .saving-movement-item>.amount{max-width:50px!important;flex-basis:50px!important;font-size:8px!important}
-  .movement-financial-grid.movement-add-grid{gap:2px 2px!important;padding:5px 2px!important}
-  .movement-financial-grid.movement-withdrawal-grid{gap:3px 4px!important;padding:5px 4px!important}
-  .movement-financial-grid small{font-size:6.8px!important}
-  .movement-financial-grid b{font-size:7px!important;letter-spacing:-.2px}
-  .movement-financial-grid .movement-profit-pct{font-size:6.5px!important}
-  #main .savings-overview-card .savings-card-label{font-size:9.5px!important;padding:4px 6px!important}
-  #main .savings-label-sub{font-size:8.5px}
-  .savings-tools-column .add-action-panel .primary{width:120px!important;min-width:120px!important;max-width:120px!important;align-self:flex-end}
-  #main .goal-actions{gap:4px!important}
-  #main .goal-actions button{font-size:9px!important;padding:5px 2px!important;letter-spacing:-.15px}
-}
-@media(max-width:360px){
-  .saving-movement-item>.amount{max-width:44px!important;flex-basis:44px!important;font-size:7.5px!important}
-  .movement-financial-grid small{font-size:6.3px!important}
-  .movement-financial-grid b{font-size:6.6px!important}
-  .movement-financial-grid .movement-profit-pct{font-size:6.2px!important}
-  #main .goal-actions button{font-size:8.5px!important}
-}
-</style>
-
 </head>
-<style id="savings-report-readable-contrast-v1">
-/* Birikim raporunda net kartlardan miras kalan beyaz etiketleri okunaklı koyu metne çevir. */
-.report-savings-panel .report-savings-stats .stat small { color: #3f5047 !important; opacity: 1 !important; }
-.report-savings-panel .report-savings-stats .stat .value { color: inherit !important; opacity: 1 !important; }
-/* Tablo ve mobil satırlarda tema nedeniyle beyaza dönen açıklamaları sabitle. */
-.report-savings-panel .report-breakdown .report-table th { color: #58675f !important; }
-.report-savings-panel .report-breakdown .report-table td { color: #293b32 !important; }
-.report-savings-panel .report-mobile-row .itemmain b { color: #293b32 !important; }
-.report-savings-panel .report-mobile-row .sub { color: #596a61 !important; }
-.report-savings-panel .report-mobile-row .amount { color: #293b32 !important; }
-.report-savings-panel .report-chart-note { color: #596a61 !important; }
-</style>
-
 <body class="auth-pending">
 <div id="authGate" class="auth-gate" aria-live="polite"></div>
 <div class="app">
@@ -1418,7 +1356,7 @@ let deleteMode={transactions:false,recurringTransactions:false,payments:false,go
 let dateFilters={transactions:'month',recurringTransactions:'all',payments:'month',movements:'all',home:'all'};
 let savingsFilter='active',loanFilter='open';
 
-let deleteSelected={transactions:new Set(),recurringTransactions:new Set(),payments:new Set(),goals:new Set(),movements:new Set(),loans:new Set(),loanSettlements:new Set()};
+let deleteSelected={transactions:new Set(),recurringTransactions:new Set(),payments:new Set(),goals:new Set(),movements:new Set(),loans:new Set()};
 
 S.rateData=S.rateData||{updated:rateUpdated,quotes:JSON.parse(JSON.stringify(rateQuotes))};
 if(S.rateData.quotes)Object.assign(rateQuotes,S.rateData.quotes);
@@ -1460,8 +1398,7 @@ S.recurringTransactions=(S.recurringTransactions||[]).map(r=>({
   anchorDay:Number(r.anchorDay)||Number((r.startDate||date()).slice(-2)),
   active:r.active!==false && !r.paused && Number(r.remaining??r.months)>0
 }));
-const LOAN_AMOUNT_EPSILON=0.005;
-S.loans=(S.loans||[]).map(normalizeLoanRecord);
+S.loans=(S.loans||[]).map(l=>({...l,asset:l.asset||'TRY',status:l.status||'open',memberId:l.memberId||S.active,date:l.date||String(l.createdAt||date()).slice(0,10),closedAt:l.closedAt||null}));
 S.payments=(S.payments||[]).map(p=>({...p,recurring:!!p.recurring,interval:p.interval||'aylik',months:Math.max(1,Number(p.months)||1),remaining:Math.max(0,Number(p.remaining ?? (p.recurring?Number(p.months)||1:1)))}));
 const legacyPaymentsMigratedAtBoot=expandLegacyRecurringPayments();
 S.savingMovements=(S.savingMovements||[]).map(m=>({...m,date:m.date||date()}));
@@ -2580,8 +2517,7 @@ function addLoan(e){
     dueDate:byId('loanDueDate')?.value||'',
     memberId:byId('loanMember')?.value||S.active,
     description:(byId('loanDesc')?.value||'').trim(),
-    settlements:closedAt?[{id:String(uid()),amount:amount,date:closedAt,memberId:byId('loanMember')?.value||S.active,createdAt:new Date().toISOString()}]:[],
-    status:closedAt?'closed':'open',closedAmount:closedAt?amount:null,createdAt:date()
+    status:closedAt?'closed':'open',createdAt:date()
   });
   closeModal();
   save();
@@ -2607,137 +2543,73 @@ function loanDurationText(l){
   const extraDays = Math.max(0, Math.round((end - anchor) / 86400000));
   return `Kapatılma süresi: ${months} ay${extraDays ? ` ${extraDays} gün` : ''} (${totalDays} gün)`;
 }
-function normalizeLoanRecord(l){
-  const loan={...l,asset:l.asset||'TRY',status:l.status||'open',memberId:l.memberId||S.active,date:l.date||String(l.createdAt||date()).slice(0,10),closedAt:l.closedAt||null};
-  const original=Math.max(0,Number(loan.amount)||0);
-  let settlements=Array.isArray(loan.settlements)?loan.settlements.filter(x=>x&&Number(x.amount)>0).map(x=>({...x,id:String(x.id||uid()),amount:Math.max(0,Number(x.amount)||0),date:x.date||loan.closedAt||loan.date||date(),memberId:x.memberId||loan.memberId||S.active})):[];
-  // Migrate previous versions that stored a single settlement in closedAmount.
-  if(!settlements.length){
-    const legacy=loan.closedAmount!=null?Math.max(0,Number(loan.closedAmount)||0):(loan.status==='closed'?original:0);
-    if(legacy>0){
-      settlements=[{id:`legacy-${String(loan.id)}`,amount:Math.min(original,legacy),date:loan.closedAt||loan.date||date(),memberId:loan.memberId||S.active,legacy:true}];
-    }
-  }
-  loan.settlements=settlements;
-  const paid=settlements.reduce((sum,x)=>sum+(Number(x.amount)||0),0);
-  loan.closedAmount=paid;
-  const remaining=Math.max(0,original-paid);
-  loan.status=original>0&&remaining<=LOAN_AMOUNT_EPSILON?'closed':'open';
-  loan.closedAt=loan.status==='closed'?(loan.closedAt||settlements[settlements.length-1]?.date||loan.date):null;
-  return loan;
-}
-function loanSettledAmount(l){
-  if(Array.isArray(l?.settlements))return l.settlements.reduce((sum,x)=>sum+Math.max(0,Number(x.amount)||0),0);
-  if(l?.closedAmount!=null)return Math.max(0,Number(l.closedAmount)||0);
-  return l?.status==='closed'?Math.max(0,Number(l.amount)||0):0;
-}
-function loanRemainingAmount(l){return Math.max(0,(Number(l?.amount)||0)-loanSettledAmount(l));}
 function loanStatusText(l){
-  const remaining=loanRemainingAmount(l),settled=loanSettledAmount(l);
-  if(l.status==='closed'||remaining<=LOAN_AMOUNT_EPSILON)return 'Kapandı';
+  if(l.status==='closed')return 'Kapandı';
   if(l.dueDate&&days(l.dueDate)<0)return `Vadesi geçti · ${Math.abs(days(l.dueDate))} gün`;
-  if(settled>LOAN_AMOUNT_EPSILON)return `Kısmi kapama · Kalan ${fnum(remaining)} ${assetLabels[l.asset]||l.asset||'TL'}`;
   return 'Açık';
 }
+function loanOutstanding(l){
+  const paid=(l.settlements||[]).reduce((sum,x)=>sum+(Number(x.amount)||0),0);
+  return Math.max(0,(Number(l.amount)||0)-paid);
+}
+function openLoanSettlementModal(id){
+  const loan=(S.loans||[]).find(x=>String(x.id)===String(id));if(!loan)return;
+  const assetName=assetLabels[loan.asset]||loan.asset||'TL';
+  const action=loan.direction==='given'?'Tahsilat Ekle':'Geri Ödeme Ekle';
+  showFormModal(action,`<form class="loan-form" onsubmit="addLoanSettlement(event,'${id}')"><div class="field"><label>Kişi</label><input value="${esc(loan.person)}" readonly></div><div class="field"><label>${action} tutarı (${esc(assetName)})</label><input id="loanSettlementAmount" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="0,00" required></div><div class="field"><label>Tarih</label><input id="loanSettlementDate" type="date" value="${date()}" required></div><div class="field"><label>Açıklama (isteğe bağlı)</label><input id="loanSettlementNote" maxlength="160" placeholder="Örn. İlk kısmi ödeme"></div><p class="sub">Kalan tutar: <b>${fnum(loanOutstanding(loan))} ${esc(assetName)}</b></p><button class="primary">Kaydet</button></form>`);
+}
+function addLoanSettlement(e,id){
+  e.preventDefault();const loan=(S.loans||[]).find(x=>String(x.id)===String(id));if(!loan)return;
+  const amount=parseMoney(byId('loanSettlementAmount')?.value),settleDate=byId('loanSettlementDate')?.value||date();
+  if(!(amount>0)){alert('Tutar sıfırdan büyük olmalı.');return;}
+  const remaining=loanOutstanding(loan);if(amount>remaining+0.000001){alert(`Tutar kalan borçtan (${fnum(remaining)}) fazla olamaz.`);return;}
+  loan.settlements=loan.settlements||[];loan.settlements.unshift({id:String(uid()),amount,date:settleDate,note:(byId('loanSettlementNote')?.value||'').trim(),memberId:S.active||loan.memberId});
+  if(loanOutstanding(loan)<=0.000001){loan.status='closed';loan.closedAt=settleDate;loan.closedAmount=Number(loan.amount)||0;}
+  closeModal();save();
+}
 function loanRow(l){
-  const closed=l.status==='closed'||loanRemainingAmount(l)<=LOAN_AMOUNT_EPSILON;
+  const closed=l.status==='closed';
   const overdue=!closed&&l.dueDate&&days(l.dueDate)<0;
   const direction=l.direction==='given'?'Borç verdim':'Borç aldım';
   const assetName=assetLabels[l.asset]||l.asset||'TL';
-  const remaining=loanRemainingAmount(l),settled=loanSettledAmount(l);
+  const settlements=l.settlements||[],remaining=loanOutstanding(l);
   const dateDetails=`Verme/Alma: ${fd(l.date)}${l.createdAt?' · Kayıt: '+fd(l.createdAt):''}${l.dueDate?' · Vade: '+fd(l.dueDate):''}${closed&&l.closedAt?' · Kapama: '+fd(l.closedAt):''}`;
   const duration=closed?loanDurationText(l):'';
-  const settlementRows=(l.settlements||[]).map(payment=>{
-    const isIncoming=l.direction==='given';
-    const label=isIncoming?'Tahsilat':'Geri ödeme';
-    const symbol=isIncoming?'+':'−';
-    const tone=isIncoming?'loan-payment-in':'loan-payment-out';
-    const paymentKey=loanSettlementSelectionKey(l.id,payment.id);
-    const paymentKeyAttr=paymentKey.replace(/'/g, "\\'");
-    return `<div class="loan-payment-chip ${tone} ${deleteMode.loans?'selectable-item':''}">${deleteMode.loans?`<label class="checkwrap loan-payment-select"><input type="checkbox" ${deleteSelected.loanSettlements.has(paymentKey)?'checked':''} onchange="toggleDeleteSelection('loanSettlements','${paymentKeyAttr}')"><span></span></label>`:''}<span class="loan-payment-symbol">${symbol}</span><span class="loan-payment-detail"><b>${label}: ${fnum(payment.amount)} ${assetName}</b><small>${fd(payment.date)} · ${esc(member(payment.memberId||l.memberId))}</small></span></div>`;
-  }).join('');
-  const balanceCaption=closed?'İlk borç':settled>LOAN_AMOUNT_EPSILON?'Kalan borç':'Borç tutarı';
-  const actionLabel=closed?'Yeniden Aç':settled>LOAN_AMOUNT_EPSILON?'Kapama':'Borcu Kapat';
-  return `<div class="item loan-row ${deleteMode.loans?'selectable-item ':''}${overdue?'overdue-payment':''}" style="${overdue?'background:#fff1f2;border-color:#fecdd3;':''}">${deleteMode.loans?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.loans.has(String(l.id))?'checked':''} onchange="toggleDeleteSelection('loans','${String(l.id)}')"><span></span></label>`:''}<div class="icon ${l.direction==='given'?'out':'in'}">${l.direction==='given'?'↗':'↙'}</div><div class="itemmain"><b>${esc(l.person)} · ${direction}</b><div class="sub">${dateDetails} · ${esc(member(l.memberId))} · ${assetName}</div>${l.description?`<div class="sub">${esc(l.description)}</div>`:''}${settlementRows?`<div class="loan-payment-history">${settlementRows}</div>`:''}${duration?`<small class="sub loan-duration">${duration}</small>`:''}<small class="sub ${overdue?'late-amount':''}">${loanStatusText(l)}</small></div><div class="loan-row-side"><b class="amount">${fnum(closed?l.amount:remaining)} ${assetName}</b><small class="loan-balance-caption">${balanceCaption}</small>${!deleteMode.loans?`<button class="secondary" onclick="toggleLoanStatus('${l.id}')">${actionLabel}</button>`:''}</div></div>`;
+  const closeAmount=closed?`<div class="sub loan-settlement-amount">${l.direction==='given'?'Tahsil edilen':'Geri ödenen'}: ${fnum(l.closedAmount??l.amount)} ${assetName}</div>`:'';
+  const settlementRows=settlements.length?`<div class="loan-settlement-list"><small><b>${l.direction==='given'?'Tahsilat':'Geri ödeme'} hareketleri (${settlements.length})</b></small>${settlements.map(x=>{const key=`settlement|${l.id}|${x.id}`;return `<div class="loan-settlement-row">${deleteMode.loans?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.loans.has(key)?'checked':''} onchange="toggleDeleteSelection('loans','${key}')"><span></span></label>`:''}<span class="settlement-dot">${l.direction==='given'?'＋':'−'}</span><span class="settlement-info"><b>${fnum(x.amount)} ${assetName}</b><small>${fd(x.date)}${x.note?' · '+esc(x.note):''}${x.memberId?' · '+esc(member(x.memberId)):''}</small></span></div>`}).join('')}</div>`:'';
+  return `<div class="item loan-row ${deleteMode.loans?'selectable-item ':''}${overdue?'overdue-payment':''}" style="${overdue?'background:#fff1f2;border-color:#fecdd3;':''}">${deleteMode.loans?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.loans.has(String(l.id))?'checked':''} onchange="toggleDeleteSelection('loans','${l.id}')"><span></span></label>`:''}<div class="icon ${l.direction==='given'?'out':'in'}">${l.direction==='given'?'↗':'↙'}</div><div class="itemmain"><b>${esc(l.person)} · ${direction}</b><div class="sub">${dateDetails} · ${esc(member(l.memberId))} · ${assetName}</div>${l.description?`<div class="sub">${esc(l.description)}</div>`:''}${closeAmount}${settlements.length?`<div class="sub loan-settlement-amount">Toplam ${l.direction==='given'?'tahsilat':'geri ödeme'}: ${fnum((Number(l.amount)||0)-remaining)} ${assetName} · Kalan: ${fnum(remaining)} ${assetName}</div>`:''}${duration?`<small class="sub loan-duration">${duration}</small>`:''}<small class="sub ${overdue?'late-amount':''}">${loanStatusText(l)}</small>${settlementRows}</div><div class="loan-row-side"><b class="amount">${fnum(Number(l.amount)||0)} ${assetName}</b>${!deleteMode.loans?`${!closed&&remaining>0?`<button class="secondary" onclick="openLoanSettlementModal('${l.id}')">${l.direction==='given'?'＋ Tahsilat':'＋ Geri Ödeme'}</button>`:''}<button class="secondary" onclick="toggleLoanStatus('${l.id}')">${closed?'Yeniden Aç':'Borcu Kapat'}</button>`:''}</div></div>`;
 }
 function openLoanCloseModal(id){
   const loan=(S.loans||[]).find(x=>x.id===id);
   if(!loan)return;
   const durationStart=loan.createdAt||loan.date||date();
   const amountLabel=loan.direction==='given'?'Tahsil ettiğiniz tutar':'Geri ödediğiniz tutar';
+  const amountHelp=loan.direction==='given'?'Bu borç için elinize geçen toplam tutarı yazın.':'Bu borcu kapatırken ödediğiniz toplam tutarı yazın.';
   const assetName=assetLabels[loan.asset||'TRY']||loan.asset||'TL';
-  const original=Math.max(0,Number(loan.amount)||0),settled=loanSettledAmount(loan),remaining=loanRemainingAmount(loan);
-  const lastPaymentDate=(loan.settlements||[]).map(x=>x.date||'').sort().slice(-1)[0]||durationStart;
-  const submitLabel=settled>LOAN_AMOUNT_EPSILON?'Kapama':'Borcu Kapat';
-  showFormModal(settled>LOAN_AMOUNT_EPSILON?'Borç Kapama':'Borcu Kapat',`<form class="loan-form ${loan.direction==='given'?'loan-form-given':'loan-form-taken'}" onsubmit="confirmLoanClose(event,'${id}')"><div class="loan-close-summary"><div><small>İlk borç</small><b>${fnum(original)} ${esc(assetName)}</b></div><div><small>${loan.direction==='given'?'Tahsil edilen':'Geri ödenen'}</small><b>${fnum(settled)} ${esc(assetName)}</b></div><div><small>Kalan borç</small><b>${fnum(remaining)} ${esc(assetName)}</b></div></div><div class="field"><label>Borç Verme / Alma Tarihi</label><input type="date" value="${esc(loan.date||date())}" readonly></div><div class="field"><label>Listeye Eklenme Tarihi (süre hesabı)</label><input type="date" value="${esc(durationStart)}" readonly></div><div class="field"><label>İşlem Tarihi</label><input id="loanCloseDateConfirm" type="date" value="${date()}" min="${esc(lastPaymentDate)}" required></div><div class="field"><label for="loanClosedAmount">${amountLabel} (${esc(assetName)})</label><input id="loanClosedAmount" type="text" inputmode="decimal" autocomplete="off" data-money value="${moneyText(remaining)}" oninput="updateLoanCloseAction('${id}')" required><small id="loanCloseAmountHelp" class="sub">En fazla kalan borç kadar ödeme/tahsilat girebilirsiniz.</small></div><p id="loanCloseBalancePreview" class="sub loan-close-preview">Bu işlemden sonra kalan: 0 ${esc(assetName)}</p><p class="sub">Tutar kalan borcun tamamına eşitse borç kapanır; daha azsa kısmi kapama olarak kaydedilir.</p><button id="loanCloseSubmitBtn" class="primary">${submitLabel}</button></form>`);
-  updateLoanCloseAction(id);
-}
-function updateLoanCloseAction(id){
-  const loan=(S.loans||[]).find(x=>x.id===id);
-  const input=byId('loanClosedAmount'),button=byId('loanCloseSubmitBtn'),help=byId('loanCloseAmountHelp'),preview=byId('loanCloseBalancePreview');
-  if(!loan||!input||!button)return;
-  const amount=parseMoney(input.value),remaining=loanRemainingAmount(loan),assetName=assetLabels[loan.asset||'TRY']||loan.asset||'TL';
-  const tooHigh=amount>remaining+LOAN_AMOUNT_EPSILON;
-  button.disabled=!(amount>0)||tooHigh;
-  button.textContent=tooHigh?'Tutar fazla':(amount>0&&amount>=remaining-LOAN_AMOUNT_EPSILON?'Borcu Kapat':'Kapama');
-  if(help)help.textContent=tooHigh?`Girdiğiniz tutar kalan ${fnum(remaining)} ${assetName} borçtan fazla olamaz.`:'En fazla kalan borç kadar ödeme/tahsilat girebilirsiniz.';
-  if(preview)preview.textContent=tooHigh?'Girilen tutar kalan borçtan yüksek.':`Bu işlemden sonra kalan: ${fnum(Math.max(0,remaining-amount))} ${assetName}`;
+  showFormModal('Borç Kapat',`<form class="loan-form ${loan.direction==='given'?'loan-form-given':'loan-form-taken'}" onsubmit="confirmLoanClose(event,'${id}')"><div class="field"><label>Borç Verme / Alma Tarihi</label><input type="date" value="${esc(loan.date||date())}" readonly></div><div class="field"><label>Listeye Eklenme Tarihi (süre hesabı)</label><input type="date" value="${esc(durationStart)}" readonly></div><div class="field"><label>Borç Kapama Tarihi</label><input id="loanCloseDateConfirm" type="date" value="${date()}" min="${esc(durationStart)}" required></div><div class="field"><label for="loanClosedAmount">${amountLabel} (${esc(assetName)})</label><input id="loanClosedAmount" type="text" inputmode="decimal" autocomplete="off" data-money value="${moneyText(Number(loan.amount)||0)}" required><small class="sub">${amountHelp}</small></div><p class="sub">Kapatılma süresi, borcun listeye eklendiği tarihten seçtiğiniz kapama tarihine kadar hesaplanır.</p><button class="primary">Borcu Kapat</button></form>`);
 }
 function confirmLoanClose(e,id){
   e.preventDefault();
   const loan=(S.loans||[]).find(x=>x.id===id);
   const closedAt=byId('loanCloseDateConfirm')?.value||'';
-  const enteredAmount=parseMoney(byId('loanClosedAmount')?.value);
+  const closedAmount=parseMoney(byId('loanClosedAmount')?.value);
   if(!loan||!closedAt)return;
-  const remaining=loanRemainingAmount(loan);
-  if(!(enteredAmount>0)){alert('Tahsil edilen veya geri ödenen tutar sıfırdan büyük olmalı.');return;}
-  if(enteredAmount>remaining+LOAN_AMOUNT_EPSILON){alert(`Bu tutar kalan ${fnum(remaining)} ${assetLabels[loan.asset]||loan.asset||'TL'} borçtan fazla olamaz.`);return;}
+  if(!(closedAmount>0)){alert('Tahsil edilen veya geri ödenen tutar sıfırdan büyük olmalı.');return;}
   const durationStart=loan.createdAt||loan.date||'';
-  if(closedAt<durationStart){alert('Kapama tarihi, borç kaydının listeye eklendiği tarihten önce olamaz.');return;}
-  const lastPaymentDate=(loan.settlements||[]).map(x=>x.date||'').sort().slice(-1)[0]||durationStart;
-  if(closedAt<lastPaymentDate){alert('Ödeme/tahsilat tarihi önceki kapama tarihinden önce olamaz.');return;}
-  // Match the remaining balance when the input differs only by display rounding.
-  const paymentAmount=Math.abs(enteredAmount-remaining)<=LOAN_AMOUNT_EPSILON?remaining:enteredAmount;
-  loan.settlements=Array.isArray(loan.settlements)?loan.settlements:[];
-  loan.settlements.push({id:String(uid()),amount:paymentAmount,date:closedAt,memberId:S.active||loan.memberId,createdAt:new Date().toISOString(),type:loan.direction==='given'?'tahsilat':'geri_odeme'});
-  const totalSettled=loanSettledAmount(loan),remainingAfter=loanRemainingAmount(loan);
-  loan.closedAmount=totalSettled;
-  if(remainingAfter<=LOAN_AMOUNT_EPSILON){
-    loan.status='closed';loan.closedAt=closedAt;
-  }else{
-    loan.status='open';loan.closedAt=null;
-  }
+  if(closedAt < durationStart){alert('Kapama tarihi, borç kaydının listeye eklendiği tarihten önce olamaz.');return;}
+  loan.status='closed';
+  loan.closedAt=closedAt;
+  loan.closedAmount=closedAmount;
   closeModal();
   save();
 }
-function deleteLoanSettlement(loanId,settlementId){
-  const loan=(S.loans||[]).find(x=>String(x.id)===String(loanId));
-  if(!loan||!Array.isArray(loan.settlements))return;
-  const payment=loan.settlements.find(x=>String(x.id)===String(settlementId));
-  if(!payment)return;
-  const label=loan.direction==='given'?'tahsilat':'geri ödeme';
-  if(!confirm(`${fd(payment.date)} tarihli ${fnum(payment.amount)} ${assetLabels[loan.asset]||loan.asset||'TL'} ${label} kaydı silinsin mi? Borcun kalan tutarı yeniden hesaplanacak.`))return;
-  loan.settlements=loan.settlements.filter(x=>String(x.id)!==String(settlementId));
-  const settled=loan.settlements.reduce((sum,x)=>sum+Math.max(0,Number(x.amount)||0),0);
-  const original=Math.max(0,Number(loan.amount)||0);
-  const remaining=Math.max(0,original-settled);
-  loan.closedAmount=settled;
-  loan.status=original>0&&remaining<=LOAN_AMOUNT_EPSILON?'closed':'open';
-  if(loan.status==='closed'){
-    const dates=loan.settlements.map(x=>x.date).filter(Boolean).sort();
-    loan.closedAt=dates.length?dates[dates.length-1]:(loan.date||null);
-  }else{
-    loan.closedAt=null;
-  }
-  save();
-}
-
 function toggleLoanStatus(id){
   const loan=(S.loans||[]).find(x=>x.id===id);
   if(!loan)return;
   if(loan.status==='closed'){
-    if(!confirm('Bu borcu yeniden açmak tüm tahsilat/geri ödeme kayıtlarını geri alır ve borcun tamamını yeniden açık yapar. Devam edilsin mi?'))return;
-    loan.status='open';loan.closedAt=null;loan.closedAmount=null;loan.settlements=[];
+    loan.status='open';
+    loan.closedAt=null;
+    loan.closedAmount=null;
     save();
   }else openLoanCloseModal(id);
 }
@@ -2748,14 +2620,13 @@ function deleteLoan(id){
 }
 function loanTotal(direction){
   return (S.loans||[]).filter(l=>l.direction===direction&&l.status!=='closed')
-    .reduce((sum,l)=>sum+loanRemainingAmount(l)*(rates[l.asset]||1),0);
+    .reduce((sum,l)=>sum+loanOutstanding(l)*(rates[l.asset]||1),0);
 }
 function loansPanel(){
   S.loans=S.loans||[];
   const rows=S.loans.filter(l=>loanFilter==='all'||(loanFilter==='open'?l.status!=='closed':l.status==='closed')).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  const loanDeleteCount=deleteSelected.loans.size+(deleteSelected.loanSettlements?.size||0);
   const deleteActions=deleteMode.loans
-    ? `<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="secondary" onclick="cancelDeleteMode('loans')">İptal</button><button class="dangerbtn" onclick="askDelete('loans')" ${loanDeleteCount?'':'disabled'}>Seçili Sil (${loanDeleteCount})</button></div>`
+    ? `<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="secondary" onclick="cancelDeleteMode('loans')">İptal</button><button class="dangerbtn" onclick="askDelete('loans')" ${deleteSelected.loans.size?'':'disabled'}>Seçili Sil (${deleteSelected.loans.size})</button></div>`
     : `<button class="secondary" onclick="enterDeleteMode('loans')">Sil</button>`;
   return `<section id="loansPanel" class="panel loan-records-panel"><div class="panelhead"><div><h2>Elden Borç Kayıtları</h2><p>${rows.length} kayıt</p></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><div class="segment loan-filter">${[['open','Açık'],['closed','Kapalı'],['all','Tümü']].map(x=>`<button type="button" class="${loanFilter===x[0]?'active':''}" onclick="loanFilter='${x[0]}';render()">${x[1]}</button>`).join('')}</div>${deleteActions}</div></div><div class="list">${rows.map(loanRow).join('')||empty()}</div></section>`;
 }
@@ -2769,8 +2640,8 @@ function savings(){
     <div class="savings-overview-grid">
       <section class="panel stat savings-overview-card savings-total-card"><small class="savings-card-label savings-label-total">Toplam Birikim</small><div class="value">${fmt(total)}</div><small>${activeGoals.length} devam eden hedef</small>${pl.cost>0?`<small class="savings-total-pl ${pl.profit>=0?'pl-positive':'pl-negative'}">Takip edilen K/Z: ${signedMoney(pl.profit)} (${signedPercent(pl.percent)})</small>`:''}</section>
       <div class="savings-loan-summary-grid">
-        <section class="panel stat savings-overview-card"><small class="savings-card-label savings-label-given">Verdiğim<span class="savings-label-sub">(Alacağım)</span></small><div class="value">${fmt(loanTotal('given'))}</div><small>${activeGiven.length} açık kayıt</small></section>
-        <section class="panel stat savings-overview-card"><small class="savings-card-label savings-label-taken">Aldığım<span class="savings-label-sub">(Ödeyeceğim)</span></small><div class="value">${fmt(loanTotal('taken'))}</div><small>${activeTaken.length} açık kayıt</small></section>
+        <section class="panel stat savings-overview-card"><small class="savings-card-label savings-label-given">Verdiğim (Alacağım)</small><div class="value">${fmt(loanTotal('given'))}</div><small>${activeGiven.length} açık kayıt</small></section>
+        <section class="panel stat savings-overview-card"><small class="savings-card-label savings-label-taken">Aldığım (Ödeyeceğim)</small><div class="value">${fmt(loanTotal('taken'))}</div><small>${activeTaken.length} açık kayıt</small></section>
         <section class="panel stat savings-overview-card"><small class="savings-card-label savings-label-net">Net Alacak</small><div class="value">${fmt(loanTotal('given')-loanTotal('taken'))}</div><small>Kurla TL karşılığı</small></section>
       </div>
     </div>
@@ -2805,11 +2676,19 @@ function savingRow(x,lotState=acquisitionLotState()){
     const profit=remainingCurrent-cost;
     const pct=cost>0?profit/cost*100:0;
     const costText=hasCost?fmt(cost):'Kayıtlı değil';
-    const profitMarkup=completed?'Hedef tamamlandı':asset==='TRY'?'Kur farkı yok':!hasCost?'Maliyet eksik':remain<=0?'Kalan miktar yok':`${signedMoney(profit)}<span class="movement-profit-pct">${signedPercent(pct)}</span>`;
+    const profitText=completed?'Hedef tamamlandı':asset==='TRY'?'Kur farkı yok':!hasCost?'Maliyet eksik':remain<=0?'Kalan miktar yok':`${signedMoney(profit)} (${signedPercent(pct)})`;
     const profitClass=completed||asset==='TRY'?'pl-neutral':!hasCost||remain<=0?'pl-unknown':profit>=0?'pl-positive':'pl-negative';
-    detail=`<div class="movement-financial-grid movement-add-grid"><span><small>Tarih</small><b>${fd(x.date)}</b></span><span><small>İşlemi yapan</small><b>${esc(profileName)}</b></span><span><small>Alış maliyeti</small><b>${costText}</b></span><span><small>Güncel değer</small><b>${fmt(remainingCurrent)}</b></span><span><small>Kâr / Zarar</small><b class="${profitClass}">${profitMarkup}</b></span></div>`;
+    detail=`<div class="movement-financial-grid"><span><small>Tarih</small><b>${fd(x.date)}</b></span><span><small>İşlemi yapan</small><b>${esc(profileName)}</b></span><span><small>Alış maliyeti</small><b>${costText}</b></span><span><small>Güncel değer</small><b>${fmt(remainingCurrent)}</b></span><span><small>Kâr / Zarar</small><b class="${profitClass}">${profitText}</b></span>${completed?'<span class="goal-completed-note">Hedef tamamlandı; kâr/zarar hesabı durduruldu.</span>':asset==='TRY'?'<span class="sub">TL birikiminde kur farkı hesaplanmaz.</span>':!hasCost?'<span class="sub">Bu eski kayıtta gerçek alış maliyeti bulunmuyor.</span>':remain<=0?'<span class="sub">Bu alımdan kalan miktar yok.</span>':''}</div>`;
   }else{
-    detail=`<div class="movement-financial-grid movement-withdrawal-grid"><span><small>Tarih</small><b>${fd(x.date)}</b></span><span><small>İşlemi yapan</small><b>${esc(profileName)}</b></span><span><small>Güncel değer</small><b>${fmt(current)}</b></span></div>`;
+    const allocation=lotState.withdrawalsByMovementId?.get(String(x.id))||{quantity:qty,allocatedQty:0,knownQty:0,unknownQty:qty,cost:0};
+    const hasCost=asset==='TRY'||(allocation.unknownQty<=1e-8&&allocation.allocatedQty>=qty-1e-8&&allocation.knownQty>=qty-1e-8);
+    const cost=asset==='TRY'?qty:(Number(allocation.cost)||0);
+    const costText=hasCost?fmt(cost):(allocation.knownQty>0?`${fmt(cost)} (kısmi)`:'Kayıtlı değil');
+    const profit=current-cost;
+    const pct=cost>0?profit/cost*100:0;
+    const profitText=completed?'Hedef tamamlandı':asset==='TRY'?'Kur farkı yok':!hasCost?'Maliyet eksik':`${signedMoney(profit)} (${signedPercent(pct)})`;
+    const profitClass=completed||asset==='TRY'?'pl-neutral':!hasCost?'pl-unknown':profit>=0?'pl-positive':'pl-negative';
+    detail=`<div class="movement-financial-grid"><span><small>Tarih</small><b>${fd(x.date)}</b></span><span><small>İşlemi yapan</small><b>${esc(profileName)}</b></span><span><small>Alış maliyeti</small><b>${costText}</b></span><span><small>Güncel değer</small><b>${fmt(current)}</b></span><span><small>Kâr / Zarar</small><b class="${profitClass}">${profitText}</b></span>${completed?'<span class="goal-completed-note">Hedef tamamlandı; kâr/zarar hesabı durduruldu.</span>':asset==='TRY'?'<span class="sub">TL hareketinde kur farkı hesaplanmaz.</span>':!hasCost?'<span class="sub">Bu çıkarma için maliyetin bir bölümü bilinmiyor veya eski hareketlerde kaydedilmemiş.</span>':''}</div>`;
   }
   const signPositive=Number(x.sign)>0;
   return `<div class="item saving-movement-item ${deleteMode.movements?'selectable-item':''}">${deleteMode.movements?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.movements.has(x.id)?'checked':''} onchange="toggleDeleteSelection('movements','${x.id}')"><span></span></label>`:''}<div class="icon ${signPositive?'in':'out'}" aria-label="${signPositive?'Birikim eklendi':'Birikim çıkarıldı'}">${signPositive?'＋':'↘'}</div><div class="itemmain"><b>${esc(x.goalName)}</b><div class="sub">${completed?`<span class="goal-completed-badge">Tamamlandı</span>`:''}${signPositive?'Birikim eklendi':'Birikim çıkarıldı'}</div>${detail}</div><div class="amount ${signPositive?'in':'out'}">${signPositive?'+':'−'}${fnum(qty)} ${assetName}</div></div>`;
@@ -2912,7 +2791,7 @@ function goalFinancialLines(g,compact=false){
   return `<div class="goal-financial-lines"><div><small>Tarih</small><b>${snap.date?fd(snap.date):'—'}</b></div><div><small>Alış maliyeti</small><b>${costLabel}</b></div><div><small>Güncel fiyat</small><b>${fmt(snap.value)}</b></div><div><small>Kâr / Zarar</small><b class="${plClass}">${plText}</b></div></div>`;
 }
 function goalCard(g,compact=false){
-  let total=goalValueInTarget(g),pct=g.target?total/g.target*100:0,completed=goalIsCompleted(g);
+  let total=goalValueInTarget(g),pct=g.target?total/g.target*100:0,completed=goalIsCompleted(g),held=Object.entries(g.holdings).filter(x=>x[1]>0);
   const goalMoves=(S.savingMovements||[]).filter(m=>String(m.goalId)===String(g.id)).slice().sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))||String(a.createdAt||'').localeCompare(String(b.createdAt||'')));
   let completion=findGoalCompletionDate(g);
   let duration=completed?goalDurationText({...g,completionDate:completion}):'';
@@ -2922,6 +2801,7 @@ function goalCard(g,compact=false){
       <div style="display:flex;gap:6px;align-items:center">${completed?`<span class="goal-completed-badge">Tamamlandı</span>`:`<span class="goal-active-badge">Devam Ediyor</span>`}${!compact?(deleteMode.goals?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.goals.has(g.id)?'checked':''} onchange="toggleDeleteSelection('goals','${g.id}')"><span></span></label>`:''):''}</div>
     </div>
     <div><div style="display:flex;justify-content:space-between"><b>${moneyInAsset(total,g.targetAsset||'TRY')}</b><b style="color:var(--primary)">%${Math.round(pct)}</b></div><div class="progress"><i style="width:${Math.min(100,pct)}%"></i></div><div class="goalmeta"><span>Hedef: ${moneyInAsset(g.target,g.targetAsset||'TRY')}</span><span>${completed?'Hedef tamamlandı':'Kalan: '+moneyInAsset(Math.max(0,g.target-total),g.targetAsset||'TRY')}</span></div>${completed&&duration?`<div class="goal-duration">${duration} sürede tamamlandı.</div>`:''}</div>
+    <div class="assets">${held.map(x=>`<span class="asset ${x[0].startsWith('GOLD')||['CEYREK','YARIM','TAM'].includes(x[0])?'gold':''}">${assetLabels[x[0]]||x[0]}: ${fnum(x[1])}</span>`).join('')}</div>
     ${!compact&&goalMoves.length?`<div class="goal-movement-badges" aria-label="Hedef birikim hareketleri">${goalMoves.map(m=>{const added=Number(m.sign)>0;const assetName=assetLabels[m.asset]||m.asset||'TL';return `<span class="goal-movement-chip ${added?'added':'removed'}" title="${added?'Birikim eklendi':'Birikim çıkarıldı'} · ${fd(m.date)}"><span class="goal-movement-chip-icon">${added?'＋':'−'}</span><span class="goal-movement-chip-label">${esc(assetName)} ${fnum(m.quantity)}</span></span>`}).join('')}</div>`:''}
     ${completed&&!compact?goalCompletionDetails(g):''}
     ${!compact&&!completed?`<div class="goal-actions goal-modal-actions"><button class="primary" onclick="openSavingMoveModal('${g.id}',1)">+ Birikim Ekle</button><button class="outline" onclick="openSavingMoveModal('${g.id}',-1)">Birikim Çıkar</button></div>`:''}
@@ -3142,7 +3022,7 @@ function applySharedState(data,preferredActive=null){
   S.transactions=Array.isArray(S.transactions)?S.transactions:[];
   S.recurringTransactions=(S.recurringTransactions||[]).map(r=>({...r,asset:r.asset||'TRY',months:Math.max(2,Number(r.months)||2),remaining:Math.max(0,Number(r.remaining??r.months)||0),generatedCount:Math.max(0,Number(r.generatedCount)||0),nextDate:r.nextDate||r.startDate||date(),anchorDay:Number(r.anchorDay)||Number((r.startDate||date()).slice(-2)),active:r.active!==false&&!r.paused&&Number(r.remaining??r.months)>0}));
   S.transactions=S.transactions.map(t=>({...t,asset:t.asset||'TRY'}));
-  S.loans=(S.loans||[]).map(normalizeLoanRecord);
+  S.loans=(S.loans||[]).map(l=>({...l,asset:l.asset||'TRY',status:l.status||'open',memberId:l.memberId||S.active,date:l.date||String(l.createdAt||date()).slice(0,10),closedAt:l.closedAt||null}));
   S.payments=(S.payments||[]).map(p=>({...p,recurring:!!p.recurring,interval:p.interval||'aylik',months:Math.max(1,Number(p.months)||1),remaining:Math.max(0,Number(p.remaining??(p.recurring?Number(p.months)||1:1)))}));
   const paymentPlansMigrated=expandLegacyRecurringPayments();
   S.savingMovements=(S.savingMovements||[]).map(m=>({...m,date:m.date||date()}));
@@ -3694,37 +3574,23 @@ function delMember(id){if(S.members.length<=1)return;S.members=S.members.filter(
 function enterDeleteMode(type){
   deleteMode[type]=true;
   deleteSelected[type]=new Set();
-  if(type==='loans')deleteSelected.loanSettlements=new Set();
   render();
 }
 function cancelDeleteMode(type){
   deleteMode[type]=false;
   deleteSelected[type]=new Set();
-  if(type==='loans')deleteSelected.loanSettlements=new Set();
   render();
 }
-function loanSettlementSelectionKey(loanId,settlementId){return `${String(loanId)}::${String(settlementId)}`;}
 function toggleDeleteSelection(type,id){
-  if(type==='loans'){
-    const loanId=String(id);
-    if(deleteSelected.loans.has(loanId)){deleteSelected.loans.delete(loanId)}
-    else{
-      deleteSelected.loans.add(loanId);
-      for(const key of Array.from(deleteSelected.loanSettlements||[]))if(key.startsWith(loanId+'::'))deleteSelected.loanSettlements.delete(key);
-    }
-  }else if(type==='loanSettlements'){
-    const key=String(id),loanId=key.split('::')[0];
-    if(deleteSelected.loanSettlements.has(key))deleteSelected.loanSettlements.delete(key);
-    else{deleteSelected.loanSettlements.add(key);deleteSelected.loans.delete(loanId)}
-  }else if(deleteSelected[type].has(id)) deleteSelected[type].delete(id);
+  if(deleteSelected[type].has(id)) deleteSelected[type].delete(id);
   else deleteSelected[type].add(id);
   render();
 }
 function askDelete(type){
-  let count=deleteSelected[type].size+(type==='loans'?(deleteSelected.loanSettlements?.size||0):0);
+  let count=deleteSelected[type].size;
   if(!count)return;
   document.getElementById('modalTitle').textContent='Silme Onayı';
-  document.getElementById('modalBody').innerHTML=`<div class="confirmbox"><div class="confirmicon">!</div><h3>${count} ${type==='loans'?'borç / ödeme kaydı':'kayıt'} silinecek</h3><p>Seçtiğiniz kayıtlar kalıcı olarak silinecek. Bu işlem geri alınamaz.</p><div class="confirmactions"><button class="secondary" onclick="closeModal()">Vazgeç</button><button class="dangerbtn" onclick="confirmDelete('${type}')">Evet, Sil</button></div></div>`;
+  document.getElementById('modalBody').innerHTML=`<div class="confirmbox"><div class="confirmicon">!</div><h3>${count} kayıt silinecek</h3><p>Seçtiğiniz kayıtlar kalıcı olarak silinecek. Bu işlem geri alınamaz.</p><div class="confirmactions"><button class="secondary" onclick="closeModal()">Vazgeç</button><button class="dangerbtn" onclick="confirmDelete('${type}')">Evet, Sil</button></div></div>`;
   document.getElementById('modal').classList.add('show');
 }
 function confirmDelete(type){
@@ -3764,35 +3630,14 @@ function confirmDelete(type){
       if(g)reconcileGoalAfterMovementDeletion(g,deletedMoveIds);
     });
   }else if(type==='loans'){
-    const selectedLoanIds=new Set(Array.from(ids).map(String));
-    S.loans=(S.loans||[]).filter(x=>!selectedLoanIds.has(String(x.id)));
-    const paymentDeletes=new Map();
-    for(const key of (deleteSelected.loanSettlements||new Set())){
-      const split=String(key).split('::');
-      if(split.length<2)continue;
-      const loanId=split.shift(),settlementId=split.join('::');
-      if(!paymentDeletes.has(loanId))paymentDeletes.set(loanId,new Set());
-      paymentDeletes.get(loanId).add(settlementId);
-    }
-    paymentDeletes.forEach((settlementIds,loanId)=>{
-      const loan=(S.loans||[]).find(x=>String(x.id)===String(loanId));
-      if(!loan)return;
-      loan.settlements=(Array.isArray(loan.settlements)?loan.settlements:[]).filter(x=>!settlementIds.has(String(x.id)));
-      const settled=loan.settlements.reduce((sum,x)=>sum+Math.max(0,Number(x.amount)||0),0);
-      const original=Math.max(0,Number(loan.amount)||0);
-      const remaining=Math.max(0,original-settled);
-      loan.closedAmount=settled;
-      loan.status=original>0&&remaining<=LOAN_AMOUNT_EPSILON?'closed':'open';
-      if(loan.status==='closed'){
-        const dates=loan.settlements.map(x=>x.date).filter(Boolean).sort();
-        loan.closedAt=dates.length?dates[dates.length-1]:(loan.date||null);
-      }else loan.closedAt=null;
-    });
+    const loanIds=new Set(),settlementDeletes=[];
+    ids.forEach(raw=>{const key=String(raw);if(key.startsWith('settlement|')){const parts=key.split('|');settlementDeletes.push({loanId:parts[1],settlementId:parts.slice(2).join('|')})}else loanIds.add(key)});
+    settlementDeletes.forEach(item=>{const loan=(S.loans||[]).find(x=>String(x.id)===String(item.loanId));if(loan){loan.settlements=(loan.settlements||[]).filter(x=>String(x.id)!==String(item.settlementId));if(loan.status==='closed'&&loanOutstanding(loan)>0.000001){loan.status='open';loan.closedAt=null;loan.closedAmount=null}}});
+    S.loans=(S.loans||[]).filter(x=>!loanIds.has(String(x.id)));
   }
   closeModal();
   deleteMode[type]=false;
   deleteSelected[type]=new Set();
-  if(type==='loans')deleteSelected.loanSettlements=new Set();
   save();
 }
 
