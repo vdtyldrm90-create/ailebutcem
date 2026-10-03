@@ -1341,6 +1341,9 @@ body.cloud-cache-loading #main button,body.cloud-cache-loading #main input,body.
 .movement-history-table th{background:var(--soft);font-size:10px;color:var(--muted);font-weight:750}
 .movement-history-table tbody tr:last-child td{border-bottom:0}
 .movement-history-table .movement-quantity{font-weight:750}
+.movement-sign-badge{display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:4px 8px;border:1px solid;border-radius:7px;font-weight:800;line-height:1.2;white-space:nowrap}
+.movement-sign-badge.added{color:#168348;border-color:#35ad70;background:rgba(40,180,99,.08)}
+.movement-sign-badge.removed{color:#c83232;border-color:#e06464;background:rgba(220,53,53,.07)}
 .movement-history-table .movement-select-col{width:42px;text-align:center}
 .movement-history-table .movement-select-col input{width:16px;height:16px}
 
@@ -2975,7 +2978,7 @@ function savingMovementTable(rows,lotState,isAddition,completed){
       const profitClass=completed||asset==='TRY'?'pl-neutral':!hasCost||remain<=0?'pl-unknown':profit>=0?'pl-positive':'pl-negative';
       extras=`<td>${hasCost?fmt(cost):'Kayıtlı değil'} TL</td><td>${fmt(currentRemain)} TL</td><td class="${profitClass}">${profitText}</td>`;
     }else extras=`<td>${fmt(current)} TL</td>`;
-    return `<tr>${select}<td>${fd(x.date)}</td><td>${esc(member(x.memberId))}</td><td class="movement-quantity">${isAddition?'+':'−'}${fnum(qty)} ${esc(assetName)}</td>${extras}</tr>`;
+    return `<tr class="${isAddition?'movement-row-added':'movement-row-removed'}">${select}<td>${fd(x.date)}</td><td>${esc(member(x.memberId))}</td><td class="movement-quantity"><span class="movement-sign-badge ${isAddition?'added':'removed'}">${isAddition?'+':'−'} ${fnum(qty)} ${esc(assetName)}</span></td>${extras}</tr>`;
   }).join('');
   return `<div class="movement-table-wrap"><table class="movement-history-table"><thead><tr>${selectionHead}${headers}</tr></thead><tbody>${body}</tbody></table></div>`;
 }
