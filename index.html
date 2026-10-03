@@ -1138,6 +1138,38 @@ body.cloud-cache-loading #main button,body.cloud-cache-loading #main input,body.
 @media(max-width:420px){.payment-list-controls{gap:3px}.payment-list-controls .payment-status-filter{gap:1px}.payment-list-controls .payment-status-filter button,.payment-list-controls>button{padding:5px 4px;font-size:9px}.movement-financial-grid{gap:4px 6px;padding:6px}.movement-financial-grid b{font-size:9px}}
 </style>
 
+
+<style>
+/* Ana sayfa hızlı bağlantıları: hedef durum rozetleriyle aynı kompakt, büyük harfli görünüm. */
+.home-payments-preview .alerthead button.home-action-badge,
+.home-transactions-preview .home-list-head-actions button.home-action-badge,
+.home-savings-preview .panelhead button.home-action-badge,
+.home-loan-mini .panelhead button.home-action-badge{
+  display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;
+  min-width:0;min-height:0;padding:4px 7px;border-radius:999px;
+  font-size:9px;line-height:1.2;font-weight:800;letter-spacing:.18px;
+  text-transform:uppercase;box-shadow:none;flex:0 0 auto;
+}
+.home-payments-preview .alerthead button.home-action-payments{
+  color:#94620b;background:#fff4d9;border:1px solid #f4dfa6;
+}
+.home-transactions-preview .home-list-head-actions button.home-action-transactions{
+  color:#237849;background:#e7f5ec;border:1px solid #c6e7d1;
+}
+.home-savings-preview .panelhead button.home-action-goals{
+  color:#7049a5;background:#f1eafb;border:1px solid #dfd0f5;
+}
+.home-loan-mini .panelhead button.home-action-loans{
+  color:#2867a7;background:#e8f1fc;border:1px solid #cfe0f7;
+}
+@media(max-width:420px){
+ .home-payments-preview .alerthead button.home-action-badge,
+ .home-transactions-preview .home-list-head-actions button.home-action-badge,
+ .home-savings-preview .panelhead button.home-action-badge,
+ .home-loan-mini .panelhead button.home-action-badge{padding:4px 6px;font-size:9px;letter-spacing:0}
+}
+</style>
+
 </head>
 <body class="auth-pending">
 <div id="authGate" class="auth-gate" aria-live="polite"></div>
@@ -1850,14 +1882,14 @@ function home(){
   const homePayments=upcoming.slice(0,5);
   const homeTransactions=S.transactions.filter(t=>String(t.date||'').slice(0,10)<=today).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))||String(b.createdAt||'').localeCompare(String(a.createdAt||''))).slice(0,5);
   const overdueSection=overdue.length?`<section class="alert danger home-overdue-preview"><b class="home-overdue-title">⚠ ${overdue.length} vadesi geçmiş ödeme var</b><p class="home-overdue-total">Vadesi geçmiş toplam: ${fmt(overTotal)}</p><button class="ghost" onclick="go('odemeler')">Ödemeleri görüntüle</button></section>`:'';
-  const upcomingSection=upcoming.length?`<section class="alert home-payments-preview"><div class="alerthead"><div><b>${upcoming.length} yaklaşan ödeme</b><p class="home-upcoming-total">Bugün ve önümüzdeki 7 gün içinde toplam ${fmt(total)}</p></div><button class="ghost" onclick="go('odemeler')">Tüm ödemeler</button></div><div class="list">${homePayments.map(paymentRow).join('')}</div></section>`:'';
-  return `<div class="stack">${title(`Merhaba, ${esc(member(S.active))}`,'Ailenizin finansal durumuna genel bakış.')}<div class="home-summary-wrap"><div class="home-summary-filter">${dateFilterUI('home')}</div>${summary('home').replace('grid3','grid3 '+(overdue.length?'home-summary-overdue':''))}</div>${overdueSection}${upcomingSection}<div class="grid2"><section class="panel home-transactions-preview"><div class="panelhead"><div><h2>Son İşlemler</h2></div><div class="home-list-head-actions"><button class="ghost" onclick="go('islemler')">Tüm işlemler</button></div></div><div class="list">${homeTransactions.map(txRow).join('')||empty()}</div></section><section class="panel home-savings-preview"><div class="panelhead"><div><h2>Birikim Hedefleri</h2><p>Güncel kurla hedef ilerlemesi</p></div><button class="ghost" onclick="go('birikim')">Tümü</button></div><div class="goalgrid" style="grid-template-columns:1fr">${S.goals.filter(g=>!goalIsCompleted(g)).slice(0,3).map(g=>goalCard(g,true)).join('')||empty()}</div></section></div>${homeLoansMini()}</div>`;
+  const upcomingSection=upcoming.length?`<section class="alert home-payments-preview"><div class="alerthead"><div><b>${upcoming.length} yaklaşan ödeme</b><p class="home-upcoming-total">Bugün ve önümüzdeki 7 gün içinde toplam ${fmt(total)}</p></div><button class="ghost home-action-badge home-action-payments" onclick="go('odemeler')">Tüm ödemeler</button></div><div class="list">${homePayments.map(paymentRow).join('')}</div></section>`:'';
+  return `<div class="stack">${title(`Merhaba, ${esc(member(S.active))}`,'Ailenizin finansal durumuna genel bakış.')}<div class="home-summary-wrap"><div class="home-summary-filter">${dateFilterUI('home')}</div>${summary('home').replace('grid3','grid3 '+(overdue.length?'home-summary-overdue':''))}</div>${overdueSection}${upcomingSection}<div class="grid2"><section class="panel home-transactions-preview"><div class="panelhead"><div><h2>Son İşlemler</h2></div><div class="home-list-head-actions"><button class="ghost home-action-badge home-action-transactions" onclick="go('islemler')">Tüm işlemler</button></div></div><div class="list">${homeTransactions.map(txRow).join('')||empty()}</div></section><section class="panel home-savings-preview"><div class="panelhead"><div><h2>Birikim Hedefleri</h2><p>Güncel kurla hedef ilerlemesi</p></div><button class="ghost home-action-badge home-action-goals" onclick="go('birikim')">Tümü</button></div><div class="goalgrid" style="grid-template-columns:1fr">${S.goals.filter(g=>!goalIsCompleted(g)).slice(0,3).map(g=>goalCard(g,true)).join('')||empty()}</div></section></div>${homeLoansMini()}</div>`;
 }
 
 function homeLoansMini(){
   const given=(S.loans||[]).filter(l=>l.direction==='given'&&l.status!=='closed').length;
   const taken=(S.loans||[]).filter(l=>l.direction==='taken'&&l.status!=='closed').length;
-  return `<section class="panel home-loan-mini"><div class="panelhead"><div><h2>Elden Borçlar</h2><p>Açık borçların kısa özeti</p></div><button class="ghost" onclick="goLoans()">Detaylar</button></div><div class="home-loan-metrics"><div><small>Verdiğim</small><b>${fmt(loanTotal('given'))}</b><span>${given} açık kayıt</span></div><div><small>Aldığım</small><b>${fmt(loanTotal('taken'))}</b><span>${taken} açık kayıt</span></div><div><small>Net Alacak</small><b>${fmt(loanTotal('given')-loanTotal('taken'))}</b><span>TL karşılığı</span></div></div></section>`;
+  return `<section class="panel home-loan-mini"><div class="panelhead"><div><h2>Elden Borçlar</h2><p>Açık borçların kısa özeti</p></div><button class="ghost home-action-badge home-action-loans" onclick="goLoans()">Detaylar</button></div><div class="home-loan-metrics"><div><small>Verdiğim</small><b>${fmt(loanTotal('given'))}</b><span>${given} açık kayıt</span></div><div><small>Aldığım</small><b>${fmt(loanTotal('taken'))}</b><span>${taken} açık kayıt</span></div><div><small>Net Alacak</small><b>${fmt(loanTotal('given')-loanTotal('taken'))}</b><span>TL karşılığı</span></div></div></section>`;
 }
 function goLoans(){
   tab='birikim';
