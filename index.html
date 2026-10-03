@@ -2410,7 +2410,7 @@ function openPayModal(){showFormModal('Yeni Planlı Ödeme',paymentForm());}
 function openGoalModal(){showFormModal('Yeni Birikim Hedefi',goalForm());}
 function openLoanModal(){showFormModal('Elden Borç Kaydı',loanForm());}
 function openSavingMoveModal(id,sign){
-  const goal=(S.goals||[]).find(x=>x.id===id);
+  const goal=(S.goals||[]).find(x=>String(x.id)===String(id));
   if(!goal||goalIsCompleted(goal))return;
   showFormModal(sign>0?'Birikim Ekle':'Birikim Çıkar',savingMoveForm(goal,sign));
   const asset=document.getElementById('asset-'+id);
@@ -2838,14 +2838,13 @@ function loansPanel(){
   const rows=S.loans.filter(l=>loanFilter==='all'||(loanFilter==='open'?l.status!=='closed':l.status==='closed')).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const loanDeleteCount=deleteSelected.loans.size+(deleteSelected.loanSettlements?.size||0);
   const deleteActions=deleteMode.loans
-    ? `<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="secondary" onclick="cancelDeleteMode('loans')">İptal</button><button class="dangerbtn" onclick="askDelete('loans')" ${loanDeleteCount?'':'disabled'}>Seçili Sil (${loanDeleteCount})</button></div>`
-    : `<button class="secondary" onclick="enterDeleteMode('loans')">Sil</button>`;
+    ? `<div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" class="secondary" onclick="cancelDeleteMode('loans')">İptal</button><button type="button" class="dangerbtn" onclick="askDelete('loans')" ${loanDeleteCount?'':'disabled'}>Seçili Sil (${loanDeleteCount})</button></div>`
+    : `<button type="button" class="secondary" onclick="enterDeleteMode('loans')">Sil</button>`;
   return `<section id="loansPanel" class="panel loan-records-panel"><div class="panelhead"><div><h2>Elden Borç Kayıtları</h2><p>${rows.length} kayıt</p></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><div class="segment loan-filter">${[['open','Açık'],['closed','Kapalı'],['all','Tümü']].map(x=>`<button type="button" class="${loanFilter===x[0]?'active':''}" onclick="loanFilter='${x[0]}';render()">${x[1]}</button>`).join('')}</div>${deleteActions}</div></div><div class="list">${rows.map(loanRow).join('')||empty()}</div></section>`;
 }
 function savings(){
   const total=S.goals.reduce((a,g)=>a+holdingsValue(g.holdings),0);
   const lotState=acquisitionLotState(),pl=trackedProfitLoss(lotState);
-  const history=(S.savingMovements||[]).filter(x=>dateInRange(x.date,dateFilters.movements,window._filterDates?.movements?.start,window._filterDates?.movements?.end)).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const completedGoals=S.goals.filter(goalIsCompleted),activeGoals=S.goals.filter(g=>!goalIsCompleted(g)),shownGoals=savingsFilter==='completed'?completedGoals:activeGoals;
   const loans=S.loans||[],activeGiven=loans.filter(l=>l.direction==='given'&&l.status!=='closed'),activeTaken=loans.filter(l=>l.direction==='taken'&&l.status!=='closed');
   return `<div class="stack savings-page">${title('Birikim Hedefleri','TL, döviz ve altın birikimlerinizi güncel kurla izleyin.')}
@@ -2866,7 +2865,6 @@ function savings(){
       <section class="savings-goals-column"><div class="panelhead" style="margin-bottom:8px"><div><h2>Birikim Hedefleri</h2><p>Hedeflerinizi durumlarına göre görüntüleyin.</p></div>${deleteMode.goals?`<div style="display:flex;gap:6px"><button class="secondary" onclick="cancelDeleteMode('goals')">İptal</button><button class="dangerbtn" onclick="askDelete('goals')" ${deleteSelected.goals.size?'':'disabled'}>Seçili Sil (${deleteSelected.goals.size})</button></div>`:`<button class="secondary" onclick="enterDeleteMode('goals')">Sil</button>`}</div><div class="segment saving-tabs"><button class="${savingsFilter==='active'?'active':''}" onclick="savingsFilter='active';render()">Devam Eden (${activeGoals.length})</button><button class="${savingsFilter==='completed'?'active':''}" onclick="savingsFilter='completed';render()">Tamamlanan (${completedGoals.length})</button></div><section class="goalgrid">${shownGoals.map(g=>goalCard(g)).join('')||empty()}</section></section>
     </div>
     <div class="savings-bottom-grid">
-      <section class="panel saving-history-panel"><div class="panelhead saving-history-head"><div><h2>Birikim Hareket Geçmişi</h2><p>Seçtiğiniz tarih aralığındaki birikim işlemleri.</p></div><div class="saving-history-actions">${dateFilterUI('movements')}${deleteMode.movements?`<div class="saving-history-delete-actions"><button class="secondary" onclick="cancelDeleteMode('movements')">İptal</button><button class="dangerbtn" onclick="askDelete('movements')" ${deleteSelected.movements.size?'':'disabled'}>Seçili Sil (${deleteSelected.movements.size})</button></div>`:`<button class="secondary" onclick="enterDeleteMode('movements')">Sil</button>`}</div></div><div class="list saving-history-list">${history.length?history.map(x=>savingRow(x,lotState)).join(''):empty()}</div></section>
       ${loansPanel()}
     </div>
   </div>`;
@@ -2896,15 +2894,15 @@ function goalDetailPage(id){
   const additions=moves.filter(m=>Number(m.sign)>0),withdrawals=moves.filter(m=>Number(m.sign)<=0),lotState=acquisitionLotState();
   const holdRows=Object.entries(g.holdings||{}).filter(([,q])=>Number(q)>1e-8).map(([a,q])=>`<span class="goal-holding-chip">${esc(assetLabels[a]||a)} <b>${fnum(q)}</b></span>`).join('');
   return `<div class="stack savings-detail-page">
-    <div class="record-detail-header"><button class="record-detail-back" onclick="closeSavingsDetail()">‹ Birikim Hedefleri</button><div class="record-detail-actions">${!completed?`<button class="primary" onclick="openSavingMoveModal('${g.id}',1)">+ Birikim Ekle</button><button class="outline" onclick="openSavingMoveModal('${g.id}',-1)">− Birikim Çıkar</button>`:''}<button class="ghost danger-text" onclick="deleteGoal('${g.id}')">Hedefi Sil</button></div></div>
+    <div class="record-detail-header"><button class="record-detail-back" onclick="closeSavingsDetail()">‹ Birikim Hedefleri</button><div class="record-detail-actions">${!completed?`<button type="button" class="primary" onclick="event.stopPropagation();openSavingMoveModal('${g.id}',1)">+ Birikim Ekle</button><button type="button" class="outline" onclick="event.stopPropagation();openSavingMoveModal('${g.id}',-1)">− Birikim Çıkar</button>`:''}</div></div>
     <section class="panel goal-detail-hero"><div class="goal-detail-top"><div class="goalname"><div class="pig" aria-label="Birikim">¤</div><div><h2 style="margin:0;font-size:19px">${esc(g.name)}</h2><div class="sub">${esc(member(g.memberId))}</div></div></div><span class="${completed?'goal-completed-badge':'goal-active-badge'}">${completed?'Tamamlandı':'Devam Ediyor'}</span></div>
       <div class="goal-detail-main-number"><b>${moneyInAsset(total,asset)}</b><span>%${Math.round(pct)}</span></div><div class="goal-detail-progress"><i style="width:${pct}%"></i></div><div class="goalmeta"><span>Hedef: ${moneyInAsset(target,asset)}</span><span>${completed?'Hedef tamamlandı':'Kalan: '+moneyInAsset(Math.max(0,target-total),asset)}</span></div>
       <div class="goal-detail-stat-grid"><div><small>Hedef Tutarı</small><b>${moneyInAsset(target,asset)}</b></div><div><small>Mevcut Birikim</small><b>${moneyInAsset(total,asset)}</b></div><div><small>Kalan Tutar</small><b>${moneyInAsset(Math.max(0,target-total),asset)}</b></div></div>
       <div class="goal-detail-meta"><span><small>Başlangıç</small><b>${g.startDate?fd(g.startDate):'—'}</b></span><span><small>Hedef Tarihi</small><b>${g.targetDate?fd(g.targetDate):'Belirtilmedi'}</b></span><span><small>Hedef Sahibi</small><b>${esc(member(g.memberId))}</b></span><span><small>Durum</small><b>${completed?'Tamamlandı':'Devam Ediyor'}</b></span>${completed?`<span><small>Tamamlanma Tarihi</small><b>${completion?fd(completion):'—'}</b></span>`:''}</div>${holdRows?`<div class="goal-holdings-line"><small>Mevcut varlıklar</small><div class="goal-holding-chips">${holdRows}</div></div>`:''}
       ${completed?goalCompletionDetails(g):''}
     </section>
-    <section class="panel detail-history-panel"><div class="panelhead"><div><h2>Birikim Hareket Geçmişi <small>(${additions.length})</small></h2><p>Bu hedefe eklenen birikimler</p></div>${savingsDetailDeleteActions('movements')}</div><div class="detail-history-group"><h3><span class="goal-movement-chip-icon added">＋</span> Birikim Ekleme Hareketleri</h3><div class="list detail-history-list">${additions.length?additions.map(x=>savingRow(x,lotState,true)).join(''):'<div class="detail-empty-note">Bu hedefe henüz birikim eklenmemiş.</div>'}</div></div>
-      <div class="detail-history-group"><h3><span class="goal-movement-chip-icon removed">−</span> Birikim Çıkarma Hareketleri <small>(${withdrawals.length})</small></h3><div class="list detail-history-list">${withdrawals.length?withdrawals.map(x=>savingRow(x,lotState,true)).join(''):'<div class="detail-empty-note">Bu hedeften henüz birikim çıkarılmamış.</div>'}</div></div>
+    <section class="panel detail-history-panel"><div class="panelhead"><div><h2>Birikim Hareket Geçmişi</h2><p>Eklenen ve çıkarılan birikimler ayrı listelenir.</p></div>${savingsDetailDeleteActions('movements')}</div><div class="detail-history-group"><h3><span class="goal-movement-chip-icon added">＋</span> Eklenen Birikimler <small>(${additions.length})</small></h3><div class="list detail-history-list">${additions.length?additions.map(x=>savingRow(x,lotState,true)).join(''):'<div class="detail-empty-note">Bu hedefe henüz birikim eklenmemiş.</div>'}</div></div>
+      <div class="detail-history-group"><h3><span class="goal-movement-chip-icon removed">−</span> Çıkarılan Birikimler <small>(${withdrawals.length})</small></h3><div class="list detail-history-list">${withdrawals.length?withdrawals.map(x=>savingRow(x,lotState,true)).join(''):'<div class="detail-empty-note">Bu hedeften henüz birikim çıkarılmamış.</div>'}</div></div>
     </section>
   </div>`;
 }
@@ -2923,7 +2921,7 @@ function loanDetailPage(id){
     return `<div class="loan-detail-payment-row ${incoming?'loan-payment-in':'loan-payment-out'}">${deleteMode.loans?`<label class="checkwrap loan-payment-select" onclick="event.stopPropagation()"><input type="checkbox" ${deleteSelected.loanSettlements.has(key)?'checked':''} onchange="toggleDeleteSelection('loanSettlements','${keyAttr}')"><span></span></label>`:''}<span class="loan-payment-symbol">${incoming?'+':'−'}</span><span class="loan-payment-detail"><b>${paymentLabel}: ${fnum(p.amount)} ${esc(assetName)}</b><small>${fd(p.date)} · ${esc(member(p.memberId||l.memberId))}</small></span></div>`;
   }).join('');
   const deleteCount=deleteSelected.loans.size+(deleteSelected.loanSettlements?.size||0);
-  const topDelete=deleteMode.loans?`<div class="record-detail-actions"><label class="checkwrap" title="Ana borç kaydını seç" onclick="event.stopPropagation()"><input type="checkbox" ${deleteSelected.loans.has(String(l.id))?'checked':''} onchange="toggleDeleteSelection('loans','${String(l.id).replace(/'/g,"\\'")}')"><span>Ana borç</span></label><button class="secondary" onclick="cancelDeleteMode('loans')">İptal</button><button class="dangerbtn" onclick="askDelete('loans')" ${deleteCount?'':'disabled'}>Seçili Sil (${deleteCount})</button></div>`:`<div class="record-detail-actions"><button class="secondary" onclick="enterDeleteMode('loans')">Sil</button></div>`;
+  const topDelete=deleteMode.loans?`<div class="record-detail-actions"><label class="checkwrap" title="Borç kaydını seç" onclick="event.stopPropagation()"><input type="checkbox" ${deleteSelected.loans.has(String(l.id))?'checked':''} onchange="toggleDeleteSelection('loans','${String(l.id).replace(/'/g,"\\'")}')"><span></span></label><button type="button" class="secondary" onclick="cancelDeleteMode('loans')">İptal</button><button type="button" class="dangerbtn" onclick="askDelete('loans')" ${deleteCount?'':'disabled'}>Seçili Sil (${deleteCount})</button></div>`:`<div class="record-detail-actions"><button type="button" class="secondary" onclick="enterDeleteMode('loans')">Sil</button></div>`;
   return `<div class="stack savings-detail-page">
     <div class="record-detail-header"><button class="record-detail-back" onclick="closeSavingsDetail()">‹ Elden Borçlar</button>${topDelete}</div>
     <section class="panel loan-detail-summary"><div class="loan-detail-topline"><div class="loan-detail-person"><div class="icon ${isGiven?'out':'in'}">${isGiven?'↗':'↙'}</div><div><h2>${esc(l.person)}</h2><div class="sub">${isGiven?'Borç verdim':'Borç aldım'} · ${esc(member(l.memberId))}</div></div></div><span class="loan-detail-status ${closed?'closed':''}">${esc(loanStatusText(l))}</span></div>
@@ -3077,7 +3075,7 @@ function goalCard(g,compact=false){
   </article>`;
 }
 function adjust(id,sign){
-  let g=S.goals.find(x=>x.id===id),assetEl=byId('asset-'+id),amtEl=byId('amt-'+id),dateEl=byId('saveDate-'+id),costEl=byId('costRate-'+id),a=assetEl?.value,v=Number(amtEl?.value)||0,saveDate=dateEl?.value||date();
+  let g=S.goals.find(x=>String(x.id)===String(id)),assetEl=byId('asset-'+id),amtEl=byId('amt-'+id),dateEl=byId('saveDate-'+id),costEl=byId('costRate-'+id),a=assetEl?.value,v=Number(amtEl?.value)||0,saveDate=dateEl?.value||date();
   if(!g||!a||v<=0)return;
   let costRate=1;
   if(Number(sign)>0&&a!=='TRY'){
