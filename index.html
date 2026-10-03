@@ -1027,6 +1027,29 @@ body.auth-pending .app,body.auth-required .app{display:none!important}
 @keyframes familyToastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @media(min-width:801px){.family-toast-host{bottom:22px}}
 body.cloud-cache-loading #main button,body.cloud-cache-loading #main input,body.cloud-cache-loading #main select,body.cloud-cache-loading #main textarea{pointer-events:none;opacity:.72}
+
+/* Clear two-row buying/selling rate display. */
+.rate-pair{display:flex;flex-direction:column;gap:4px;margin-top:5px}
+.rate-pair-row{display:flex;justify-content:space-between;align-items:baseline;gap:5px;border-top:1px solid var(--border);padding-top:4px}
+.rate-pair-row span{font-size:10px;color:var(--muted)}
+.rate-pair-row b{font-size:12px;margin:0;white-space:nowrap}
+.rate-pair-row.rate-buy b{color:var(--income)}
+.rate-pair-row.rate-sell b{color:var(--primary)}
+.rate-unit{display:block;margin-top:3px;color:var(--muted);font-size:9px}
+.home-upcoming-note{margin:2px 0 8px;font-size:11px}
+.goal-completion-details{margin-top:10px;padding:10px;border:1px solid var(--border);border-radius:12px;background:var(--soft);display:flex;flex-direction:column;gap:8px}
+.goal-completion-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.goal-completion-meta>div{min-width:0;display:flex;flex-direction:column;gap:3px}
+.goal-completion-meta small{font-size:10px;color:var(--muted)}
+.goal-completion-meta b{font-size:12px;overflow-wrap:anywhere}
+.goal-completion-assets{display:flex;flex-direction:column;gap:6px}
+.goal-completion-asset{display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;padding:8px;border-radius:9px;background:var(--surface,#fff);border:1px solid var(--border);font-size:10px}
+.goal-completion-asset b{grid-column:1/-1;font-size:11px}
+.goal-completion-asset span{color:var(--muted)}
+.goal-completed-note{border:1px solid #fecaca;background:#fff1f2;color:#b42318;border-radius:8px;padding:8px 10px;font-size:10px;line-height:1.45}
+.goal-cost-warning{border-left:3px solid #dc2626;background:#fff7f7;color:#9f2727;padding:7px 9px;font-size:10px;border-radius:4px 8px 8px 4px}
+@media(max-width:420px){.goal-completion-meta{grid-template-columns:1fr 1fr}.goal-completion-asset{grid-template-columns:1fr}}
+
 </style>
 
 </head>
@@ -1137,7 +1160,7 @@ function rememberActiveTab(value){
 let S=JSON.parse(localStorage.getItem(KEY)||'null')||seed(),tab=readActiveTab(),txFilter='tumu',payFilter='tumu';
 let reportMode='monthly',reportYear=new Date().getFullYear(),reportMonth=new Date().getMonth(),reportIncomeCategory='*',reportExpenseCategory='*';
 let deleteMode={transactions:false,recurringTransactions:false,payments:false,goals:false,movements:false,loans:false};
-let dateFilters={transactions:'all',recurringTransactions:'all',payments:'all',movements:'all',home:'all'};
+let dateFilters={transactions:'month',recurringTransactions:'all',payments:'all',movements:'all',home:'all'};
 let savingsFilter='active',loanFilter='open';
 
 let deleteSelected={transactions:new Set(),recurringTransactions:new Set(),payments:new Set(),goals:new Set(),movements:new Set(),loans:new Set()};
@@ -1326,8 +1349,9 @@ function acquisitionLotState(){
 }
 function trackedProfitLoss(lotState=acquisitionLotState()){
   let cost=0,value=0,repurchase=0,quantity=0;
+  const completedGoalIds=new Set((S.goals||[]).filter(goalIsCompleted).map(g=>String(g.id)));
   for(const lots of lotState.lotsByKey.values())for(const lot of lots){
-    if(lot.remaining<=0||!(lot.costRate>0)||lot.asset==='TRY')continue;
+    if(completedGoalIds.has(String(lot.goalId))||lot.remaining<=0||!(lot.costRate>0)||lot.asset==='TRY')continue;
     quantity+=lot.remaining;cost+=lot.remaining*lot.costRate;
     value+=lot.remaining*currentExitRate(lot.asset);
     repurchase+=lot.remaining*currentPurchaseRate(lot.asset);
@@ -1344,7 +1368,7 @@ function goalValueInTarget(g){
   return holdingsValue(g?.holdings)/rate;
 }
 function goalIsCompleted(g){
-  return goalValueInTarget(g)>=(Number(g?.target)||0);
+  return !!g?.completionDate || goalValueInTarget(g)>=(Number(g?.target)||0);
 }
 function moneyInAsset(n,asset){
   const value=Number(n)||0;
@@ -1690,30 +1714,26 @@ function summary(kind='home'){
 }
 function home(){
   const today=date();
-  const upcoming=S.payments.filter(p=>p.status==='bekliyor'&&days(p.dueDate)<=7).sort((a,b)=>{
-    const ao=days(a.dueDate)<0,bo=days(b.dueDate)<0;
-    if(ao!==bo)return ao?-1:1;
-    return (a.dueDate||'').localeCompare(b.dueDate||'');
-  });
-  const total=upcoming.reduce((a,x)=>a+x.amount,0);
-  const overdue=upcoming.filter(p=>isOverdue(p));
-  const overTotal=overdue.reduce((a,x)=>a+x.amount,0);
-  const future=upcoming.filter(p=>!isOverdue(p));
-  const futureTotal=future.reduce((a,x)=>a+x.amount,0);
-  const homePayments=S.payments.filter(p=>dateInRange(p.dueDate,dateFilters.payments,window._filterDates?.payments?.start,window._filterDates?.payments?.end)).slice().sort((a,b)=>{
-    const ar=a.status==='bekliyor'?0:1,br=b.status==='bekliyor'?0:1;
-    if(ar!==br)return ar-br;
-    return (a.dueDate||'').localeCompare(b.dueDate||'');
-  }).slice(0,5);
+  const overdue=S.payments.filter(p=>p.status==='bekliyor'&&days(p.dueDate)<0).sort((a,b)=>(a.dueDate||'').localeCompare(b.dueDate||''));
+  const upcoming=S.payments.filter(p=>p.status==='bekliyor'&&days(p.dueDate)>=0&&days(p.dueDate)<=7).sort((a,b)=>(a.dueDate||'').localeCompare(b.dueDate||''));
+  const total=upcoming.reduce((a,x)=>a+(Number(x.amount)||0),0);
+  const overTotal=overdue.reduce((a,x)=>a+(Number(x.amount)||0),0);
+  const homePayments=upcoming.slice(0,5);
   const homeTransactions=S.transactions.filter(t=>dateInRange(t.date,dateFilters.transactions,window._filterDates?.transactions?.start,window._filterDates?.transactions?.end)).slice().sort((a,b)=>{
     const af=String(a.date||'').slice(0,10)>today,bf=String(b.date||'').slice(0,10)>today;
     if(af!==bf)return af?1:-1;
     return af?(a.date||'').localeCompare(b.date||''):(b.date||'').localeCompare(a.date||'');
   }).slice(0,5);
-  const upcomingMessage=upcoming.length
-    ? (overdue.length?`<b class="home-overdue-title">⚠ ${overdue.length} vadesi geçmiş ödeme var</b><p class="home-overdue-total">Vadesi geçmiş toplam: ${fmt(overTotal)}</p>${future.length?`<p class="home-upcoming-total">7 gün içindeki yaklaşan ödemeler: ${fmt(futureTotal)}</p>`:''}`:`<b>${upcoming.length} yaklaşan ödeme</b><p>7 gün içinde toplam ${fmt(total)}</p>`)
-    : '<b>Önümüzdeki 7 gün içinde vadesi yaklaşan ödeme yok</b><p>Planlı ödeme kayıtlarını seçtiğiniz tarihe göre aşağıda görebilirsiniz.</p>';
-  return `<div class="stack">${title(`Merhaba, ${esc(member(S.active))}`,'Ailenizin finansal durumuna genel bakış.')}<div class="home-summary-wrap"><div class="home-summary-filter">${dateFilterUI('home')}</div>${summary('home').replace('grid3','grid3 '+(overdue.length?'home-summary-overdue':''))}</div><section class="alert ${overdue.length?'danger':''} home-payments-preview"><div class="alerthead"><div>${upcomingMessage}</div><button class="ghost" onclick="go('odemeler')">Tüm ödemeler</button></div><div class="home-list-filter">${dateFilterUI('payments')}</div><div class="list">${homePayments.map(paymentRow).join('')||empty()}</div></section>${homeLoansMini()}<div class="grid2"><section class="panel home-transactions-preview"><div class="panelhead"><div><h2>Son İşlemler</h2><p>${homeTransactions.length} kayıt · en fazla 5 işlem</p></div><div class="home-list-head-actions">${dateFilterUI('transactions')}<button class="ghost" onclick="go('islemler')">Tüm işlemler</button></div></div><div class="list">${homeTransactions.map(txRow).join('')||empty()}</div></section><section class="stack"><ratesPanel/><section class="panel"><div class="panelhead"><div><h2>Birikim Hedefleri</h2><p>Güncel kurla hedef ilerlemesi</p></div><button class="ghost" onclick="go('birikim')">Tümü</button></div><div class="goalgrid" style="grid-template-columns:1fr">${S.goals.filter(g=>!goalIsCompleted(g)).slice(0,3).map(g=>goalCard(g,true)).join('')||empty()}</div></section></section></div></div>`;
+  let upcomingMessage='';
+  if(overdue.length){
+    upcomingMessage+=`<b class="home-overdue-title">⚠ ${overdue.length} vadesi geçmiş ödeme var</b><p class="home-overdue-total">Vadesi geçmiş toplam: ${fmt(overTotal)}</p>`;
+  }
+  if(upcoming.length){
+    upcomingMessage+=`<b>${upcoming.length} yaklaşan ödeme</b><p class="home-upcoming-total">Bugün ve önümüzdeki 7 gün içinde toplam ${fmt(total)}</p>`;
+  }else{
+    upcomingMessage+='<p>Önümüzdeki 7 gün içinde vadesi yaklaşan bekleyen ödeme yok.</p>';
+  }
+  return `<div class="stack">${title(`Merhaba, ${esc(member(S.active))}`,'Ailenizin finansal durumuna genel bakış.')}<div class="home-summary-wrap"><div class="home-summary-filter">${dateFilterUI('home')}</div>${summary('home').replace('grid3','grid3 '+(overdue.length?'home-summary-overdue':''))}</div><section class="alert ${overdue.length?'danger':''} home-payments-preview"><div class="alerthead"><div>${upcomingMessage}</div><button class="ghost" onclick="go('odemeler')">Tüm ödemeler</button></div><p class="sub home-upcoming-note">Yalnızca bugün ve önümüzdeki 7 gün içinde vadesi gelen, bekleyen ödemeler gösterilir.</p><div class="list">${homePayments.map(paymentRow).join('')||empty()}</div></section>${homeLoansMini()}<div class="grid2"><section class="panel home-transactions-preview"><div class="panelhead"><div><h2>Son İşlemler</h2><p>${homeTransactions.length} kayıt · en fazla 5 işlem</p></div><div class="home-list-head-actions">${dateFilterUI('transactions')}<button class="ghost" onclick="go('islemler')">Tüm işlemler</button></div></div><div class="list">${homeTransactions.map(txRow).join('')||empty()}</div></section><section class="stack"><ratesPanel/><section class="panel"><div class="panelhead"><div><h2>Birikim Hedefleri</h2><p>Güncel kurla hedef ilerlemesi</p></div><button class="ghost" onclick="go('birikim')">Tümü</button></div><div class="goalgrid" style="grid-template-columns:1fr">${S.goals.filter(g=>!goalIsCompleted(g)).slice(0,3).map(g=>goalCard(g,true)).join('')||empty()}</div></section></section></div></div>`;
 }
 function homeLoansMini(){
   const given=(S.loans||[]).filter(l=>l.direction==='given'&&l.status!=='closed').length;
@@ -1917,7 +1937,10 @@ window.addEventListener('pageshow',()=>{
 });
 window.addEventListener('pagehide',stopRateAutoRefresh);
 
-function ratesPanel(){return `<section class="panel"><div class="panelhead"><div><h2>Güncel Kurlar</h2><p id="rateUpdatedText">${esc(rateUpdated)} · Otomatik veri</p></div></div><div class="rategrid live-rates"><div class="rate"><small>Dolar / TL</small><b>₺${fnum(currentPurchaseRate('USD'))}</b><span class="rate-detail">Bozdurma ₺${fnum(currentExitRate('USD'))} · Yeniden alım</span></div><div class="rate"><small>Euro / TL</small><b>₺${fnum(currentPurchaseRate('EUR'))}</b><span class="rate-detail">Bozdurma ₺${fnum(currentExitRate('EUR'))} · Yeniden alım</span></div><div class="rate"><small>22 Ayar Altın</small><b>₺${fnum(currentPurchaseRate('GOLD22'))}</b><span class="rate-detail">Bozdurma ₺${fnum(currentExitRate('GOLD22'))} · TL/gr</span></div><div class="rate"><small>24 Ayar Altın</small><b>₺${fnum(currentPurchaseRate('GOLD24'))}</b><span class="rate-detail">Bozdurma ₺${fnum(currentExitRate('GOLD24'))} · TL/gr</span></div><div class="rate"><small>Çeyrek Altın</small><b>₺${fnum(currentPurchaseRate('CEYREK'))}</b><span class="rate-detail">Bozdurma ₺${fnum(currentExitRate('CEYREK'))} · hesaplanan</span></div><div class="rate"><small>Yarım Altın</small><b>₺${fnum(currentPurchaseRate('YARIM'))}</b><span class="rate-detail">Bozdurma ₺${fnum(currentExitRate('YARIM'))} · hesaplanan</span></div><div class="rate"><small>Tam Altın</small><b>₺${fnum(currentPurchaseRate('TAM'))}</b><span class="rate-detail">Bozdurma ₺${fnum(currentExitRate('TAM'))} · hesaplanan</span></div></div><p class="sub rate-note">Büyük değer aynı miktarı yeniden almak için referans fiyattır; bozdurma değeri altının alış veya dövizin alış göstergesine göre hesaplanır. Altın kaynağı spot fiyat verdiğinden gerçek kuyumcu alış-satış farkı tam yansımayabilir. Fiyatlar gösterge niteliğindedir; gerçek banka/kuyumcu fiyatları farklı olabilir.</p></section>`}
+function ratesPanel(){
+  const rateCard=(label,asset,unit='')=>`<div class="rate"><small>${label}</small><div class="rate-pair"><div class="rate-pair-row rate-buy"><span>Alış</span><b>₺${fnum(currentExitRate(asset))}</b></div><div class="rate-pair-row rate-sell"><span>Satış</span><b>₺${fnum(currentPurchaseRate(asset))}</b></div></div>${unit?`<span class="rate-unit">${unit}</span>`:''}</div>`;
+  return `<section class="panel"><div class="panelhead"><div><h2>Güncel Kurlar</h2><p id="rateUpdatedText">${esc(rateUpdated)} · Otomatik veri</p></div></div><div class="rategrid live-rates">${rateCard('Dolar / TL','USD')}${rateCard('Euro / TL','EUR')}${rateCard('22 Ayar Altın','GOLD22','TL/gr')}${rateCard('24 Ayar Altın','GOLD24','TL/gr')}${rateCard('Çeyrek Altın','CEYREK','hesaplanan')}${rateCard('Yarım Altın','YARIM','hesaplanan')}${rateCard('Tam Altın','TAM','hesaplanan')}</div><p class="sub rate-note">Alış: kurumun sizden alırken ödediği referans fiyat, yani yaklaşık bozdurma değeridir. Satış: aynı varlığı yeniden almak için ödeyeceğiniz referans fiyattır. Altın kaynakları spot fiyattan türetildiğinden gerçek kuyumcu fiyatları farklı olabilir; çeyrek, yarım ve tam altın değerleri yaklaşık hesaplanır.</p></section>`;
+}
 function days(d){return Math.ceil((new Date(d+'T12:00:00')-new Date(new Date().toDateString()))/86400000)}
 function due(p){let d=days(p.dueDate);return p.status==='odendi'?'<span class="badge ok">Ödendi</span>':d<0?'<span class="badge late">Gecikti</span>':d<=3?'<span class="badge warn">Yaklaşıyor</span>':`<span class="badge">${d} gün</span>`}
 function paymentRow(p,full=false){
@@ -2285,19 +2308,27 @@ function savings(){
   </div>`;
 }
 function savingRow(x,lotState=acquisitionLotState()){
-  const g=S.goals.find(g=>g.id===x.goalId),completed=g?goalIsCompleted(g):false,asset=x.asset||'TRY';
+  const g=S.goals.find(g=>String(g.id)===String(x.goalId)),completed=g?goalIsCompleted(g):false,asset=x.asset||'TRY';
   let detail='';
   if(Number(x.sign)>0&&asset==='TRY'){
     detail='<div class="movement-pl-detail pl-neutral">TL birikiminde kur farkı hesaplanmaz.</div>';
   }else if(Number(x.sign)>0){
     const lot=lotState.byMovementId.get(String(x.id));
-    if(!(Number(x.costRate)>0)){
-      detail='<div class="movement-pl-detail pl-unknown">Bu eski kayıtta gerçek alış fiyatı tutulmadığından kâr/zarar hesaplanamıyor.</div>';
+    const currentUnit=currentExitRate(asset);
+    if(completed){
+      if(Number(x.costRate)>0&&lot&&lot.remaining>0){
+        const remain=lot.remaining,cost=remain*lot.costRate,current=remain*currentUnit;
+        detail=`<div class="movement-pl-detail pl-neutral"><span>Alış: ${fmt(lot.costRate)} / birim</span><span>Kalan maliyet: ${fmt(cost)}</span><span>Güncel fiyat: ${fmt(currentUnit)} / birim</span><span>Güncel değer: ${fmt(current)}</span>${remain<Number(x.quantity)?`<small>Kalan miktar: ${fnum(remain)} / ${fnum(x.quantity)} ${assetLabels[asset]||asset} · Çıkarılan miktar en eski alımlardan düşülür.</small>`:''}</div><div class="goal-completed-note">Hedef tamamlandı. Tamamlanan hedef için kâr/zarar gösterilmez.</div>`;
+      }else{
+        detail=`<div class="movement-pl-detail pl-neutral"><span>Güncel fiyat: ${fmt(currentUnit)} / birim</span><span>Güncel değer: ${fmt(Math.max(0,Number(x.quantity)||0)*currentUnit)}</span><span>Bu alımın kalan miktarı ${lot&&lot.remaining>0?fnum(lot.remaining):'0'} ${assetLabels[asset]||asset}.</span></div><div class="goal-completed-note">Hedef tamamlandı. Tamamlanan hedef için kâr/zarar gösterilmez.${Number(x.costRate)>0?'':' Bu eski kayıtta gerçek alış fiyatı tutulmadığından maliyet tam hesaplanamıyor.'}</div>`;
+      }
+    }else if(!(Number(x.costRate)>0)){
+      detail=`<div class="movement-pl-detail pl-unknown">Bu eski kayıtta gerçek alış fiyatı tutulmadığından kâr/zarar hesaplanamıyor. <span>Güncel fiyat: ${fmt(currentUnit)} / birim</span></div>`;
     }else if(!lot||lot.remaining<=0){
       detail=`<div class="movement-pl-detail pl-neutral">Birim alış: ${fmt(x.costRate)} · Bu alımdan kalan miktar yok.</div>`;
     }else{
-      const remain=lot.remaining,cost=remain*lot.costRate,current=remain*currentExitRate(asset),repurchase=remain*currentPurchaseRate(asset),profit=current-cost,pct=cost>0?profit/cost*100:0;
-      detail=`<div class="movement-pl-detail"><span>Alış: ${fmt(lot.costRate)} / birim</span><span>Kalan maliyet: ${fmt(cost)}</span><span>Bugün bozdurma: ${fmt(current)}</span><span>Bugün yeniden alım: ${fmt(repurchase)}</span><b class="${profit>=0?'pl-positive':'pl-negative'}">K/Z: ${signedMoney(profit)} (${signedPercent(pct)})</b>${remain<Number(x.quantity)?`<small>Kalan miktar: ${fnum(remain)} / ${fnum(x.quantity)} ${assetLabels[asset]||asset} · Çıkarılan miktar en eski alımlardan düşülür.</small>`:''}</div>`;
+      const remain=lot.remaining,cost=remain*lot.costRate,current=remain*currentUnit,profit=current-cost,pct=cost>0?profit/cost*100:0;
+      detail=`<div class="movement-pl-detail"><span>Alış: ${fmt(lot.costRate)} / birim</span><span>Kalan maliyet: ${fmt(cost)}</span><span>Güncel fiyat: ${fmt(currentUnit)} / birim</span><span>Güncel değer: ${fmt(current)}</span><b class="${profit>=0?'pl-positive':'pl-negative'}">K/Z: ${signedMoney(profit)} (${signedPercent(pct)})</b>${remain<Number(x.quantity)?`<small>Kalan miktar: ${fnum(remain)} / ${fnum(x.quantity)} ${assetLabels[asset]||asset} · Çıkarılan miktar en eski alımlardan düşülür.</small>`:''}</div>`;
     }
   }else{
     detail=`<div class="movement-pl-detail pl-neutral">Birikimden çıkarılan miktar: ${fnum(x.quantity)} ${assetLabels[asset]||asset}. Bu hareket için bozdurma fiyatı kaydedilmediğinden gerçekleşen K/Z hesaplanmaz.</div>`;
@@ -2308,6 +2339,31 @@ function savingRow(x,lotState=acquisitionLotState()){
 function deleteSavingMovement(id){let x=(S.savingMovements||[]).find(m=>m.id===id);if(!x)return;let g=S.goals.find(g=>g.id===x.goalId);if(g){g.holdings[x.asset]=Math.max(0,(g.holdings[x.asset]||0)-x.quantity*x.sign)}S.savingMovements=S.savingMovements.filter(m=>m.id!==id);save()}
 function goalForm(){return `<form class="goal-form" onsubmit="addGoal(event)"><div class="field"><label>Hedef Adı</label><input id="gName" placeholder="Örn: Tatil birikimi" required></div><div class="row2"><div class="field"><label>Hedef Tutarı</label><input id="gTarget" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="0,00" required></div><div class="field"><label>Hedef Kur Türü</label><select id="gAsset">${assetOptions}</select></div><div class="field"><label>Hedefe Başlama Tarihi</label><input id="gStartDate" type="date" value="${date()}" required></div><div class="field"><label>Sahibi</label><select id="gMember">${S.members.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select></div></div><button class="primary">Hedef Oluştur</button></form>`}
 function addGoal(e){e.preventDefault();let target=parseMoney(byId('gTarget')?.value),name=(byId('gName')?.value||'').trim();if(target<=0||!name)return;S.goals.push({id:uid(),name:name,target:target,targetAsset:byId('gAsset')?.value||'TRY',startDate:byId('gStartDate')?.value||date(),completionDate:null,memberId:byId('gMember')?.value||S.active,holdings:{TRY:0,USD:0,EUR:0,GOLD22:0,GOLD24:0,CEYREK:0,YARIM:0,TAM:0}});closeModal();save()}
+function goalCompletionDetails(g){
+  const completion=findGoalCompletionDate(g);
+  const movements=(S.savingMovements||[]).filter(m=>String(m.goalId)===String(g.id));
+  const completingMove=(g.completionMovementId?movements.find(m=>String(m.id)===String(g.completionMovementId)):null)||movements.filter(m=>Number(m.sign)>0&&(!completion||String(m.date||'')<=String(completion))).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))||String(b.createdAt||'').localeCompare(String(a.createdAt||'')))[0];
+  const completedBy=g.completionMemberId?esc(member(g.completionMemberId)):'Önceki kayıtta tamamlayan bilgisi tutulmamış';
+  const lotState=acquisitionLotState();
+  const held=Object.entries(g.holdings||{}).filter(([,q])=>Number(q)>0);
+  let totalCost=0,costComplete=true;
+  const assetRows=held.map(([asset,quantity])=>{
+    const lots=lotState.lotsByKey.get(`${g.id}::${asset}`)||[];
+    const remainingLots=lots.filter(l=>l.remaining>0);
+    const knownLots=remainingLots.filter(l=>Number(l.costRate)>0);
+    const unknownQty=remainingLots.filter(l=>!(Number(l.costRate)>0)).reduce((sum,l)=>sum+l.remaining,0);
+    const knownQty=knownLots.reduce((sum,l)=>sum+l.remaining,0);
+    const knownCost=knownLots.reduce((sum,l)=>sum+l.remaining*l.costRate,0);
+    const trackedQty=remainingLots.reduce((sum,l)=>sum+l.remaining,0);
+    const fullCostKnown=unknownQty<1e-7&&Math.abs(trackedQty-Number(quantity))<1e-5;
+    if(!fullCostKnown)costComplete=false;
+    totalCost+=knownCost;
+    const currentRate=currentExitRate(asset),currentValue=Number(quantity)*currentRate;
+    const averageCost=knownQty>0?knownCost/knownQty:0;
+    return `<div class="goal-completion-asset"><b>${esc(assetLabels[asset]||asset)} · ${fnum(quantity)}</b><span>${knownQty>0?`Alış: ${fmt(averageCost)} / birim`:'Alış maliyeti: kayıtlı değil'}</span><span>Güncel fiyat: ${fmt(currentRate)} / birim</span><span>Güncel değer: ${fmt(currentValue)}</span></div>`;
+  }).join('');
+  return `<section class="goal-completion-details"><div class="goal-completion-meta"><div><small>Tamamlanma tarihi</small><b>${completion?fd(completion):'Tarih bilgisi bulunamadı'}</b></div><div><small>Tamamlayan</small><b>${completedBy}</b></div><div><small>${costComplete?'Toplam alış maliyeti':'Bilinen alış maliyeti'}</small><b>${fmt(totalCost)}</b></div><div><small>Güncel toplam değer</small><b>${fmt(holdingsValue(g.holdings))}</b></div></div>${assetRows?`<div class="goal-completion-assets">${assetRows}</div>`:''}<div class="goal-completed-note">Bu hedef tamamlandı; tamamlanan hedefler için kâr/zarar hesabı gösterilmiyor.</div>${!costComplete?'<div class="goal-cost-warning">Bazı eski hareketlerde gerçek alış fiyatı tutulmadığından alış maliyeti toplamı eksik olabilir.</div>':''}</section>`;
+}
 function goalCard(g,compact=false){
   let total=goalValueInTarget(g),pct=g.target?total/g.target*100:0,completed=goalIsCompleted(g),held=Object.entries(g.holdings).filter(x=>x[1]>0);
   let completion=findGoalCompletionDate(g);
@@ -2319,8 +2375,9 @@ function goalCard(g,compact=false){
     </div>
     <div><div style="display:flex;justify-content:space-between"><b>${moneyInAsset(total,g.targetAsset||'TRY')}</b><b style="color:var(--primary)">%${Math.round(pct)}</b></div><div class="progress"><i style="width:${Math.min(100,pct)}%"></i></div><div class="goalmeta"><span>Hedef: ${moneyInAsset(g.target,g.targetAsset||'TRY')}</span><span>${completed?'Hedef tamamlandı':'Kalan: '+moneyInAsset(Math.max(0,g.target-total),g.targetAsset||'TRY')}</span></div>${completed&&duration?`<div class="goal-duration">${duration} sürede tamamlandı.</div>`:''}</div>
     <div class="assets">${held.map(x=>`<span class="asset ${x[0].startsWith('GOLD')||['CEYREK','YARIM','TAM'].includes(x[0])?'gold':''}">${assetLabels[x[0]]||x[0]}: ${fnum(x[1])}</span>`).join('')}</div>
+    ${completed&&!compact?goalCompletionDetails(g):''}
     ${!compact&&!completed?`<div class="goal-actions goal-modal-actions"><button class="primary" onclick="openSavingMoveModal('${g.id}',1)">+ Birikim Ekle</button><button class="outline" onclick="openSavingMoveModal('${g.id}',-1)">Birikim Çıkar</button></div>`:''}
-  </article>`
+  </article>`;
 }
 function adjust(id,sign){
   let g=S.goals.find(x=>x.id===id),assetEl=byId('asset-'+id),amtEl=byId('amt-'+id),dateEl=byId('saveDate-'+id),costEl=byId('costRate-'+id),a=assetEl?.value,v=Number(amtEl?.value)||0,saveDate=dateEl?.value||date();
@@ -2334,9 +2391,18 @@ function adjust(id,sign){
   g.holdings[a]=Math.max(0,(g.holdings[a]||0)+qty);
   let afterTotal=goalValueInTarget(g);
   S.savingMovements=S.savingMovements||[];
-  S.savingMovements.unshift({id:uid(),goalId:id,goalName:g.name,asset:a,quantity:v,sign:sign,date:saveDate,rate:currentPurchaseRate(a),costRate:Number(sign)>0?costRate:null,memberId:g.memberId,createdAt:new Date().toISOString()});
-  if(beforeTotal<Number(g.target||0)&&afterTotal>=Number(g.target||0))g.completionDate=saveDate;
-  if(afterTotal<Number(g.target||0))g.completionDate=null;
+  const movement={id:uid(),goalId:id,goalName:g.name,asset:a,quantity:v,sign:sign,date:saveDate,rate:currentPurchaseRate(a),costRate:Number(sign)>0?costRate:null,memberId:S.active||g.memberId,createdAt:new Date().toISOString()};
+  S.savingMovements.unshift(movement);
+  if(beforeTotal<Number(g.target||0)&&afterTotal>=Number(g.target||0)){
+    g.completionDate=saveDate;
+    g.completionMemberId=movement.memberId;
+    g.completionMovementId=movement.id;
+  }
+  if(afterTotal<Number(g.target||0)){
+    g.completionDate=null;
+    g.completionMemberId=null;
+    g.completionMovementId=null;
+  }
   if(amtEl)amtEl.value='';closeModal();save();
 }
 function delGoal(id){S.goals=S.goals.filter(g=>g.id!==id);save()}
