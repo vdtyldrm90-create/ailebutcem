@@ -1,0 +1,2364 @@
+{
+  "id": "./",
+  "name": "Aile Bütçem",
+  "short_name": "Aile Bütçem",
+  "description": "Aile bütçesi, gelir-gider, birikim ve planlı ödemeleri takip uygulaması.",
+  "lang": "tr-TR",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "any",
+  "background_color": "#f7faf9",
+  "theme_color": "#397b70",
+  "categories": [
+    "finance",
+    "productivity"
+  ],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
+
+const CACHE_NAME = 'aile-butcem-pwa-v1';
+const APP_SHELL = [
+  './',
+  './index.html',
+  './manifest.webmanifest',
+  './icon-192.png',
+  './icon-512.png',
+  './apple-touch-icon.png'
+];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    await Promise.all(APP_SHELL.map(async (path) => {
+      const url = new URL(path, self.registration.scope).href;
+      try {
+        const response = await fetch(new Request(url, { cache: 'reload' }));
+        if (response && response.ok) await cache.put(url, response.clone());
+      } catch (_) {
+        // An unavailable shell resource should not break service-worker installation.
+      }
+    }));
+    await self.skipWaiting();
+  })());
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter((key) => key.startsWith('aile-butcem-pwa-') && key !== CACHE_NAME)
+      .map((key) => caches.delete(key)));
+    await self.clients.claim();
+  })());
+});
+
+self.addEventListener('fetch', (event) => {
+  const request = event.request;
+  if (request.method !== 'GET') return;
+  const url = new URL(request.url);
+
+  // Cache third-party JavaScript opportunistically, with network-first updates.
+  // This can help the app shell load after a prior visit, but cloud features need internet.
+  if (request.destination === 'script' &&
+      (url.hostname === 'cdn.jsdelivr.net' || url.hostname === 'cdnjs.cloudflare.com')) {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      try {
+        const response = await fetch(request);
+        if (response && (response.ok || response.type === 'opaque')) {
+          cache.put(request, response.clone()).catch(() => {});
+        }
+        return response;
+      } catch (_) {
+        const cached = await cache.match(request);
+        return cached || new Response('Uygulama kitaplığı çevrimdışı kullanılamıyor. İnternet bağlantını açıp tekrar dene.', {
+          status: 503,
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+        });
+      }
+    })());
+    return;
+  }
+
+  if (url.origin !== self.location.origin) return;
+
+  // Always check the network for page navigations so deployments update promptly.
+  if (request.mode === 'navigate') {
+    event.respondWith((async () => {
+      try {
+        const response = await fetch(request);
+        if (response && response.ok) {
+          const cache = await caches.open(CACHE_NAME);
+          const indexUrl = new URL('./index.html', self.registration.scope).href;
+          cache.put(indexUrl, response.clone()).catch(() => {});
+        }
+        return response;
+      } catch (_) {
+        const cached = await caches.match(request) ||
+          await caches.match(new URL('./index.html', self.registration.scope).href);
+        return cached || new Response(
+          '<!doctype html><html lang="tr"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aile Bütçem</title><body style="font-family:system-ui;padding:2rem;background:#f7faf9;color:#273238"><h2>Aile Bütçem</h2><p>Uygulama açılabilmek için internet bağlantısı bekliyor. İnternete bağlanıp tekrar dene.</p></body></html>',
+          { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+        );
+      }
+    })());
+    return;
+  }
+
+  // Static app metadata and icons can be served from cache after first visit.
+  if (url.pathname.endsWith('/manifest.webmanifest') || (/\/icon-192\.png$/.test(url.pathname) || /\/icon-512\.png$/.test(url.pathname) || /\/apple-touch-icon\.png$/.test(url.pathname))) {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      const cached = await cache.match(request);
+      if (cached) return cached;
+      try {
+        const response = await fetch(request);
+        if (response && response.ok) cache.put(request, response.clone()).catch(() => {});
+        return response;
+      } catch (_) {
+        return new Response('', { status: 503 });
+      }
+    })());
+  }
+});
+
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#397b70">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Aile Bütçem">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<title>Aile Bütçem</title>
+<style>
+:root{--bg:#f7faf9;--fg:#273238;--card:#fff;--muted:#68777a;--primary:#397b70;--primary2:#2d665d;--income:#3f9a68;--expense:#d65b51;--gold:#c49a38;--border:#dfe7e3;--soft:#edf4f1;--danger:#c94747;--shadow:0 2px 10px rgba(30,50,45,.055);--r:16px}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button,input,select{font:inherit}button{cursor:pointer}.app{min-height:100vh;padding-bottom:30px}
+header{position:sticky;top:0;z-index:20;background:rgba(247,250,249,.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--border)}
+.head{max-width:1150px;margin:auto;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px}.brand{display:flex;align-items:center;gap:10px}.logo{width:38px;height:38px;border-radius:12px;background:var(--primary);color:white;display:grid;place-items:center;font-weight:800}.brand b{font-size:16px}.brand span{display:block;color:var(--muted);font-size:11px;margin-top:1px}
+.head-actions{display:flex;align-items:center;gap:7px;min-width:0}.profile{border:1px solid var(--border);background:var(--card);border-radius:11px;padding:8px 11px;color:var(--fg);max-width:150px}.settings-btn{width:38px;height:38px;flex:none;display:grid;place-items:center;border:1px solid var(--border);background:var(--card);color:var(--fg);border-radius:11px;font-size:20px;line-height:1}.settings-btn:hover,.settings-btn.active{background:#e3efeb;color:var(--primary);border-color:#c8ded6}.settings-btn:focus-visible{outline:3px solid #c8ded6;outline-offset:2px}
+.desktop-nav{max-width:1150px;margin:auto;display:flex;gap:4px;padding:0 16px 8px}.navbtn{border:0;background:transparent;color:var(--muted);padding:8px 12px;border-radius:9px;font-weight:650}.navbtn.active{background:#e3efeb;color:var(--primary)}
+main{max-width:1150px;margin:auto;padding:22px 16px 100px}.page{display:none}.page.active{display:block}.title h1{font-size:23px;margin:0 0 4px}.title p{margin:0;color:var(--muted);font-size:13px}
+.stack{display:flex;flex-direction:column;gap:18px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}.split{display:grid;grid-template-columns:360px 1fr;gap:18px;align-items:start}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;box-shadow:var(--shadow)}.panelhead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:14px}.panelhead h2{font-size:15px;margin:0}.panelhead p{font-size:11px;color:var(--muted);margin:3px 0 0}
+.add-action-panel{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}.add-action-panel>div:first-child{min-width:0;flex:1}.add-action-panel h2{font-size:15px;margin:0}.add-action-panel p{font-size:11px;color:var(--muted);margin:4px 0 0;line-height:1.4}.add-action-panel .primary{flex:none;white-space:nowrap}.goal-modal-actions{display:flex;gap:8px;flex-wrap:wrap}.goal-modal-actions button{flex:1;min-width:110px}
+.stat{padding:17px}.stat small{color:var(--muted);font-size:12px}.stat .value{font-size:24px;font-weight:750;margin-top:7px}.stat.net{background:var(--primary);color:#fff;border-color:var(--primary)}.stat.net small{color:rgba(255,255,255,.82)}.income{color:var(--income)}.expense{color:var(--expense)}
+.segment{display:flex;background:var(--soft);padding:3px;border-radius:10px;gap:2px}.segment button{border:0;background:transparent;padding:7px 10px;border-radius:8px;color:var(--muted);font-size:11px;font-weight:650}.segment button.active{background:white;color:var(--primary);box-shadow:0 1px 4px #0000000d}
+form{display:flex;flex-direction:column;gap:11px}.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field{display:flex;flex-direction:column;gap:5px}.field label{font-size:11px;color:var(--muted);font-weight:650}.field input,.field select{width:100%;border:1px solid var(--border);background:white;color:var(--fg);border-radius:10px;padding:9px 10px;outline:0}.field input:focus,.field select:focus{border-color:#8bb9af;box-shadow:0 0 0 3px #dfeeea}
+.primary{border:0;background:var(--primary);color:white;border-radius:10px;padding:10px 13px;font-weight:700}.primary:hover{background:var(--primary2)}.outline{border:1px solid var(--border);background:white;color:var(--fg);border-radius:10px;padding:8px 11px;font-weight:650}.ghost{border:0;background:transparent;color:var(--muted);padding:6px;border-radius:8px}.ghost:hover{background:var(--soft);color:var(--danger)}
+.alert{border:1px solid #e4d39a;background:#fbf6e4;border-radius:16px;padding:14px}.alert.danger{border-color:#efc4c0;background:#fff1ef}.alerthead{display:flex;justify-content:space-between;gap:10px}.alert b{font-size:13px}.alert p{margin:4px 0 0;color:var(--muted);font-size:11px}
+.list{display:flex;flex-direction:column}.item{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border)}.item:last-child{border-bottom:0}.icon{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-weight:800;flex:none}.icon.in{background:#e3f3ea;color:var(--income)}.icon.out{background:#fae8e6;color:var(--expense)}.itemmain{min-width:0;flex:1}.itemmain b{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sub{font-size:10px;color:var(--muted);margin-top:3px}.amount{font-size:12px;font-weight:750;white-space:nowrap}.amount.in{color:var(--income)}.amount.out{color:var(--expense)}
+.badge{display:inline-block;border-radius:99px;padding:3px 7px;background:var(--soft);color:var(--muted);font-size:9px;font-weight:650}.badge.ok{background:#e4f4e9;color:#32865a}.badge.warn{background:#f8edc8;color:#8a6b18}.badge.late{background:#fde5e2;color:#b44740}
+.table{width:100%;border-collapse:collapse;font-size:12px}.table th{font-size:10px;color:var(--muted);font-weight:650;text-align:left;border-bottom:1px solid var(--border);padding:9px 6px}.table td{border-bottom:1px solid var(--border);padding:10px 6px}.table td:last-child,.table th:last-child{text-align:right}.mobilelist{display:none}
+.goalgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.goal{display:flex;flex-direction:column;gap:11px}.goalhead{display:flex;justify-content:space-between;gap:8px}.goalname{display:flex;gap:10px;align-items:center}.pig{width:38px;height:38px;border-radius:11px;background:#e6f1ee;color:var(--primary);display:grid;place-items:center;font-weight:900;font-size:20px;font-family:Arial,sans-serif}.goalname b{font-size:13px}.progress{height:8px;background:#edf1ef;border-radius:99px;overflow:hidden}.progress i{display:block;height:100%;background:var(--primary);border-radius:99px}.goalmeta{display:flex;justify-content:space-between;color:var(--muted);font-size:10px}.assets{display:flex;flex-wrap:wrap;gap:5px}.asset{background:var(--soft);border-radius:99px;padding:4px 7px;font-size:9px}.asset.gold{background:#f8edcf}.goaladd{display:flex;gap:6px;border-top:1px solid var(--border);padding-top:10px}.goaladd select,.goaladd input{min-width:0;border:1px solid var(--border);border-radius:9px;padding:7px}.goaladd select{width:92px}.goaladd input{flex:1}
+.rategrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.rate{background:var(--soft);border-radius:11px;padding:10px}.rate small{font-size:9px;color:var(--muted)}.rate b{display:block;margin-top:4px;font-size:14px}
+.family{display:grid;grid-template-columns:1fr 1fr;gap:10px}.member{border:1px solid var(--border);border-radius:13px;padding:12px;display:flex;align-items:center;gap:10px}.avatar{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:white;font-weight:750}.member b{font-size:12px}.member small{display:block;color:var(--muted);font-size:9px}
+.cloud-panel{border-color:#cbded7}.cloud-topline{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.cloud-pill{display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:5px 9px;background:var(--soft);color:var(--muted);font-size:10px;font-weight:750}.cloud-pill.online{background:#e4f4e9;color:#28794d}.cloud-pill.offline{background:#f8edc8;color:#8a6b18}.cloud-message{padding:10px 12px;border-radius:10px;background:var(--soft);font-size:12px;line-height:1.5;color:var(--fg)}.cloud-message.error{background:#fff0ee;color:#ad403a}.cloud-message.success{background:#e8f5ec;color:#28794d}.cloud-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.cloud-subpanel{border:1px solid var(--border);border-radius:13px;padding:13px;min-width:0}.cloud-subpanel h3{font-size:13px;margin:0 0 8px}.cloud-subpanel p{font-size:11px;color:var(--muted);line-height:1.5;margin:0 0 10px}.cloud-actions{display:flex;gap:8px;flex-wrap:wrap}.cloud-actions button{font-size:12px}.cloud-roster{display:flex;flex-direction:column;gap:7px}.cloud-person{display:flex;align-items:center;gap:9px;border:1px solid var(--border);border-radius:11px;padding:9px}.cloud-person .avatar{width:32px;height:32px;flex:none}.cloud-person-main{flex:1;min-width:0}.cloud-person b{display:block;font-size:12px;overflow-wrap:anywhere}.cloud-person small{font-size:10px;color:var(--muted)}.cloud-invite-grid{display:grid;grid-template-columns:160px 1fr;gap:14px;align-items:center}.cloud-qr{width:160px;height:160px;background:#fff;border:1px solid var(--border);border-radius:12px;display:grid;place-items:center;padding:5px;overflow:hidden}.cloud-qr img{max-width:100%}.cloud-qr canvas,.cloud-qr img{max-width:100%;height:auto!important}.cloud-note{font-size:10px;color:var(--muted);line-height:1.5}.cloud-statusline{font-size:11px;color:var(--muted)}
+.bottom{display:none}.empty{text-align:center;padding:22px;color:var(--muted);font-size:12px}
+.modal{position:fixed;inset:0;background:#17201e66;display:none;align-items:center;justify-content:center;z-index:60;padding:20px}.modal.show{display:flex}.modalbox{background:var(--card);width:min(620px,100%);margin:auto;border-radius:20px;padding:18px;max-height:90vh;overflow:auto}.modalhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.modalhead b{font-size:16px}.close{border:0;background:var(--soft);width:32px;height:32px;border-radius:50%;font-size:18px}
+.chart{height:210px;display:flex;align-items:flex-end;gap:8px;border-bottom:1px solid var(--border);padding:10px 4px 0}.monthbar{flex:1;height:100%;display:flex;align-items:flex-end;justify-content:center;gap:3px;position:relative}.bar{width:38%;min-height:2px;border-radius:4px 4px 0 0}.bar.in{background:#75c697}.bar.out{background:#e78a82}.monthlabel{position:absolute;bottom:-17px;font-size:9px;color:var(--muted)}
+@media(max-width:800px){.desktop-nav{display:none}.head{padding:11px 12px}.head-actions{gap:5px}.profile{max-width:110px;font-size:12px}.settings-btn{width:36px;height:36px}.brand span{display:none}main{padding:17px 12px 95px}.grid3{grid-template-columns:1fr 1fr;gap:8px}.stat{padding:13px}.stat .value{font-size:19px}.grid2,.split{grid-template-columns:1fr;gap:12px}.goalgrid{grid-template-columns:1fr}.table{display:none}.mobilelist{display:flex}.bottom{position:fixed;display:grid;grid-template-columns:repeat(5,1fr);bottom:8px;left:8px;right:8px;background:rgba(255,255,255,.96);border:1px solid var(--border);border-radius:17px;box-shadow:0 8px 25px #00000018;z-index:30;padding:4px}.bottom button{border:0;background:transparent;color:var(--muted);font-size:9px;padding:6px 2px;border-radius:11px}.bottom button.active{background:#e5f1ee;color:var(--primary);font-weight:750}.bottom .ni{display:block;font-size:17px;margin-bottom:2px}.row2{grid-template-columns:1fr 1fr}.rategrid{grid-template-columns:1fr 1fr 1fr}.family{grid-template-columns:1fr}}
+@media(max-width:800px){.cloud-grid{grid-template-columns:1fr}.cloud-invite-grid{grid-template-columns:1fr;justify-items:center}.cloud-invite-info{text-align:center}.cloud-qr{width:190px;height:190px}}
+@media(max-width:390px){.grid3{grid-template-columns:1fr 1fr}.stat .value{font-size:17px}.row2{grid-template-columns:1fr}.panel{padding:13px}}
+
+/* MOBIL GELISTIRMELERI */
+@media (max-width:800px){
+  html{font-size:16px;-webkit-text-size-adjust:100%}
+  body{overflow-x:hidden;padding-bottom:env(safe-area-inset-bottom)}
+  .app{width:100%;overflow:hidden}
+  header{position:sticky;top:0}
+  .head{min-height:58px;padding:9px 12px}
+  .logo{width:34px;height:34px;border-radius:10px}
+  .brand b{font-size:15px}
+  .profile{height:38px;max-width:125px;padding:7px 9px;border-radius:10px}
+  main{width:100%;padding:14px 10px calc(88px + env(safe-area-inset-bottom));}
+  .stack{gap:12px}
+  .title h1{font-size:21px;line-height:1.2}
+  .title p{font-size:12px;line-height:1.4}
+  .grid3{grid-template-columns:1fr 1fr;gap:8px}
+  .grid3 .stat:last-child{grid-column:1/-1}
+  .stat{padding:12px;border-radius:14px}
+  .stat small{font-size:10px}
+  .stat .value{font-size:18px;margin-top:5px}
+  .panel{padding:13px;border-radius:15px;min-width:0}
+  .panelhead{margin-bottom:10px;align-items:center}
+  .panelhead h2{font-size:14px}
+  .panelhead p{font-size:10px;line-height:1.35}
+  .grid2,.split{grid-template-columns:1fr;gap:10px}
+  .row2{grid-template-columns:1fr 1fr;gap:8px}
+  .field input,.field select{min-height:42px;padding:9px;font-size:14px}
+  .field label{font-size:10px}
+  .primary,.outline{min-height:40px;padding:9px 11px}
+  .segment{max-width:100%;overflow:auto;flex-shrink:0}
+  .segment button{min-height:34px;padding:6px 9px;white-space:nowrap}
+  .item{gap:8px;padding:10px 0}
+  .item .icon{width:32px;height:32px}
+  .itemmain b{font-size:12px}
+  .sub{font-size:9px;line-height:1.35}
+  .amount{font-size:11px}
+  .mobilelist .item{padding:11px 0}
+  .mobilelist .ghost{padding:6px 4px}
+  .goalgrid{grid-template-columns:1fr;gap:10px}
+  .goal{padding:13px}
+  .goaladd{display:grid;grid-template-columns:78px 1fr 38px 38px;gap:5px}
+  .goaladd select,.goaladd input{width:100%;min-width:0;height:39px}
+  .goaladd button{height:39px;padding:0}
+  .rategrid{grid-template-columns:repeat(3,1fr);gap:6px}
+  .rate{padding:9px 7px;text-align:center}
+  .rate small{font-size:8px}.rate b{font-size:12px}
+  .family{grid-template-columns:1fr;gap:7px}
+  .member{padding:10px}
+  .alert{padding:12px;border-radius:14px}
+  .chart{height:180px;gap:4px}
+  .bottom{left:7px;right:7px;bottom:7px;padding:4px;border-radius:16px;grid-template-columns:repeat(5,1fr);padding-bottom:max(4px,env(safe-area-inset-bottom))}
+  .bottom button{font-size:8px;min-width:0;padding:5px 1px}
+  .bottom .ni{font-size:15px;line-height:15px}
+  .modal{align-items:flex-end;justify-content:center;padding:0}
+  .modalbox{width:100%;max-height:92vh;border-radius:20px 20px 0 0;padding:15px 13px calc(18px + env(safe-area-inset-bottom))}
+  .modalbox .row2{grid-template-columns:1fr}
+}
+@media (max-width:430px){
+  .head{gap:7px}.brand{gap:7px}.profile{max-width:105px;font-size:12px}
+  .grid3 .stat .value{font-size:16px}
+  .row2{grid-template-columns:1fr}
+  .rategrid{grid-template-columns:1fr 1fr 1fr}
+  .goaladd{grid-template-columns:70px 1fr 36px 36px}
+  .goaladd select,.goaladd input,.goaladd button{font-size:12px}
+  .panelhead{gap:7px}
+  .panelhead .ghost{padding:5px}
+}
+@media (max-width:360px){
+  main{padding-left:8px;padding-right:8px}
+  .grid3{gap:6px}.stat{padding:10px}.stat .value{font-size:15px}
+  .bottom button{font-size:7px}.bottom .ni{font-size:14px}
+  .profile{max-width:94px}
+}
+
+/* MOBİL ALT MENÜ */
+@media (max-width: 800px) {
+  body {
+    padding-bottom: 82px !important;
+  }
+
+  /* Olası üst navigasyon/sticky davranışlarını kapat */
+  .tabs, .nav-tabs, .navigation, nav.tabs {
+    position: fixed !important;
+    top: auto !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    z-index: 9999 !important;
+    border-radius: 18px 18px 0 0 !important;
+    padding: 7px max(7px, env(safe-area-inset-left)) calc(7px + env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-right)) !important;
+    background: rgba(255,255,255,.97) !important;
+    box-shadow: 0 -5px 25px rgba(15,23,42,.12) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+  }
+
+  .tabs button, .nav-tabs button, .navigation button, nav.tabs button {
+    min-height: 48px !important;
+    padding: 6px 3px !important;
+    border-radius: 12px !important;
+    font-size: 10px !important;
+    flex: 1 1 0 !important;
+  }
+
+  /* İçerik alt menünün altında kalmasın */
+  main, .app, .container, .content {
+    padding-bottom: 12px !important;
+  }
+}
+
+@media (max-width: 420px) {
+  body {
+    padding-bottom: 76px !important;
+  }
+
+  .tabs button, .nav-tabs button, .navigation button, nav.tabs button {
+    font-size: 9px !important;
+    min-height: 45px !important;
+  }
+}
+
+
+.tx-type-row,
+.tx-type-toggle,
+.type-toggle,
+.income-expense-toggle{
+  font-size:16px !important;
+  font-weight:800 !important;
+}
+.tx-type-row label,
+.tx-type-toggle label,
+.type-toggle label,
+.income-expense-toggle label{
+  font-size:16px !important;
+  font-weight:800 !important;
+}
+
+
+
+.home-summary-wrap{width:100%}
+.home-summary-filter{display:flex;justify-content:flex-start;align-items:center;margin:0 0 5px 2px}
+.home-summary-filter .date-filter{margin:0;display:inline-flex;gap:4px;transform:scale(.86);transform-origin:left center}
+.home-summary-filter .date-filter button{min-height:28px;padding:5px 8px;font-size:11px;font-weight:700}
+@media(max-width:480px){
+ .home-summary-filter{margin-left:1px;margin-bottom:4px}
+ .home-summary-filter .date-filter{transform:scale(.82)}
+ .home-summary-filter .date-filter button{min-height:26px;padding:4px 7px;font-size:10px}
+}
+
+
+
+.family-name-form{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end}
+.family-name-form .field{margin:0}
+.family-name-form button{min-height:42px}
+.family-invite{display:grid;grid-template-columns:220px 1fr;gap:18px;align-items:center}
+.family-qr-box{width:220px;height:220px;border:1px solid var(--border);border-radius:16px;background:#fff;display:grid;place-items:center;overflow:hidden}
+.family-qr-box img{width:100%;height:100%;object-fit:contain;display:block}
+.family-invite-info{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.family-invite-info .invite-family-name{font-size:18px;font-weight:850;color:var(--text)}
+.family-invite-info p{margin:0;color:var(--muted);font-size:12px;line-height:1.5}
+.family-invite-info .outline{min-height:40px}
+.family-invite-info small{display:block;color:var(--muted);font-size:10px;line-height:1.5}
+@media(max-width:700px){
+ .family-name-form{grid-template-columns:1fr}
+ .family-invite{grid-template-columns:1fr;justify-items:center;text-align:center}
+ .family-qr-box{width:210px;height:210px}
+ .family-invite-info{align-items:center}
+ .family-invite-info .outline{width:100%}
+}
+
+
+
+
+
+.tx-recurrence-toggle{gap:6px}
+.tx-recurrence-toggle button{font-size:11px}
+
+.regular-tx-panelhead{align-items:flex-start;gap:10px;flex-wrap:wrap}
+.regular-tx-header-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;min-width:0}
+.regular-tx-delete-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.regular-tx-header-actions .date-filter{margin:0}
+.regular-tx-header-actions .date-filter button{font-size:10px;padding:6px 8px;min-height:30px}
+@media(max-width:700px){
+ .regular-tx-panelhead{align-items:flex-start}
+ .regular-tx-header-actions{width:100%;justify-content:flex-start;gap:6px}
+ .regular-tx-header-actions .date-filter{flex-wrap:wrap}
+ .regular-tx-header-actions .date-filter button{font-size:10px;padding:5px 7px}
+}
+
+.regular-tx-panel{margin-top:0}
+.regular-tx-row{align-items:center}
+.regular-tx-actions,.loan-row-side{display:flex;flex-direction:column;gap:5px;align-items:flex-end;min-width:94px}
+.regular-tx-actions button,.loan-row-side button{font-size:10px;padding:6px 8px;min-height:30px}
+.regular-tx-actions .amount,.loan-row-side .amount{font-size:12px;white-space:nowrap}
+.loan-summary-panel{margin-top:6px}
+.loan-form-note{font-size:10px;line-height:1.45;margin-top:10px}
+.loan-filter{gap:3px}
+.loan-filter button{font-size:10px;padding:6px 8px}
+.loan-row{align-items:center}
+@media(max-width:700px){
+ .regular-tx-row,.loan-row{align-items:flex-start}
+ .regular-tx-actions,.loan-row-side{min-width:78px}
+ .loan-split{gap:10px}
+ .loan-filter{flex-wrap:wrap}
+ .loan-summary-panel .grid3{gap:6px}
+ .loan-summary-panel .stat{padding:10px}
+ .loan-summary-panel .stat small{font-size:9px}
+ .loan-summary-panel .stat .value{font-size:14px}
+}
+
+
+.home-loan-mini{padding:13px 15px;margin-top:-5px}
+.home-loan-mini .panelhead{margin-bottom:10px}
+.home-loan-mini .panelhead h2{font-size:14px}
+.home-loan-mini .panelhead p{font-size:10px}
+.home-loan-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.home-loan-metrics>div{min-width:0;padding:9px 10px;background:var(--soft);border-radius:10px}
+.home-loan-metrics small,.home-loan-metrics span{display:block;color:var(--muted);font-size:9px;line-height:1.35}
+.home-loan-metrics b{display:block;font-size:14px;margin:4px 0;overflow-wrap:anywhere}
+#loansPanel{scroll-margin-top:82px}
+.tx-history-panel{width:100%}
+.transactions-top{align-items:stretch}
+.transactions-top>.regular-tx-panel{min-width:0}
+@media(max-width:800px){
+ .home-loan-mini{margin-top:-2px;padding:11px}
+ .home-loan-metrics{gap:6px}
+ .home-loan-metrics>div{padding:8px 7px}
+ .home-loan-metrics small,.home-loan-metrics span{font-size:8px}
+ .home-loan-metrics b{font-size:12px;line-height:1.25}
+ .transactions-top>.regular-tx-panel{margin-bottom:10px}
+}
+
+
+/* Birikim sayfasi: dortlu ozet, sol arac alani/sag hedefler, altta iki gecmis */
+.savings-overview-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.savings-overview-card{min-width:0;overflow:hidden}
+.savings-overview-card .value{font-size:clamp(15px,1.55vw,23px);overflow-wrap:anywhere;line-height:1.2}
+.savings-overview-card small:last-child{display:block;margin-top:6px}
+.savings-main-layout{display:grid;grid-template-columns:minmax(290px,.82fr) minmax(0,1.38fr);gap:18px;align-items:start}
+.savings-tools-column{min-width:0}
+.savings-goals-column{min-width:0}
+.savings-goals-column>.goalgrid{margin-top:10px}
+.savings-bottom-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+.savings-bottom-grid>.panel{min-width:0}
+.savings-bottom-grid .panelhead{flex-wrap:wrap}
+.saving-history-panel .list,.loan-records-panel .list{min-height:340px;max-height:none;overflow:visible}
+.savings-bottom-grid .loan-row{align-items:flex-start}
+.loan-duration{display:block;color:var(--primary);font-weight:700;margin-top:4px}
+@media(max-width:800px){
+  .savings-overview-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .savings-main-layout,.savings-bottom-grid{grid-template-columns:minmax(0,1fr);gap:12px}
+  .savings-overview-card .value{font-size:17px}
+  .savings-bottom-grid .panelhead{align-items:flex-start}
+}
+@media(max-width:390px){.savings-overview-card .value{font-size:15px}.savings-overview-card{padding:11px}}
+
+</style>
+
+<style>
+.goaladd{display:grid!important;grid-template-columns:1fr 1fr;gap:7px!important;align-items:center}
+.goaladd input,.goaladd select{min-width:0}
+.itemmain{min-width:0}
+@media(max-width:800px){
+ .goaladd{grid-template-columns:1fr 1fr!important}
+ .goaladd button{min-height:42px}
+ .table{display:none!important}
+ .split{display:block!important}
+ .split>.panel,.split>.stack{margin-bottom:12px}
+ .item{gap:7px!important}
+ .itemmain b{font-size:13px}
+ .itemmain .sub{font-size:10px}
+}
+</style>
+<style>
+#recurringOptions{background:var(--soft);border:1px solid var(--border);padding:10px;border-radius:12px;margin-bottom:10px}
+.goaladd select{min-width:0}
+@media(max-width:800px){
+ .goaladd{grid-template-columns:1fr 1fr!important}
+ .goaladd select,.goaladd input{width:100%;min-width:0}
+ #recurringOptions input{width:100%;min-height:44px}
+}
+</style><style>
+.overdue-text{margin-top:4px;color:#b42318;font-weight:800;font-size:11px}
+.late-amount{color:#b42318!important}
+.overdue-payment .sub{color:#b42318}
+@media(max-width:800px){
+  .overdue-payment{border-left:4px solid #dc2626!important}
+  .overdue-text{font-size:10px}
+}
+</style>
+<style>
+.dangerbtn{border:0;background:#dc2626;color:#fff;padding:8px 11px;border-radius:10px;font-weight:800;font-size:11px}
+.dang
+.rate-update-btn{white-space:nowrap;min-height:36px;padding:7px 11px}
+.rate-note{font-size:10px;line-height:1.5;margin-top:10px}
+
+erbtn:disabled{opacity:.45;cursor:not-allowed}
+.confirmbox{text-align:center;padding:10px 2px 4px}
+.confirmicon{width:48px;height:48px;border-radius:50%;margin:0 auto 10px;display:grid;place-items:center;background:#fff1f2;color:#b42318;font-weight:900;font-size:22px}
+.confirmbox h3{margin:6px 0;font-size:17px}
+.confirmbox p{margin:0 auto 16px;color:var(--muted);font-size:12px;max-width:360px}
+.confirmactions{display:flex;gap:8px;justify-content:center}
+.checkwrap{display:inline-flex;align-items:center;justify-content:center;flex:0 0 22px}
+.checkwrap input{width:18px;height:18px;accent-color:var(--primary);cursor:pointer}
+.selectable-item{cursor:default}
+@media(max-width:800px){
+ .panelhead{gap:8px}
+ .panelhead>div{min-width:0}
+ .dangerbtn,.secondary{font-size:10px;padding:8px 9px}
+ .confirmactions button{flex:1}
+}
+</style>
+<style>
+.live-rates{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+.rate-detail{display:block;color:var(--muted);font-size:9px;margin-top:4px;line-height:1.35}
+.rate-note{margin-top:10px!important;font-size:10px!important}
+@media(min-width:900px){.live-rates{grid-template-columns:repeat(4,minmax(0,1fr))!important}}
+@media(max-width:420px){.live-rates{grid-template-columns:1fr 1fr!important}.rate b{font-size:14px}.rate-detail{font-size:8px}}
+</style>
+<style>
+.home-overdue-title{color:#b42318!important;font-weight:900}
+.home-overdue-total{color:#b42318!important;font-weight:800}
+.home-upcoming-total{color:var(--muted)!important}
+@media(max-width:800px){
+ .home-overdue-title{font-size:13px}
+ .home-overdue-total{font-size:11px}
+}
+</style>
+
+<style>
+@media(max-width:800px){
+  .bottom{
+    min-height:62px;
+    padding:5px 5px calc(5px + env(safe-area-inset-bottom)) !important;
+    bottom:0 !important;
+    left:6px !important;
+    right:6px !important;
+    border-radius:18px 18px 0 0 !important;
+  }
+  .bottom button{
+    min-height:50px !important;
+    padding:6px 3px !important;
+    font-size:10.5px !important;
+    font-weight:700 !important;
+    color:#627174 !important;
+    letter-spacing:-.05px;
+  }
+  .bottom button.active{
+    color:var(--primary) !important;
+    background:#e3efeb !important;
+    font-weight:850 !important;
+  }
+  .bottom .ni{
+    font-size:19px !important;
+    line-height:19px;
+    font-weight:800 !important;
+    margin-bottom:3px !important;
+  }
+  .pay-action{flex:0 0 auto}
+  main{padding-bottom:calc(105px + env(safe-area-inset-bottom)) !important}
+}
+@media(max-width:390px){
+  .bottom button{font-size:10px !important}
+  .bottom .ni{font-size:18px !important}
+}
+</style>
+
+<style>
+/* TÜM ARAYÜZ YAZILARI */
+body{ text-transform:uppercase; }
+input,textarea{ text-transform:uppercase; }
+/* E-posta adresleri küçük/büyük harfle girilebilir; e-posta alanını otomatik büyütme. */
+#cloudEmail{ text-transform:none !important; -webkit-text-size-adjust:100%; }
+
+/* VADESİ GEÇMİŞ YOKKEN ÖZET KARTLARI SADE */
+.home-summary-overdue .stat{
+  border-color:#fecdd3;
+}
+.home-summary-overdue .stat.net{
+  background:#fff;
+  color:var(--fg);
+  border-color:#fecdd3;
+}
+.home-summary-overdue .stat.net small{color:var(--muted)}
+.home-summary-overdue .stat .value{color:inherit}
+@media(max-width:800px){
+ .home-summary-overdue .stat.net .value{color:var(--fg)}
+}
+</style>
+<style>
+[data-money]{font-variant-numeric:tabular-nums}
+</style>
+
+<style>
+.date-filter{display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:4px;background:var(--soft);border-radius:11px;margin-bottom:12px}
+.date-filter button{border:0;background:transparent;color:var(--muted);padding:7px 9px;border-radius:8px;font-size:10px;font-weight:750}
+.date-filter button.active{background:#fff;color:var(--primary);box-shadow:0 1px 4px #0000000d}
+.date-filter input{border:1px solid var(--border);background:#fff;border-radius:8px;padding:6px 7px;font-size:10px;color:var(--fg);min-width:120px}
+.date-filter span{color:var(--muted);font-size:11px}
+.goal-section-title{display:flex;align-items:center;justify-content:space-between;margin:12px 0 8px}
+.goal-section-title h3{margin:0;font-size:13px}
+.goal-completed-badge{color:#15803d;background:#ecfdf3;border:1px solid #bbf7d0;padding:4px 7px;border-radius:999px;font-size:9px;font-weight:800}
+.goal-active-badge{color:var(--primary);background:#eef6ff;border:1px solid #d5e6ff;padding:4px 7px;border-radius:999px;font-size:9px;font-weight:800}
+@media(max-width:800px){
+ .date-filter{overflow:auto;flex-wrap:nowrap}
+ .date-filter input{min-width:112px;flex:0 0 112px}
+}
+</style>
+
+<style>
+.saving-tabs{margin:2px 0 12px}
+.saving-tabs button{min-width:0;flex:1;font-weight:800}
+@media(max-width:800px){
+  .saving-tabs button{font-size:10px;padding:9px 6px}
+}
+</style>
+
+<style>
+.goaladd input[type="date"]{min-width:0}
+@media(max-width:800px){.goaladd input[type="date"]{width:100%}}
+</style>
+
+
+
+
+
+<style>
+.goal-duration{margin-top:6px;color:var(--primary);font-weight:800;font-size:11px}
+.goal-hint{font-size:9px;color:var(--muted);margin-top:2px}
+.goal-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.goal-fields .field input,.goal-fields .field select{width:100%;min-width:0}
+.goal-fields .goal-date-field{grid-column:1 / -1}
+.goal-controls{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.goal-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:0}
+.goal-actions button{width:100%;min-height:42px}
+.goal-asset-select{background:#f3f6f8!important;border-color:#dce4e7!important;color:#58666a!important}
+.goal-asset-select + .goal-hint{display:none}
+.goal-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.goal-actions button{width:100%;min-height:42px}
+@media(max-width:800px){
+ .goal-fields{grid-template-columns:1fr 1fr}
+ .goal-fields .field label{font-size:10px}
+ .goal-fields .field input,.goal-fields .field select{font-size:11px;padding:9px 7px}
+ .goal-actions{gap:7px}
+ .goal-fields .goal-date-field{grid-column:1 / -1}
+}
+@media(max-width:390px){
+ .goal-fields{gap:5px}
+ .goal-fields .field input,.goal-fields .field select{font-size:10px;padding:8px 6px}
+}
+</style>
+<style>
+@media(max-width:800px){.add-action-panel{gap:10px}.add-action-panel .primary{white-space:normal}}
+@media(max-width:430px){.add-action-panel{align-items:stretch;flex-direction:column}.add-action-panel .primary{width:100%}.goal-modal-actions{display:grid;grid-template-columns:1fr 1fr}}
+</style>
+<style>
+/* Compact action and aligned management headers */
+.transactions-add-card{padding:12px 14px;min-height:68px}
+.transactions-add-card h2{font-size:14px}
+.transactions-add-card p{font-size:10px}
+.transactions-add-card .compact-add-btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:34px;padding:7px 11px;border-radius:10px;font-size:11px;font-weight:750;box-shadow:none;white-space:nowrap}
+.transactions-add-card .compact-add-btn span{font-size:15px;line-height:1}
+.regular-tx-panelhead,.tx-history-head,.saving-history-head{align-items:center;gap:10px}
+.regular-tx-header-actions,.tx-history-actions,.saving-history-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap;min-width:0}
+.regular-tx-header-actions .date-filter,.tx-history-actions .date-filter,.saving-history-actions .date-filter{margin:0;transform:none;transform-origin:right center}
+.regular-tx-header-actions .date-filter button,.tx-history-actions .date-filter button,.saving-history-actions .date-filter button{min-height:30px;padding:5px 7px;font-size:10px}
+.regular-tx-delete-actions,.saving-history-delete-actions{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.regular-tx-delete-actions button,.tx-history-actions>button,.saving-history-delete-actions button,.saving-history-actions>button{min-height:30px;padding:6px 9px;font-size:10px;white-space:nowrap}
+.tx-history-actions .segment button{padding:6px 8px;font-size:10px;white-space:nowrap}
+.regular-tx-list,.tx-history-list,.payments-list,.saving-history-list{max-height:390px;overflow-y:auto;overscroll-behavior:contain;padding-right:3px;scrollbar-width:thin}
+.tx-table-scroll{max-width:100%;overflow-x:auto}
+@media(max-width:900px){
+ .regular-tx-panelhead,.tx-history-head,.saving-history-head{align-items:flex-start;flex-wrap:wrap}
+ .regular-tx-header-actions,.tx-history-actions,.saving-history-actions{width:100%;justify-content:flex-start;gap:5px}
+ .regular-tx-header-actions .date-filter,.tx-history-actions .date-filter,.saving-history-actions .date-filter{transform:none;flex-wrap:wrap}
+ .regular-tx-header-actions .date-filter button,.tx-history-actions .date-filter button,.saving-history-actions .date-filter button{padding:5px 7px;font-size:10px}
+}
+@media(max-width:520px){
+ .transactions-add-card{padding:11px 12px;gap:8px}
+ .transactions-add-card .compact-add-btn{min-height:32px;padding:6px 9px;font-size:10px}
+ .regular-tx-header-actions,.tx-history-actions,.saving-history-actions{gap:5px}
+ .regular-tx-list,.tx-history-list,.payments-list,.saving-history-list{max-height:390px}
+ .saving-history-actions .date-filter input{max-width:118px;font-size:10px}
+}
+</style>
+
+<style>
+/* Raporlar sekmesi ve beş öğeli mobil gezinme */
+@media(max-width:800px){
+  .bottom{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+  .bottom button{font-size:clamp(9px,2.6vw,11px)!important;padding-left:1px!important;padding-right:1px!important;letter-spacing:-.25px}
+  .bottom .ni{font-size:16px!important}
+}
+.report-controls .panelhead{align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.report-control-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.report-year-select{border:1px solid var(--border);background:#fff;color:var(--fg);border-radius:9px;padding:7px 10px;min-height:34px;font-weight:700;font-size:12px}
+.report-period-label{font-size:11px;color:var(--muted);margin-top:4px}
+.report-stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.report-stat-grid .stat{min-width:0}
+.report-stat-grid .stat .value{font-size:clamp(14px,1.5vw,22px);overflow-wrap:anywhere}
+.report-breakdown{min-width:0}
+.report-table-wrap{max-width:100%;overflow-x:auto}
+.report-table{min-width:760px;display:table!important}
+.report-table th,.report-table td{white-space:nowrap}
+.report-total-row td{background:#f8faf9;border-bottom:0}
+.report-mobile-list{display:none}
+.report-note{line-height:1.5;margin-top:12px}
+.report-mobile-total{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);padding:12px 0;font-size:12px}
+@media(max-width:800px){
+  .report-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .report-stat-grid .stat{padding:12px}
+  .report-stat-grid .stat .value{font-size:16px}
+  .report-controls .panelhead{align-items:flex-start}
+  .report-control-actions{width:100%;justify-content:space-between}
+  .report-table-wrap{display:none}
+  .report-mobile-list{display:flex;flex-direction:column}
+  .report-mobile-row{align-items:flex-start;gap:7px}
+  .report-mobile-row .amount{white-space:normal;text-align:right;font-size:11px}
+  .report-mobile-row .itemmain b{white-space:normal}
+}
+@media(max-width:390px){
+  .bottom button{font-size:9px!important}
+  .bottom .ni{font-size:15px!important}
+  .report-stat-grid .stat .value{font-size:14px}
+}
+</style>
+
+<style>
+/* Mobil alt sekme yazıları: beş sekmeye okunaklı ve dengeli sığar */
+@media (max-width: 800px) {
+  .bottom { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+  .bottom button {
+    font-size: clamp(9px, 2.8vw, 11px) !important;
+    font-weight: 750 !important;
+    letter-spacing: -0.15px !important;
+    line-height: 1.15 !important;
+    white-space: nowrap !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  .bottom .ni { font-size: 17px !important; line-height: 17px !important; }
+}
+@media (max-width: 360px) {
+  .bottom button { font-size: 9px !important; letter-spacing: -0.2px !important; }
+  .bottom .ni { font-size: 16px !important; line-height: 16px !important; }
+}
+</style>
+
+<style>
+
+/* Raporlar: tema uyumlu özet, seçimler ve duyarlı grafik */
+.report-controls .panelhead{align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.report-mode{display:flex;gap:3px;padding:3px;border-radius:11px;background:var(--soft);width:max-content}
+.report-mode button{border:0;background:transparent;color:var(--muted);padding:8px 13px;border-radius:8px;font-weight:750;font-size:12px}
+.report-mode button.active{background:var(--card);color:var(--primary);box-shadow:0 1px 4px #00000010}
+.report-control-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.report-year-select,.report-month-select{border:1px solid var(--border);background:var(--card);color:var(--fg);border-radius:10px;padding:8px 10px;min-height:38px;font-weight:700;font-size:12px;max-width:100%}
+.report-period-label{font-size:11px;color:var(--muted);margin-top:5px}
+.report-stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.report-stat-grid .stat{min-width:0;position:relative;overflow:hidden}
+.report-stat-grid .stat:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:currentColor;opacity:.65}
+.report-stat-grid .stat small{display:block;font-size:11px;line-height:1.35}
+.report-stat-grid .stat .value{font-size:clamp(14px,1.5vw,22px);overflow-wrap:anywhere;line-height:1.25}
+.report-stat-grid .report-plan-income{color:#438b7b;background:#f0f7f4}
+.report-stat-grid .report-plan-expense{color:#bd6e62;background:#fff5f2}
+.report-breakdown{min-width:0}
+.report-chart-panel{overflow:hidden}
+.report-chart-legend{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:0 0 10px;font-size:11px;color:var(--muted)}
+.report-legend-item{display:inline-flex;align-items:center;gap:6px}
+.report-legend-dot{width:9px;height:9px;border-radius:3px;display:inline-block;flex:none}
+.report-chart-area{position:relative;height:218px;display:flex;align-items:stretch;gap:7px;padding:10px 5px 24px;border-bottom:1px solid var(--border);background:repeating-linear-gradient(to top,transparent 0,transparent calc(25% - 1px),rgba(120,145,136,.13) calc(25% - 1px),rgba(120,145,136,.13) 25%)}
+.report-chart-month{flex:1;min-width:0;height:100%;display:flex;align-items:flex-end;justify-content:center;gap:3px;position:relative}
+.report-chart-unit{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;position:relative}
+.report-chart-bar{display:block;width:36%;min-width:8px;max-width:34px;border-radius:6px 6px 2px 2px;min-height:0;transition:height .25s ease;box-shadow:inset 0 1px 0 #ffffff65}
+.report-chart-bar.income{background:#5aab86}
+.report-chart-bar.expense{background:#d9776b}
+.report-chart-bar.plan-income{background:#b7dccc}
+.report-chart-bar.plan-expense{background:#efb8ad}
+.report-chart-month .report-chart-bar{width:36%;min-width:4px;max-width:18px}
+.report-chart-label{position:absolute;bottom:-21px;left:0;right:0;text-align:center;font-size:9px;color:var(--muted);white-space:nowrap}
+.report-chart-unit .report-chart-value{font-size:10px;color:var(--muted);text-align:center;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.report-chart-unit .report-chart-name{font-size:10px;color:var(--fg);text-align:center;line-height:1.25}
+.report-chart-note{font-size:10px;color:var(--muted);line-height:1.45;margin:10px 0 0}
+.report-table-wrap{max-width:100%;overflow-x:auto}
+.report-table{min-width:760px;display:table!important}
+.report-table th,.report-table td{white-space:nowrap}
+.report-table .number{text-align:right;font-variant-numeric:tabular-nums}
+.report-total-row td{background:#f2f7f4;font-weight:800;border-bottom:0}
+.report-mobile-list{display:none}
+.report-note{line-height:1.5;margin-top:12px}
+.report-netline{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:12px;font-size:12px}
+.report-netline strong{color:var(--primary)}
+.report-mobile-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid var(--border)}
+.report-mobile-row:last-child{border-bottom:0}
+.report-mobile-row .itemmain{min-width:0;flex:1}
+.report-mobile-row .itemmain b{display:block;font-size:12px;white-space:normal}
+.report-mobile-row .amount{white-space:normal;text-align:right;font-size:11px}
+.report-mobile-row .sub{line-height:1.5}
+@media(max-width:800px){
+  .bottom{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+  .report-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .report-stat-grid .stat{padding:12px}
+  .report-stat-grid .stat .value{font-size:clamp(14px,4vw,17px)}
+  .report-controls .panelhead{align-items:flex-start}
+  .report-control-actions{width:100%;justify-content:space-between}
+  .report-table-wrap{display:none}
+  .report-mobile-list{display:flex;flex-direction:column}
+  .report-chart-area{height:190px;gap:3px;padding-left:1px;padding-right:1px}
+  .report-chart-month .report-chart-bar{min-width:3px}
+  .report-chart-label{font-size:8px}
+}
+@media(max-width:390px){
+  .bottom button{font-size:9px!important}
+  .bottom .ni{font-size:16px!important}
+  .report-stat-grid .stat .value{font-size:14px}
+  .report-control-actions{gap:6px}
+  .report-year-select,.report-month-select{padding:7px 8px;font-size:11px;min-height:36px}
+  .report-chart-area{height:175px}
+}
+
+</style>
+
+<style>
+/* Uygulama öncesi zorunlu giriş / hesap oluşturma ekranı */
+.auth-gate{display:none;min-height:100svh;box-sizing:border-box;padding:24px 16px;align-items:center;justify-content:center;background:radial-gradient(circle at top left,#e7f4ef 0,transparent 46%),var(--bg,#f4f7f6)}
+body.auth-pending .auth-gate,body.auth-required .auth-gate{display:flex}
+body.auth-pending .app,body.auth-required .app{display:none!important}
+.auth-gate-wrap{width:min(440px,100%)}
+.auth-brand{display:flex;align-items:center;justify-content:center;gap:11px;margin-bottom:20px;color:var(--fg,#21312e)}
+.auth-brand-mark{width:48px;height:48px;border-radius:15px;background:var(--primary,#34796b);display:grid;place-items:center;color:#fff;font-size:25px;font-weight:850;box-shadow:0 7px 18px #34796b30}
+.auth-brand-text b{display:block;font-size:23px;letter-spacing:-.5px}
+.auth-brand-text span{font-size:12px;color:var(--muted,#74817d)}
+.auth-card{background:var(--card,#fff);border:1px solid var(--border,#e0e8e4);border-radius:24px;padding:25px;box-shadow:0 16px 45px #193b3010}
+.auth-card h1{font-size:23px;line-height:1.2;margin:0 0 7px;color:var(--fg,#21312e)}
+.auth-card .auth-intro{font-size:13px;line-height:1.55;color:var(--muted,#74817d);margin:0 0 20px}
+.auth-card .field{margin-bottom:13px}
+.auth-card .field label{display:block;margin-bottom:6px;font-size:12px;font-weight:750;color:var(--fg,#21312e)}
+.auth-card .field input{width:100%;box-sizing:border-box;min-height:46px;border:1px solid var(--border,#dce5e1);border-radius:12px;padding:11px 12px;font:inherit;font-size:14px;background:var(--card,#fff);color:var(--fg,#21312e);text-transform:none!important;}
+.auth-card .auth-submit{width:100%;min-height:46px;justify-content:center;margin-top:5px}
+.auth-card .auth-secondary{width:100%;min-height:44px;justify-content:center;margin-top:9px}
+.auth-message{margin:0 0 14px;padding:10px 12px;border-radius:11px;background:var(--soft,#f2f6f4);color:var(--fg,#21312e);font-size:12px;line-height:1.5}
+.auth-message.error{background:#fff0ee;color:#ad403a}.auth-message.success{background:#e8f5ec;color:#28794d}
+.auth-footnote{font-size:11px;line-height:1.5;color:var(--muted,#74817d);margin:15px 2px 0;text-align:center}
+.auth-loading{width:min(440px,100%);padding:24px;border:1px solid var(--border,#e0e8e4);border-radius:22px;background:var(--card,#fff);text-align:center;color:var(--muted,#74817d)}
+@media(max-width:480px){.auth-gate{padding:18px 13px}.auth-card{padding:21px 17px;border-radius:20px}.auth-card h1{font-size:21px}.auth-brand-text b{font-size:21px}}
+</style>
+
+
+<style>
+/* Daha okunaklı alt sekmeler ve kategori raporu düzeni */
+.report-distribution-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
+.report-distribution-grid>.panel{min-width:0}
+.report-distribution-head{align-items:flex-start;gap:12px}
+.report-category-filter{gap:3px;flex:0 0 145px;min-width:0}
+.report-category-filter select{width:100%;min-width:0;min-height:36px;padding:7px 8px;border:1px solid var(--border);border-radius:9px;background:var(--card);color:var(--fg);font:inherit;font-size:11px;text-transform:uppercase}
+@media(max-width:800px){
+  .report-distribution-grid{grid-template-columns:1fr;gap:10px}
+  .report-distribution-head{align-items:flex-start;flex-wrap:wrap}
+  .report-category-filter{flex:1 1 100%;width:100%}
+  .report-category-filter select{font-size:12px;min-height:40px}
+  .bottom{grid-template-columns:repeat(5,minmax(0,1fr))!important;min-height:68px!important;padding:6px 4px calc(6px + env(safe-area-inset-bottom))!important;}
+  .bottom button{min-width:0!important;min-height:54px!important;padding:7px 1px!important;font-size:clamp(10px,2.75vw,12px)!important;line-height:1.12!important;font-weight:780!important;letter-spacing:-.15px!important;white-space:nowrap!important;}
+  .bottom .ni{font-size:20px!important;line-height:20px!important;margin-bottom:4px!important;}
+  main{padding-bottom:calc(112px + env(safe-area-inset-bottom))!important}
+}
+@media(max-width:390px){
+  .bottom button{font-size:clamp(9.5px,2.65vw,10.5px)!important;letter-spacing:-.25px!important}
+  .bottom .ni{font-size:18px!important;line-height:18px!important}
+}
+
+/* Rapor kategori dağılımları: gelir ve gider için belirgin ama yumuşak tonlar */
+.report-category-panel{position:relative;overflow:hidden;border-top:3px solid var(--report-accent);background:linear-gradient(145deg,#fff 0%,var(--report-panel-bg) 100%);border-color:var(--report-border)}
+.report-income-breakdown{--report-accent:#34875b;--report-accent-soft:#e7f5eb;--report-panel-bg:#f7fcf8;--report-border:#cde6d4}
+.report-expense-breakdown{--report-accent:#c65349;--report-accent-soft:#fae9e6;--report-panel-bg:#fff8f6;--report-border:#efd0ca}
+.report-category-panel .report-distribution-head h2{color:var(--report-accent);display:flex;align-items:center;gap:8px}
+.report-category-panel .report-distribution-head h2:before{content:"";width:10px;height:10px;border-radius:50%;background:var(--report-accent);box-shadow:0 0 0 4px var(--report-accent-soft);flex:none}
+.report-category-panel .report-category-filter select{border-color:var(--report-border);background:var(--card);box-shadow:0 1px 2px #1e322d08}
+.report-category-panel .report-category-filter select:focus{outline:2px solid var(--report-accent-soft);border-color:var(--report-accent)}
+.report-category-panel .report-table th{color:var(--report-accent)}
+.report-income-breakdown .report-table tbody tr:nth-child(odd) td{background:#f6fbf7}
+.report-expense-breakdown .report-table tbody tr:nth-child(odd) td{background:#fff7f5}
+.report-category-panel .report-mobile-row{border-bottom-color:var(--report-border)}
+.report-category-panel .report-mobile-row .amount{color:var(--report-accent);background:var(--report-accent-soft);border-radius:8px;padding:5px 8px;font-weight:800;white-space:nowrap}
+.report-category-panel .report-table td:last-child{color:var(--report-accent);font-weight:750}
+
+/* Alt sekmeler: biraz daha büyük, beşli düzende ekrana sığar */
+@media(max-width:800px){
+  .bottom{grid-template-columns:repeat(5,minmax(0,1fr))!important;min-height:72px!important;padding:6px 4px calc(6px + env(safe-area-inset-bottom))!important}
+  .bottom button{min-width:0!important;min-height:58px!important;padding:7px 0!important;font-size:clamp(10px,3.1vw,13px)!important;line-height:1.1!important;font-weight:800!important;letter-spacing:-.25px!important;white-space:nowrap!important;overflow:visible!important}
+  .bottom .ni{font-size:22px!important;line-height:22px!important;margin-bottom:4px!important}
+  main{padding-bottom:calc(118px + env(safe-area-inset-bottom))!important}
+}
+@media(max-width:390px){
+  .bottom button{font-size:clamp(10px,3vw,11.5px)!important;letter-spacing:-.3px!important}
+  .bottom .ni{font-size:20px!important;line-height:20px!important}
+}
+
+</style>
+
+</head>
+<body class="auth-pending">
+<div id="authGate" class="auth-gate" aria-live="polite"></div>
+<div class="app">
+<header><div class="head"><div class="brand"><div class="logo">₺</div><div><b>Aile Bütçem</b><span>Bütçe · Birikim · Ödemeler</span></div></div><div class="head-actions"><select id="memberSelect" class="profile" aria-label="İşlem profili"></select><button id="familySettingsBtn" class="settings-btn" type="button" onclick="go('aile')" aria-label="Aile ve profil ayarları" title="Aile ve profil ayarları">⚙</button></div></div>
+<nav class="desktop-nav" id="desktopNav"></nav></header>
+<main id="main"></main>
+<nav class="bottom" id="bottomNav"></nav>
+</div>
+<div class="modal" id="modal"><div class="modalbox"><div class="modalhead"><b id="modalTitle"></b><button class="close" onclick="closeModal()">×</button></div><div id="modalBody"></div></div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+const KEY='aile-butcem-v0-single-v1';
+const LOCAL_DATA_EXISTED=!!localStorage.getItem(KEY);
+const SUPABASE_URL='https://lakbtousqphmqpzoyzcr.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY='sb_publishable_N1roEOU-xp89NrnV2X6KIg_RIHjtupY';
+const sb=(window.supabase&&window.supabase.createClient)?window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY):null;
+let cloud={initialized:false,session:null,user:null,member:null,family:null,roster:[],loading:false,busy:false,syncReady:false,channel:null,saveTimer:null,writeInFlight:false,writeAgain:false,lastCloudJson:'',pendingWriteJson:'',pendingRemoteState:null,message:'',messageType:'',inviteToken:'',inviteUrl:'',handledUserId:undefined,localPending:false,authView:'login'};
+let pendingInviteToken='';
+try{pendingInviteToken=(new URLSearchParams(window.location.search).get('invite')||'').trim()}catch(e){}
+let rates={TRY:1,USD:49.0170,EUR:55.5892,GOLD22:6191.826,GOLD24:6587.048,CEYREK:11170.053,YARIM:22340.107,TAM:44680.213};
+let rateUpdated='30 Eylül 2026';
+let rateQuotes={
+  USD:{label:'Dolar',value:49.0170,suffix:'TL'},
+  EUR:{label:'Euro',value:55.5892,suffix:'TL'},
+  GOLD22:{label:'22 Ayar Altın',buy:6129.907,sell:6191.826,suffix:'TL/gr'},
+  GOLD24:{label:'24 Ayar Altın',buy:6531.059,sell:6587.048,suffix:'TL/gr'},
+  CEYREK:{label:'Çeyrek Altın',buy:10946.652,sell:11170.053,suffix:'TL'},
+  YARIM:{label:'Yarım Altın',buy:21893.304,sell:22340.107,suffix:'TL'},
+  TAM:{label:'Tam Altın',buy:44233.411,sell:44680.213,suffix:'TL'}
+};
+const assetLabels={TRY:'TL',USD:'USD',EUR:'Euro',GOLD22:'22 Ayar Altın',GOLD24:'24 Ayar Altın',CEYREK:'Çeyrek Altın',YARIM:'Yarım Altın',TAM:'Tam Altın'};
+const assetOptions=Object.entries(assetLabels).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
+const seed=()=>({members:[{id:'m-ahmet',name:'Ahmet'},{id:'m-ayse',name:'Ayşe'},{id:'m-zeynep',name:'Zeynep'}],active:'m-ahmet',transactions:[
+{id:'t1',type:'gelir',amount:68000,category:'Maaş',date:date(-12),description:'Aylık maaş',memberId:'m-ahmet'},
+{id:'t2',type:'gelir',amount:42000,category:'Maaş',date:date(-11),description:'Aylık maaş',memberId:'m-ayse'},
+{id:'t3',type:'gider',amount:6450,category:'Market',date:date(-6),description:'Haftalık market alışverişi',memberId:'m-ayse'},
+{id:'t4',type:'gider',amount:1890,category:'Fatura',date:date(-4),description:'Doğalgaz faturası',memberId:'m-ahmet'},
+{id:'t5',type:'gider',amount:1200,category:'Eğitim',date:date(-2),description:'Kurs ücreti',memberId:'m-zeynep'},
+{id:'t6',type:'gelir',amount:5000,category:'Ek Gelir',date:date(-1),description:'Serbest çalışma',memberId:'m-zeynep'}],
+payments:[
+{id:'p1',title:'Elektrik Faturası',category:'Fatura',amount:1450,dueDate:date(-1),status:'bekliyor',memberId:'m-ahmet'},
+{id:'p2',title:'Ev Kirası',category:'Kira',amount:22000,dueDate:date(3),status:'bekliyor',memberId:'m-ahmet'},
+{id:'p3',title:'Taşıt Kredisi Taksiti',category:'Kredi',amount:9800,dueDate:date(12),status:'bekliyor',memberId:'m-ayse'},
+{id:'p4',title:'Site Aidatı',category:'Aidat',amount:1750,dueDate:date(21),status:'bekliyor',memberId:'m-ayse'}],
+goals:[
+{id:'g1',name:'Hac Birikimi',target:450000,memberId:'m-ahmet',holdings:{TRY:60000,USD:2500,EUR:0,GOLD24:25}},
+{id:'g2',name:'Araba Birikimi',target:1200000,memberId:'m-ayse',holdings:{TRY:180000,USD:0,EUR:3000,GOLD24:0}},
+{id:'g3',name:'Kurban Birikimi',target:35000,memberId:'m-zeynep',holdings:{TRY:14000,USD:0,EUR:0,GOLD24:2}}]});
+let S=JSON.parse(localStorage.getItem(KEY)||'null')||seed(),tab='ozet',txFilter='tumu',payFilter='tumu';
+let reportMode='monthly',reportYear=new Date().getFullYear(),reportMonth=new Date().getMonth(),reportIncomeCategory='*',reportExpenseCategory='*';
+let deleteMode={transactions:false,recurringTransactions:false,payments:false,goals:false,movements:false,loans:false};
+let dateFilters={transactions:'month',recurringTransactions:'month',payments:'month',movements:'month',home:'month'};
+let savingsFilter='active',loanFilter='open';
+
+let deleteSelected={transactions:new Set(),recurringTransactions:new Set(),payments:new Set(),goals:new Set(),movements:new Set(),loans:new Set()};
+
+S.rateData=S.rateData||{updated:rateUpdated,quotes:JSON.parse(JSON.stringify(rateQuotes))};
+if(S.rateData.quotes)Object.assign(rateQuotes,S.rateData.quotes);
+if(S.rateData.quotes){
+  Object.keys(rates).forEach(k=>{
+    if(k==='TRY')return;
+    const q=rateQuotes[k];
+    if(q){
+      const value=Number(q.value??q.sell);
+      if(Number.isFinite(value)&&value>0)rates[k]=value;
+    }
+  });
+}
+rateUpdated=S.rateData.updated||rateUpdated;
+
+S.family=S.family||{id:'family-'+uid(),name:'Ailem',inviteToken:uid()};
+S.family.id=S.family.id||'family-'+uid();
+S.family.name=(S.family.name||'Ailem').trim()||'Ailem';
+S.family.inviteToken=S.family.inviteToken||uid();
+
+S.transactions=(S.transactions||[]).map(t=>({...t,asset:t.asset||'TRY'}));
+S.recurringTransactions=(S.recurringTransactions||[]).map(r=>({
+  ...r,
+  asset:r.asset||'TRY',
+  months:Math.max(2,Number(r.months)||2),
+  remaining:Math.max(0,Number(r.remaining??r.months)||0),
+  generatedCount:Math.max(0,Number(r.generatedCount)||0),
+  nextDate:r.nextDate||r.startDate||date(),
+  anchorDay:Number(r.anchorDay)||Number((r.startDate||date()).slice(-2)),
+  active:r.active!==false && !r.paused && Number(r.remaining??r.months)>0
+}));
+S.loans=(S.loans||[]).map(l=>({...l,asset:l.asset||'TRY',status:l.status||'open',memberId:l.memberId||S.active,date:l.date||String(l.createdAt||date()).slice(0,10),closedAt:l.closedAt||null}));
+S.payments=(S.payments||[]).map(p=>({...p,recurring:!!p.recurring,interval:p.interval||'aylik',months:Math.max(1,Number(p.months)||1),remaining:Math.max(0,Number(p.remaining ?? (p.recurring?Number(p.months)||1:1)))}));
+S.savingMovements=(S.savingMovements||[]).map(m=>({...m,date:m.date||date()}));
+(S.goals||[]).forEach(g=>{g.targetAsset=g.targetAsset||'TRY';g.startDate=g.startDate||date();});
+(S.goals||[]).forEach(g=>{
+  g.holdings=g.holdings||{};
+  if(g.holdings.GOLD!=null && g.holdings.GOLD24==null){g.holdings.GOLD24=g.holdings.GOLD;delete g.holdings.GOLD}
+  Object.keys(assetLabels).forEach(k=>{if(g.holdings[k]==null)g.holdings[k]=0})
+});
+
+function date(n=0){let d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)}
+function uid(){return crypto.randomUUID?crypto.randomUUID():Date.now()+Math.random()}
+function addMonths(iso,n=1){let d=new Date(iso+'T12:00:00');d.setMonth(d.getMonth()+n);return d.toISOString().slice(0,10)}
+function addYearsDate(iso,n=1){let d=new Date(iso+'T12:00:00');d.setFullYear(d.getFullYear()+n);return d}
+function durationParts(start,end){
+  if(!start||!end)return null;
+  let a=new Date(start+'T12:00:00'),b=new Date(end+'T12:00:00');
+  if(Number.isNaN(a.getTime())||Number.isNaN(b.getTime()))return null;
+  if(b<a)return {years:0,months:0,days:0};
+  let years=b.getFullYear()-a.getFullYear();
+  let c=new Date(a);
+  c.setFullYear(c.getFullYear()+years);
+  if(c>b){years--;c=new Date(a);c.setFullYear(c.getFullYear()+years)}
+  let months=(b.getFullYear()-c.getFullYear())*12+(b.getMonth()-c.getMonth());
+  let c2=new Date(c);
+  c2.setMonth(c2.getMonth()+months);
+  if(c2>b){months--;c2=new Date(c);c2.setMonth(c2.getMonth()+months)}
+  let days=Math.round((b-c2)/86400000);
+  return {years,months,days};
+}
+function durationText(start,end){
+  let p=durationParts(start,end);
+  if(!p)return '';
+  const parts=[];
+  if(p.years>0)parts.push(p.years+' yıl');
+  if(p.months>0)parts.push(p.months+' ay');
+  if(p.days>0)parts.push(p.days+' gün');
+  return parts.length?parts.join(' '):'0 gün';
+}
+function findGoalCompletionDate(g){
+  if(!g)return null;
+  if(g.completionDate)return g.completionDate;
+  const moves=(S.savingMovements||[]).filter(x=>x.goalId===g.id);
+  if(!moves.length)return null;
+  const target=Number(g.target)||0;
+  const targetAsset=g.targetAsset||'TRY';
+  const targetRate=rates[targetAsset]||1;
+  let totals={};
+  const sorted=moves.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  for(const m of sorted){
+    const asset=m.asset||'TRY';
+    const sign=Number(m.sign)||1;
+    const qty=Math.max(0,Number(m.quantity)||0)*sign;
+    totals[asset]=(totals[asset]||0)+qty;
+    const currentValue=Object.entries(totals).reduce((sum,[assetName,qtyValue])=>{
+      return sum+(Number(qtyValue)||0)*(Number(rates[assetName])||1)/targetRate;
+    },0);
+    if(currentValue>=target)return m.date||null;
+  }
+  return null;
+}
+function goalDurationText(g){
+  const completion=findGoalCompletionDate(g);
+  return completion?durationText(g.startDate,completion):'';
+}
+
+function dayDiffToday(iso){
+  let due=new Date(iso+'T12:00:00'), now=new Date();
+  let todayLocal=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  let dueLocal=new Date(due.getFullYear(),due.getMonth(),due.getDate());
+  return Math.floor((todayLocal-dueLocal)/86400000);
+}
+function isOverdue(p){return p.status==='bekliyor' && dayDiffToday(p.dueDate)>0}
+
+function calcTotal(q,p){return (Number(q)||0)*(Number(p)||0)}
+
+function save(){S.rateData={updated:rateUpdated,quotes:rateQuotes};localStorage.setItem(KEY,JSON.stringify(S));render();scheduleCloudSync()}
+function fmt(n){return new Intl.NumberFormat('tr-TR',{style:'currency',currency:'TRY',minimumFractionDigits:2,maximumFractionDigits:2}).format(n||0)}
+function fnum(n){return new Intl.NumberFormat('tr-TR',{maximumFractionDigits:2}).format(n||0)}
+function moneyText(n){return new Intl.NumberFormat('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(n)||0)}
+function parseMoney(v){
+  if(v==null)return 0;
+  let x=String(v).trim().replace(/\s/g,'');
+  if(!x)return 0;
+  if(x.includes('.') && x.includes(',')){
+    if(x.lastIndexOf(',')>x.lastIndexOf('.')) x=x.replace(/\./g,'').replace(',','.');
+    else x=x.replace(/,/g,'');
+  }else if(x.includes(',')){
+    const parts=x.split(',');
+    if(parts.length===2 && parts[1].length<=2) x=parts[0].replace(/\./g,'')+'.'+parts[1];
+    else x=x.replace(/,/g,'');
+  }else if(x.includes('.')){
+    const parts=x.split('.');
+    if(parts.length===2 && parts[1].length<=2) x=parts[0].replace(/,/g,'')+'.'+parts[1];
+    else x=x.replace(/\./g,'');
+  }
+  const n=Number(x.replace(/[^0-9.-]/g,''));
+  return Number.isFinite(n)?n:0;
+}
+function formatMoneyInput(el){
+  if(!el)return;
+  const n=parseMoney(el.value);
+  if(el.value.trim()!=='') el.value=moneyText(n);
+}
+function byId(id){return document.getElementById(id)}
+function fd(s){return new Date(s+'T12:00:00').toLocaleDateString('tr-TR',{day:'2-digit',month:'short',year:'numeric'})}
+function esc(s){return String(s??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]))}
+function member(id){return S.members.find(x=>x.id===id)?.name||'Aile'}
+function holdingsValue(h){return Object.entries(h||{}).reduce((sum,[k,v])=>sum+(Number(v)||0)*(rates[k]||0),0)}
+function goalValueInTarget(g){
+  const asset=g?.targetAsset||'TRY';
+  const rate=rates[asset]||1;
+  return holdingsValue(g?.holdings)/rate;
+}
+function goalIsCompleted(g){
+  return goalValueInTarget(g)>=(Number(g?.target)||0);
+}
+function moneyInAsset(n,asset){
+  const value=Number(n)||0;
+  const a=asset||'TRY';
+  if(a==='TRY')return fmt(value);
+  return `${value.toLocaleString('tr-TR',{minimumFractionDigits:0,maximumFractionDigits:3})} ${assetLabels[a]||a}`;
+}
+const tabs=[['ozet','Ana Sayfa','⌂'],['islemler','İşlemler','↕'],['odemeler','Ödemeler','◷'],['birikim','Birikim','◇'],['raporlar','Raporlar','▤']];
+function nav(){document.getElementById('desktopNav').innerHTML=tabs.map(x=>`<button class="navbtn ${tab===x[0]?'active':''}" onclick="go('${x[0]}')">${x[2]} ${x[1]}</button>`).join('');document.getElementById('bottomNav').innerHTML=tabs.map(x=>`<button class="${tab===x[0]?'active':''}" onclick="go('${x[0]}')"><span class="ni">${x[2]}</span>${x[1]}</button>`).join('');const gear=byId('familySettingsBtn');if(gear){gear.classList.toggle('active',tab==='aile');gear.setAttribute('aria-current',tab==='aile'?'page':'false')}}
+function go(t){tab=t;render()}
+document.getElementById('memberSelect').onchange=e=>{S.active=e.target.value;save()}
+
+document.addEventListener('paste',e=>{if(e.target&&e.target.matches&&e.target.matches('[data-money]'))setTimeout(()=>formatMoneyInput(e.target),0)},true);
+
+document.addEventListener('blur',function(e){if(e.target&&e.target.hasAttribute&&e.target.hasAttribute('data-money'))formatMoneyInput(e.target)},true);
+document.addEventListener('change',function(e){if(e.target&&e.target.hasAttribute&&e.target.hasAttribute('data-money'))formatMoneyInput(e.target)},true);
+
+function monthStart(d=new Date()){return new Date(d.getFullYear(),d.getMonth(),1)}
+function sixMonthStart(d=new Date()){return new Date(d.getFullYear(),d.getMonth()-5,1)}
+function isoToday(){return new Date().toISOString().slice(0,10)}
+function dateInRange(iso,type,start,end){
+  if(!iso)return false;
+  let d=new Date(iso+'T12:00:00'), now=new Date();
+  if(type==='month')return d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth();
+  if(type==='six')return d>=sixMonthStart(now)&&d<=new Date(now.getFullYear(),now.getMonth()+1,0,23,59,59);
+  if(type==='custom'){
+    if(!start||!end)return true;
+    let a=new Date(start+'T00:00:00'),b=new Date(end+'T23:59:59');
+    return d>=a&&d<=b;
+  }
+  return true;
+}
+function dateFilterUI(kind){
+  let f=dateFilters[kind]||'month';
+  return `<div class="date-filter"><button class="${f==='month'?'active':''}" onclick="dateFilters.${kind}='month';render()">Bu Ay</button><button class="${f==='six'?'active':''}" onclick="dateFilters.${kind}='six';render()">Son 6 Ay</button><button class="${f==='custom'?'active':''}" onclick="dateFilters.${kind}='custom';render()">Tarih Seç</button>${f==='custom'?`<input type="date" id="${kind}Start" value="${window._filterDates?.[kind]?.start||''}" onchange="setCustomDate('${kind}','start',this.value)"><span>–</span><input type="date" id="${kind}End" value="${window._filterDates?.[kind]?.end||''}" onchange="setCustomDate('${kind}','end',this.value)">`:''}</div>`;
+}
+function setCustomDate(kind,part,value){
+  window._filterDates=window._filterDates||{};
+  window._filterDates[kind]=window._filterDates[kind]||{};
+  window._filterDates[kind][part]=value;
+  dateFilters[kind]='custom';
+  render();
+}
+
+function renderAuthGate(){
+  const gate=document.getElementById('authGate');
+  if(!gate)return;
+  if(!cloud.initialized){
+    document.body.classList.add('auth-pending');
+    document.body.classList.remove('auth-required');
+    gate.innerHTML='<div class="auth-loading"><div class="auth-brand-mark" style="margin:0 auto 13px">₺</div><b style="display:block;color:var(--fg);margin-bottom:6px">Aile Bütçem</b><span>Oturumunuz güvenli şekilde kontrol ediliyor…</span></div>';
+    return;
+  }
+  if(cloud.session){
+    document.body.classList.remove('auth-pending','auth-required');
+    gate.innerHTML='';
+    return;
+  }
+  document.body.classList.remove('auth-pending');
+  document.body.classList.add('auth-required');
+  const message=cloud.message?`<div class="auth-message ${esc(cloud.messageType||'')}">${esc(cloud.message)}</div>`:'';
+  const signup=cloud.authView==='signup';
+  const form=signup
+    ? `<h1>Yeni hesap oluştur</h1><p class="auth-intro">Aile Bütçem'i kullanmak için hesabını oluştur. Aile üyelerinin göreceği adını da belirle.</p>${message}<form onsubmit="cloudSignUp(event)"><div class="field"><label for="signupDisplayName">Aile içinde görünecek adın</label><input id="signupDisplayName" name="displayName" type="text" maxlength="80" autocomplete="name" placeholder="Örn: Vedat Yıldırım" required></div><div class="field"><label for="signupEmail">E-posta adresi</label><input id="signupEmail" name="email" type="email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" placeholder="ornek@eposta.com" style="text-transform:none" required></div><div class="field"><label for="signupPassword">Şifre</label><input id="signupPassword" name="password" type="password" autocomplete="new-password" minlength="6" placeholder="En az 6 karakter" required></div><div class="field"><label for="signupPasswordConfirm">Şifreyi tekrar gir</label><input id="signupPasswordConfirm" name="passwordConfirm" type="password" autocomplete="new-password" minlength="6" placeholder="Şifreni tekrar yaz" required></div><button class="primary auth-submit" ${cloud.busy?'disabled':''}>${cloud.busy?'Lütfen bekleyin…':'Hesap Oluştur'}</button><button type="button" class="outline auth-secondary" onclick="showLoginScreen()" ${cloud.busy?'disabled':''}>Giriş ekranına dön</button></form><p class="auth-footnote">Kayıttan sonra e-posta onayı istenebilir. Gelen onay bağlantısını açıp giriş yapabilirsin.</p>`
+    : `<h1>Hesabına giriş yap</h1><p class="auth-intro">Aile bütçeni görüntülemek ve diğer aile bireyleriyle ortak kullanmak için giriş yap.</p>${message}<form onsubmit="cloudSignIn(event)"><div class="field"><label for="cloudEmail">E-posta adresi</label><input id="cloudEmail" name="email" type="email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" placeholder="ornek@eposta.com" style="text-transform:none" required></div><div class="field"><label for="cloudPassword">Şifre</label><input id="cloudPassword" name="password" type="password" autocomplete="current-password" minlength="6" placeholder="En az 6 karakter" required></div><button class="primary auth-submit" ${cloud.busy?'disabled':''}>${cloud.busy?'Lütfen bekleyin…':'Giriş Yap'}</button><button type="button" class="outline auth-secondary" onclick="showSignUpScreen()" ${cloud.busy?'disabled':''}>Yeni Hesap Oluştur</button></form><p class="auth-footnote">E-posta adresin ve şifren Supabase tarafından güvenli şekilde yönetilir.</p>`;
+  gate.innerHTML=`<div class="auth-gate-wrap"><div class="auth-brand"><div class="auth-brand-mark">₺</div><div class="auth-brand-text"><b>Aile Bütçem</b><span>Aile bütçesi · Birikim · Ödemeler</span></div></div><section class="auth-card">${form}</section></div>`;
+}
+function render(){
+  renderAuthGate();
+  if(!cloud.initialized||!cloud.session)return;
+  document.getElementById('memberSelect').innerHTML=S.members.map(m=>`<option value="${m.id}" ${m.id===S.active?'selected':''}>${esc(m.name)}</option>`).join('');
+  nav();
+  let m=document.getElementById('main');
+  m.innerHTML=tab==='ozet'?home():tab==='islemler'?transactions():tab==='odemeler'?payments():tab==='birikim'?savings():tab==='raporlar'?reports():family();
+  if(tab==='aile'&&cloud.inviteUrl)setTimeout(renderCloudQr,0);
+}
+
+function reportSetMode(mode){reportMode=mode==='yearly'?'yearly':'monthly';render()}
+function reportSetYear(year){const n=Number(year);if(Number.isFinite(n))reportYear=n;render()}
+function reportSetMonth(month){const n=Number(month);if(Number.isInteger(n)&&n>=0&&n<=11)reportMonth=n;render()}
+function reportIso(y,m,d){return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`}
+function reportMonthName(y,m,long=true){return new Date(y,m,1).toLocaleDateString('tr-TR',{month:long?'long':'short'})}
+function reportYears(){
+  const set=new Set([new Date().getFullYear(),Number(reportYear)]);
+  const addIso=iso=>{if(/^\d{4}-\d{2}-\d{2}$/.test(String(iso||'')))set.add(Number(String(iso).slice(0,4)))};
+  (S.transactions||[]).forEach(t=>addIso(t.date));
+  (S.payments||[]).forEach(p=>{
+    addIso(p.dueDate);
+    if(p.recurring&&p.dueDate){
+      const months=Math.min(600,Math.max(1,Number(p.remaining??p.months)||1));
+      let cursor=p.dueDate,anchor=Number(String(p.dueDate).slice(-2))||1;
+      for(let i=1;i<months;i++)cursor=monthlyNextDate(cursor,anchor);
+      addIso(cursor);
+    }
+  });
+  (S.recurringTransactions||[]).forEach(r=>{addIso(r.startDate);addIso(r.nextDate);});
+  let years=[...set].filter(Number.isFinite).sort((a,b)=>b-a);
+  if(years.length>20)years=years.slice(0,20);
+  return years;
+}
+function reportPaymentOccurrences(p){
+  if(p.status!=='bekliyor'||!p.dueDate)return [];
+  const count=p.recurring?Math.min(600,Math.max(1,Math.floor(Number(p.remaining??p.months)||1))):1;
+  const anchor=Number(String(p.dueDate).slice(-2))||1;
+  const out=[];let cursor=p.dueDate;
+  for(let i=0;i<count;i++){
+    out.push({date:cursor,amount:Number(p.amount)||0,asset:p.asset||'TRY',category:p.category||'Diğer',title:p.title||'Planlı ödeme',paymentId:p.id,occurrence:i+1});
+    if(p.recurring&&i<count-1)cursor=monthlyNextDate(cursor,anchor);
+  }
+  return out;
+}
+function reportPeriod(start,end){
+  const today=date();
+  const result={actualIncome:0,actualExpense:0,plannedIncome:0,plannedExpense:0,transactions:0,plannedPayments:0,incomeCategories:{},expenseCategories:{}};
+  const inPeriod=iso=>!!iso&&iso>=start&&iso<=end;
+  const addCategory=(bucketName,name,kind,amount)=>{
+    const key=(name||'Diğer').trim()||'Diğer';
+    const bucket=result[bucketName];
+    const row=bucket[key]||(bucket[key]={category:key,actual:0,planned:0});
+    row[kind]+=amount;
+  };
+  (S.transactions||[]).forEach(t=>{
+    if(!inPeriod(t.date))return;
+    const amount=(Number(t.amount)||0)*(rates[t.asset||'TRY']||1);
+    const future=t.date>today;
+    const isIncome=t.type==='gelir'||t.type==='income';
+    if(isIncome){
+      result[future?'plannedIncome':'actualIncome']+=amount;
+      addCategory('incomeCategories',t.category,future?'planned':'actual',amount);
+    }else{
+      result[future?'plannedExpense':'actualExpense']+=amount;
+      addCategory('expenseCategories',t.category,future?'planned':'actual',amount);
+    }
+    result.transactions++;
+  });
+  (S.payments||[]).forEach(p=>{
+    reportPaymentOccurrences(p).forEach(occ=>{
+      if(!inPeriod(occ.date))return;
+      const amount=occ.amount*(rates[occ.asset||'TRY']||1);
+      result.plannedExpense+=amount;
+      result.plannedPayments++;
+      addCategory('expenseCategories',occ.category,'planned',amount);
+    });
+  });
+  for(const key of ['incomeCategories','expenseCategories']){
+    result[key]=Object.values(result[key]).map(x=>({...x,total:x.actual+x.planned})).sort((a,b)=>b.total-a.total);
+  }
+  result.actualNet=result.actualIncome-result.actualExpense;
+  result.plannedNet=result.plannedIncome-result.plannedExpense;
+  result.totalIncome=result.actualIncome+result.plannedIncome;
+  result.totalExpense=result.actualExpense+result.plannedExpense;
+  return result;
+}
+function reportAggregate(rows){
+  const keys=['actualIncome','actualExpense','plannedIncome','plannedExpense','transactions','plannedPayments'];
+  const out=Object.fromEntries(keys.map(k=>[k,0]));
+  rows.forEach(r=>keys.forEach(k=>out[k]+=(Number(r[k])||0)));
+  const aggregateCategories=key=>{
+    const map={};
+    rows.forEach(r=>(r[key]||[]).forEach(c=>{
+      const item=map[c.category]||(map[c.category]={category:c.category,actual:0,planned:0});
+      item.actual+=Number(c.actual)||0;item.planned+=Number(c.planned)||0;
+    }));
+    return Object.values(map).map(x=>({...x,total:x.actual+x.planned})).sort((a,b)=>b.total-a.total);
+  };
+  out.incomeCategories=aggregateCategories('incomeCategories');
+  out.expenseCategories=aggregateCategories('expenseCategories');
+  out.actualNet=out.actualIncome-out.actualExpense;
+  out.plannedNet=out.plannedIncome-out.plannedExpense;
+  out.totalIncome=out.actualIncome+out.plannedIncome;
+  out.totalExpense=out.actualExpense+out.plannedExpense;
+  return out;
+}
+function reportStat(label,value,kind,icon){
+  return `<div class="panel stat report-stat ${kind}"><small>${icon?`${icon} `:''}${label}</small><div class="value">${fmt(value)}</div></div>`;
+}
+function reportLegend(color,label){return `<span class="report-legend-item"><i class="report-legend-dot" style="background:${color}"></i>${label}</span>`}
+function reportChartMonthly(data){
+  const bars=[
+    {label:'Gerçekleşen gelir',short:'Gerçekleşen gelir',value:data.actualIncome,cls:'income'},
+    {label:'Gerçekleşen gider',short:'Gerçekleşen gider',value:data.actualExpense,cls:'expense'},
+    {label:'Planlanan gelir',short:'Planlanan gelir',value:data.plannedIncome,cls:'plan-income'},
+    {label:'Planlanan gider',short:'Planlanan gider',value:data.plannedExpense,cls:'plan-expense'}
+  ];
+  const max=Math.max(1,...bars.map(x=>x.value));
+  return `<div class="report-chart-area report-chart-monthly" role="img" aria-label="Seçili ayın gerçekleşen ve planlanan gelir gider grafiği">${bars.map(b=>`<div class="report-chart-unit"><span class="report-chart-value">${b.value?fnum(b.value):'—'}</span><div class="report-chart-bar ${b.cls}" title="${b.label}: ${fmt(b.value)}" style="height:${b.value?Math.max(3,Math.round(b.value/max*78)):0}%"></div><span class="report-chart-name">${b.label}</span></div>`).join('')}</div>`;
+}
+function reportChartYearly(rows){
+  const max=Math.max(1,...rows.map(x=>Math.max(x.actualExpense,x.plannedExpense)));
+  return `<div class="report-chart-area report-chart-yearly" role="img" aria-label="Seçili yılın aylık gerçekleşen ve planlanan gider grafiği">${rows.map(r=>`<div class="report-chart-month"><div class="report-chart-bar expense" title="${r.name}: gerçekleşen gider ${fmt(r.actualExpense)}" style="height:${r.actualExpense?Math.max(2,Math.round(r.actualExpense/max*88)):0}%"></div><div class="report-chart-bar plan-expense" title="${r.name}: planlanan gider ${fmt(r.plannedExpense)}" style="height:${r.plannedExpense?Math.max(2,Math.round(r.plannedExpense/max*88)):0}%"></div><span class="report-chart-label">${r.short}</span></div>`).join('')}</div>`;
+}
+function reportSetCategory(type,value){
+  if(type==='income')reportIncomeCategory=value||'*';
+  else reportExpenseCategory=value||'*';
+  render();
+}
+function reportDistributionPanel(data,type,selectedCategory){
+  const isIncome=type==='income';
+  const key=isIncome?'incomeCategories':'expenseCategories';
+  const word=isIncome?'gelir':'gider';
+  const heading=isIncome?'Gelir Dağılımı':'Gider Dağılımı';
+  const rows=data[key]||[];
+  if(!rows.some(r=>r.category===selectedCategory))selectedCategory='*';
+  const shown=rows.filter(r=>selectedCategory==='*'||r.category===selectedCategory);
+  const options=`<option value="*" ${selectedCategory==='*'?'selected':''}>Tüm kategoriler</option>${rows.map(r=>`<option value="${esc(r.category)}" ${selectedCategory===r.category?'selected':''}>${esc(r.category)}</option>`).join('')}`;
+  const rowsHtml=shown.map(r=>`<tr><td>${esc(r.category)}</td><td class="number">${fmt(r.actual)}</td><td class="number">${fmt(r.planned)}</td><td class="number"><b>${fmt(r.total)}</b></td></tr>`).join('');
+  const mobileRows=shown.map(r=>`<div class="report-mobile-row"><div class="itemmain"><b>${esc(r.category)}</b><div class="sub">Gerçekleşen ${fmt(r.actual)} · Planlanan ${fmt(r.planned)}</div></div><div class="amount">${fmt(r.total)}</div></div>`).join('');
+  const table=shown.length?`<div class="report-table-wrap"><table class="table report-table"><thead><tr><th>Kategori</th><th class="number">Gerçekleşen ${word}</th><th class="number">Planlanan ${word}</th><th class="number">Toplam</th></tr></thead><tbody>${rowsHtml}</tbody></table></div><div class="report-mobile-list">${mobileRows}</div>`:`<div class="empty">Bu dönem için ${word} kategorisi bulunmuyor.</div>`;
+  const panelTone=isIncome?'report-income-breakdown':'report-expense-breakdown';
+  return `<section class="panel report-breakdown report-category-panel ${panelTone}"><div class="panelhead report-distribution-head"><div><h2>${heading}</h2><p>Gerçekleşen ve planlanan tutarları kategoriye göre inceleyin.</p></div><label class="field report-category-filter"><span class="sub">Kategori</span><select aria-label="${heading} kategorisi" onchange="reportSetCategory('${type}',this.value)">${options}</select></label></div>${table}</section>`;
+}
+function reportYearBreakdown(rows,total){
+  const rowHtml=r=>`<tr><td>${r.name}</td><td class="number">${fmt(r.actualIncome)}</td><td class="number">${fmt(r.actualExpense)}</td><td class="number">${fmt(r.plannedIncome)}</td><td class="number">${fmt(r.plannedExpense)}</td><td class="number">${fmt(r.actualIncome-r.actualExpense)}</td></tr>`;
+  return `<div class="report-table-wrap"><table class="table report-table"><thead><tr><th>Ay</th><th class="number">Gerçekleşen gelir</th><th class="number">Gerçekleşen gider</th><th class="number">Planlanan gelir</th><th class="number">Planlanan gider</th><th class="number">Net</th></tr></thead><tbody>${rows.map(rowHtml).join('')}<tr class="report-total-row"><td>Yıl Toplamı</td><td class="number">${fmt(total.actualIncome)}</td><td class="number">${fmt(total.actualExpense)}</td><td class="number">${fmt(total.plannedIncome)}</td><td class="number">${fmt(total.plannedExpense)}</td><td class="number">${fmt(total.actualNet)}</td></tr></tbody></table></div><div class="report-mobile-list">${rows.map(r=>`<div class="report-mobile-row"><div class="itemmain"><b>${r.name}</b><div class="sub">Gerçekleşen gelir ${fmt(r.actualIncome)} · Gider ${fmt(r.actualExpense)}<br>Planlanan gelir ${fmt(r.plannedIncome)} · Gider ${fmt(r.plannedExpense)}</div></div><div class="amount">Net<br><b>${fmt(r.actualIncome-r.actualExpense)}</b></div></div>`).join('')}<div class="report-mobile-row"><div class="itemmain"><b>Yıl Toplamı</b><div class="sub">Gerçekleşen gelir ${fmt(total.actualIncome)} · Gider ${fmt(total.actualExpense)}<br>Planlanan gelir ${fmt(total.plannedIncome)} · Gider ${fmt(total.plannedExpense)}</div></div><div class="amount"><b>${fmt(total.actualNet)}</b></div></div></div>`;
+}
+function reports(){
+  const years=reportYears();
+  if(!years.includes(Number(reportYear)))reportYear=years[0]||new Date().getFullYear();
+  const yearOptions=years.map(y=>`<option value="${y}" ${Number(reportYear)===y?'selected':''}>${y}</option>`).join('');
+  const monthOptions=Array.from({length:12},(_,m)=>`<option value="${m}" ${Number(reportMonth)===m?'selected':''}>${reportMonthName(reportYear,m,true)}</option>`).join('');
+  const periodLabel=reportMode==='monthly'?`${reportMonthName(reportYear,reportMonth,true)} ${reportYear}`:`${reportYear} yılı`;
+  if(reportMode==='monthly'){
+    const data=reportPeriod(reportIso(reportYear,reportMonth,1),reportIso(reportYear,reportMonth,new Date(reportYear,reportMonth+1,0).getDate()));
+    if(!data.incomeCategories.some(r=>r.category===reportIncomeCategory))reportIncomeCategory='*';
+    if(!data.expenseCategories.some(r=>r.category===reportExpenseCategory))reportExpenseCategory='*';
+    return `<div class="stack">${title('Ekonomik Raporlar','Geçmiş harcamaları ve gelecek dönem planlarını ay veya yıl bazında inceleyin.')}<section class="panel report-controls"><div class="panelhead"><div><h2>Rapor Dönemi</h2><p>İncelemek istediğiniz dönemi seçin.</p></div><div class="report-mode"><button class="${reportMode==='monthly'?'active':''}" onclick="reportSetMode('monthly')">Ay</button><button class="${reportMode==='yearly'?'active':''}" onclick="reportSetMode('yearly')">Yıl</button></div></div><div class="report-control-actions"><label class="field" style="gap:4px;flex:1;min-width:115px"><span class="sub">Ay</span><select class="report-month-select" aria-label="Rapor ayı" onchange="reportSetMonth(this.value)">${monthOptions}</select></label><label class="field" style="gap:4px;flex:1;min-width:95px"><span class="sub">Yıl</span><select class="report-year-select" aria-label="Rapor yılı" onchange="reportSetYear(this.value)">${yearOptions}</select></label></div><div class="report-period-label">Gösterilen dönem: <b>${esc(periodLabel)}</b></div></section><div class="report-stat-grid">${reportStat('Gerçekleşen Gelir',data.actualIncome,'income','↑')}${reportStat('Gerçekleşen Gider',data.actualExpense,'expense','↓')}${reportStat('Planlanan Gelir',data.plannedIncome,'report-plan-income','↗')}${reportStat('Planlanan Gider',data.plannedExpense,'report-plan-expense','↘')}</div><section class="panel report-chart-panel"><div class="panelhead"><div><h2>Gelir / Gider Karşılaştırması</h2><p>${esc(periodLabel)} · gerçekleşen ve planlanan tutarlar</p></div></div><div class="report-chart-legend">${reportLegend('#5aab86','Gerçekleşen gelir')}${reportLegend('#d9776b','Gerçekleşen gider')}${reportLegend('#b7dccc','Planlanan gelir')}${reportLegend('#efb8ad','Planlanan gider')}</div>${reportChartMonthly(data)}<div class="report-netline"><span>Gerçekleşen net bütçe: <strong>${fmt(data.actualNet)}</strong></span><span>Planlanan net: <strong>${fmt(data.plannedNet)}</strong></span></div><p class="report-chart-note">Planlanan giderlere vadesi gelmiş ancak ödenmemiş ödemeler ve ileri tarihli giderler dahildir. Döviz ve altın tutarları güncel gösterge kurlarıyla TL karşılığına çevrilir; geçmiş dönemler de güncel kurlar üzerinden hesaplanır.</p></section><div class="report-distribution-grid">${reportDistributionPanel(data,'income',reportIncomeCategory)}${reportDistributionPanel(data,'expense',reportExpenseCategory)}</div></div>`;
+  }
+  const rows=Array.from({length:12},(_,m)=>{
+    const start=reportIso(reportYear,m,1),end=reportIso(reportYear,m,new Date(reportYear,m+1,0).getDate());
+    return {month:m,name:reportMonthName(reportYear,m,true),short:reportMonthName(reportYear,m,false).replace('.',''),...reportPeriod(start,end)};
+  });
+  const total=reportAggregate(rows);
+  if(!total.incomeCategories.some(r=>r.category===reportIncomeCategory))reportIncomeCategory='*';
+  if(!total.expenseCategories.some(r=>r.category===reportExpenseCategory))reportExpenseCategory='*';
+  return `<div class="stack">${title('Ekonomik Raporlar','Geçmiş harcamaları ve gelecek dönem planlarını ay veya yıl bazında inceleyin.')}<section class="panel report-controls"><div class="panelhead"><div><h2>Rapor Dönemi</h2><p>Seçilen yılın 12 aylık görünümü.</p></div><div class="report-mode"><button class="${reportMode==='monthly'?'active':''}" onclick="reportSetMode('monthly')">Ay</button><button class="${reportMode==='yearly'?'active':''}" onclick="reportSetMode('yearly')">Yıl</button></div></div><div class="report-control-actions"><label class="field" style="gap:4px;flex:1;min-width:95px"><span class="sub">Yıl</span><select class="report-year-select" aria-label="Rapor yılı" onchange="reportSetYear(this.value)">${yearOptions}</select></label></div><div class="report-period-label">Gösterilen dönem: <b>${esc(periodLabel)}</b></div></section><div class="report-stat-grid">${reportStat('Gerçekleşen Gelir',total.actualIncome,'income','↑')}${reportStat('Gerçekleşen Gider',total.actualExpense,'expense','↓')}${reportStat('Planlanan Gelir',total.plannedIncome,'report-plan-income','↗')}${reportStat('Planlanan Gider',total.plannedExpense,'report-plan-expense','↘')}</div><section class="panel report-chart-panel"><div class="panelhead"><div><h2>Aylara Göre Harcama</h2><p>${reportYear} · gerçekleşen ve planlanan gider</p></div></div><div class="report-chart-legend">${reportLegend('#d9776b','Gerçekleşen gider')}${reportLegend('#efb8ad','Planlanan gider')}</div>${reportChartYearly(rows)}<div class="report-netline"><span>Yılın gerçekleşen net bütçesi: <strong>${fmt(total.actualNet)}</strong></span><span>Planlanan net: <strong>${fmt(total.plannedNet)}</strong></span></div><p class="report-chart-note">Çubukların üzerine geldiğinizde aylık tutarlar görünür. Mobil cihazlarda ay ay tablo da aşağıda listelenir.</p></section><section class="panel report-breakdown"><div class="panelhead"><div><h2>Ay Detayı</h2><p>Gerçekleşen ve planlanan tutarlar</p></div></div>${reportYearBreakdown(rows,total)}</section><div class="report-distribution-grid">${reportDistributionPanel(total,'income',reportIncomeCategory)}${reportDistributionPanel(total,'expense',reportExpenseCategory)}</div></div>`;
+}
+
+
+function title(a,b){return `<div class="title"><h1>${a}</h1><p>${b}</p></div>`}
+function summary(kind='home'){
+  let list=S.transactions.filter(t=>(kind!=='home'||t.date<=date())&&dateInRange(t.date,dateFilters[kind]||'month',window._filterDates?.[kind]?.start,window._filterDates?.[kind]?.end)),
+      inc=list.filter(t=>t.type==='gelir').reduce((a,x)=>a+x.amount,0),
+      out=list.filter(t=>t.type==='gider').reduce((a,x)=>a+x.amount,0);
+  return `<div class="grid3"><div class="panel stat income"><small>Toplam Gelir</small><div class="value">${fmt(inc)}</div></div><div class="panel stat expense"><small>Toplam Gider</small><div class="value">${fmt(out)}</div></div><div class="panel stat net"><small>Net Bütçe</small><div class="value">${fmt(inc-out)}</div></div></div>`;
+}
+function home(){let upcoming=S.payments.filter(p=>p.status==='bekliyor'&&days(p.dueDate)<=7).sort((a,b)=>{let ao=days(a.dueDate)<0,bo=days(b.dueDate)<0;if(ao!==bo)return ao?-1:1;return a.dueDate.localeCompare(b.dueDate)}),total=upcoming.reduce((a,x)=>a+x.amount,0),overdue=upcoming.filter(p=>isOverdue(p)),overTotal=overdue.reduce((a,x)=>a+x.amount,0),future=upcoming.filter(p=>!isOverdue(p)),futureTotal=future.reduce((a,x)=>a+x.amount,0);return `<div class="stack">${title(`Merhaba, ${esc(member(S.active))}`,'Ailenizin finansal durumuna genel bakış.')}<div class="home-summary-wrap"><div class="home-summary-filter">${dateFilterUI('home')}</div>${summary('home').replace('grid3','grid3 '+(overdue.length?'home-summary-overdue':''))}</div>${upcoming.length?`<section class="alert ${overdue.length?'danger':''}"><div class="alerthead"><div>${overdue.length?`<b class="home-overdue-title">⚠ ${overdue.length} vadesi geçmiş ödeme var</b><p class="home-overdue-total">Vadesi geçmiş toplam: ${fmt(overTotal)}</p>${future.length?`<p class="home-upcoming-total">Yaklaşan ödemeler: ${fmt(futureTotal)}</p>`:''}`:`<b>${upcoming.length} yaklaşan ödeme</b><p>7 gün içinde toplam ${fmt(total)}</p>`}</div><button class="ghost" onclick="go('odemeler')">Tümü</button></div><div class="list">${upcoming.slice(0,5).map(paymentRow).join('')}</div></section>`:`<section class="panel"><b style="font-size:13px">Önümüzdeki 7 gün içinde ödeme yok</b><p class="sub">Tüm planlı ödemeler kontrol altında.</p></section>`}${homeLoansMini()}<div class="grid2"><section class="panel"><div class="panelhead"><div><h2>Son İşlemler</h2><p>Son eklenen işlemler</p></div><button class="ghost" onclick="go('islemler')">Tümü</button></div><div class="list">${S.transactions.filter(t=>t.date<=date()).slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5).map(txRow).join('')||empty()}</div></section><section class="stack"><ratesPanel/><section class="panel"><div class="panelhead"><div><h2>Birikim Hedefleri</h2><p>Güncel kurla hedef ilerlemesi</p></div><button class="ghost" onclick="go('birikim')">Tümü</button></div><div class="goalgrid" style="grid-template-columns:1fr">${S.goals.filter(g=>!goalIsCompleted(g)).slice(0,3).map(g=>goalCard(g,true)).join('')||empty()}</div></section></section></div></div>`}
+
+function homeLoansMini(){
+  const given=(S.loans||[]).filter(l=>l.direction==='given'&&l.status!=='closed').length;
+  const taken=(S.loans||[]).filter(l=>l.direction==='taken'&&l.status!=='closed').length;
+  return `<section class="panel home-loan-mini"><div class="panelhead"><div><h2>Elden Borçlar</h2><p>Açık borçların kısa özeti</p></div><button class="ghost" onclick="goLoans()">Detaylar</button></div><div class="home-loan-metrics"><div><small>Verdiğim</small><b>${fmt(loanTotal('given'))}</b><span>${given} açık kayıt</span></div><div><small>Aldığım</small><b>${fmt(loanTotal('taken'))}</b><span>${taken} açık kayıt</span></div><div><small>Net Alacak</small><b>${fmt(loanTotal('given')-loanTotal('taken'))}</b><span>TL karşılığı</span></div></div></section>`;
+}
+function goLoans(){
+  tab='birikim';
+  render();
+  setTimeout(()=>document.getElementById('loansPanel')?.scrollIntoView({behavior:'smooth',block:'start'}),60);
+}
+
+function rateInputValue(key,mode='sell'){
+  const q=rateQuotes[key]||{};
+  return Number(q[mode]??q.value??q.sell??0);
+}
+function rateNumber(v){
+  const n=Number(String(v).replace(',','.'));
+  return Number.isFinite(n)?n:0;
+}
+function rateManagerRow(key){
+  const q=rateQuotes[key]||{};
+  const name=assetLabels[key]||q.label||key;
+  const unit=q.suffix||'TL';
+  const isMetal=key.startsWith('GOLD')||['CEYREK','YARIM','TAM'].includes(key);
+  if(isMetal){
+    return `<div class="rate-edit-row"><div><b>${esc(name)}</b><small>${esc(unit)}</small></div><div class="rate-edit-pair"><div class="field"><label>Alış</label><input id="rate-buy-${key}" type="number" step="0.001" value="${rateInputValue(key,'buy')}"></div><div class="field"><label>Satış</label><input id="rate-sell-${key}" type="number" step="0.001" value="${rateInputValue(key,'sell')}"></div></div></div>`;
+  }
+  return `<div class="rate-edit-row"><div><b>${esc(name)}</b><small>${esc(unit)}</small></div><div class="field"><label>Satış</label><input id="rate-value-${key}" type="number" step="0.0001" value="${rateInputValue(key,'value')}"></div></div>`;
+}
+
+
+
+
+
+const RATE_CACHE_KEY='aile-butcem-live-rates-v1';
+const XAU_TO_GRAMS=31.1034768;
+const COIN_WEIGHTS={CEYREK:1.754,YARIM:3.608,TAM:7.216};
+
+function rateDateLabel(){
+  return new Date().toLocaleDateString('tr-TR',{day:'2-digit',month:'long',year:'numeric'});
+}
+function parseRateNumber(v){
+  if(v==null)return 0;
+  let s=String(v).trim().replace(/\s/g,'');
+  if(s.includes('.')&&s.includes(','))s=s.lastIndexOf(',')>s.lastIndexOf('.')?s.replace(/\./g,'').replace(',','.'):s.replace(/,/g,'');
+  else if(s.includes(','))s=s.replace(',','.');
+  const n=Number(s);
+  return Number.isFinite(n)?n:0;
+}
+async function fetchJson(url){
+  const r=await fetch(url,{cache:'no-store'});
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  return await r.json();
+}
+async function fetchText(url){
+  const r=await fetch(url,{cache:'no-store'});
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  return await r.text();
+}
+function applyCurrencyRates(usdTry,eurTry,source){
+  if(usdTry>0){
+    rates.USD=usdTry;
+    rateQuotes.USD={...(rateQuotes.USD||{}),label:'Dolar',value:usdTry,suffix:'TL'};
+  }
+  if(eurTry>0){
+    rates.EUR=eurTry;
+    rateQuotes.EUR={...(rateQuotes.EUR||{}),label:'Euro',value:eurTry,suffix:'TL'};
+  }
+  if(source)window._fxRateSource=source;
+}
+function applyGoldSpot(spotUsdOz,usdTry){
+  if(!(spotUsdOz>0&&usdTry>0))return false;
+  const gold24=spotUsdOz*usdTry/XAU_TO_GRAMS;
+  const gold22=gold24*22/24;
+  rates.GOLD24=gold24;
+  rates.GOLD22=gold22;
+  rateQuotes.GOLD24={...(rateQuotes.GOLD24||{}),label:'24 Ayar Altın',buy:gold24,sell:gold24,suffix:'TL/gr'};
+  rateQuotes.GOLD22={...(rateQuotes.GOLD22||{}),label:'22 Ayar Altın',buy:gold22,sell:gold22,suffix:'TL/gr'};
+  Object.entries(COIN_WEIGHTS).forEach(([key,weight])=>{
+    const value=gold22*weight;
+    rates[key]=value;
+    const labels={CEYREK:'Çeyrek Altın',YARIM:'Yarım Altın',TAM:'Tam Altın'};
+    rateQuotes[key]={...(rateQuotes[key]||{}),label:labels[key],buy:value,sell:value,suffix:'TL'};
+  });
+  window._goldSource='Gold API';
+  window._goldSpotUsdOz=spotUsdOz;
+  return true;
+}
+async function fetchTcmbToday(){
+  const xml=await fetchText('https://www.tcmb.gov.tr/kurlar/today.xml');
+  const doc=new DOMParser().parseFromString(xml,'application/xml');
+  if(doc.querySelector('parsererror'))throw new Error('TCMB XML okunamadı');
+  const nodes=[...doc.getElementsByTagName('Currency')];
+  const get=(code)=>{
+    const n=nodes.find(x=>x.getAttribute('CurrencyCode')===code);
+    if(!n)return 0;
+    const sell=parseRateNumber(n.getElementsByTagName('ForexSelling')[0]?.textContent);
+    const buy=parseRateNumber(n.getElementsByTagName('ForexBuying')[0]?.textContent);
+    return sell||buy;
+  };
+  return {usd:get('USD'),eur:get('EUR')};
+}
+async function fetchOpenCurrencyFallback(){
+  const urls=[
+    'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json',
+    'https://latest.currency-api.pages.dev/v1/currencies/usd.json'
+  ];
+  let last=null;
+  for(const url of urls){
+    try{
+      const data=await fetchJson(url);
+      const usd=data?.usd||{};
+      const usdTry=parseRateNumber(usd.try);
+      const usdEur=parseRateNumber(usd.eur);
+      if(usdTry>0&&usdEur>0)return {usd:usdTry,eur:usdTry/usdEur};
+    }catch(e){last=e}
+  }
+  throw last||new Error('Kur fallback başarısız');
+}
+async function fetchGoldApi(){
+  const data=await fetchJson('https://api.gold-api.com/price/XAU');
+  const spot=parseRateNumber(data?.price);
+  if(!(spot>0))throw new Error('XAU fiyatı alınamadı');
+  return {spot,updatedAt:data?.updatedAtReadable||data?.updatedAt||''};
+}
+function loadRateCache(){
+  try{
+    const cached=JSON.parse(localStorage.getItem(RATE_CACHE_KEY)||'null');
+    if(!cached)return false;
+    if(cached.quotes)Object.assign(rateQuotes,cached.quotes);
+    if(cached.rates)Object.assign(rates,cached.rates);
+    if(cached.updated)rateUpdated=cached.updated;
+    return true;
+  }catch(e){return false}
+}
+function saveRateCache(){
+  const data={updated:rateUpdated,rates,quotes:rateQuotes,fxSource:window._fxRateSource||'',goldSource:window._goldSource||'',goldSpotUsdOz:window._goldSpotUsdOz||0};
+  localStorage.setItem(RATE_CACHE_KEY,JSON.stringify(data));
+  S.rateData=data;
+}
+async function refreshRates(showMessage=false){
+  const btn=document.querySelector('.rate-update-btn');
+  if(btn){btn.disabled=true;btn.textContent='Güncelleniyor...'}
+  let fxOk=false,goldOk=false;
+  let fxSource='',goldUpdated='';
+  try{
+    try{
+      const fx=await fetchTcmbToday();
+      if(fx.usd>0&&fx.eur>0){applyCurrencyRates(fx.usd,fx.eur,'TCMB');fxOk=true;fxSource='TCMB';}
+      else throw new Error('Eksik TCMB kuru');
+    }catch(e){
+      const fx=await fetchOpenCurrencyFallback();
+      applyCurrencyRates(fx.usd,fx.eur,'Currency API (CC0)');fxOk=true;fxSource='Currency API (CC0)';
+    }
+    try{
+      const gold=await fetchGoldApi();
+      goldOk=applyGoldSpot(gold.spot,rates.USD);
+      goldUpdated=gold.updatedAt||'';
+    }catch(e){}
+    if(fxOk&&goldOk)rateUpdated=rateDateLabel();
+    else if(fxOk)rateUpdated=rateDateLabel()+' · Altın verisi bekleniyor';
+    saveRateCache();
+    save();
+  }catch(e){
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Güncelle'}
+  }
+}
+function stopRateAutoRefresh(){
+  if(window._rateTimer){
+    clearInterval(window._rateTimer);
+    window._rateTimer=null;
+  }
+}
+function startRateAutoRefresh(){
+  loadRateCache();
+  stopRateAutoRefresh();
+  if(document.visibilityState==='visible'){
+    refreshRates(false);
+    window._rateTimer=setInterval(()=>{
+      if(document.visibilityState==='visible'){refreshRates(false);if(processDueRecurringTransactions())save();}
+    },60*1000);
+  }
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'){
+    stopRateAutoRefresh();
+    refreshRates(false);
+    window._rateTimer=setInterval(()=>{
+      if(document.visibilityState==='visible'){refreshRates(false);if(processDueRecurringTransactions())save();}
+    },60*1000);
+  }else{
+    stopRateAutoRefresh();
+  }
+});
+window.addEventListener('pageshow',()=>{
+  if(document.visibilityState==='visible'){if(processDueRecurringTransactions())save();startRateAutoRefresh();}
+});
+window.addEventListener('pagehide',stopRateAutoRefresh);
+
+function ratesPanel(){return `<section class="panel"><div class="panelhead"><div><h2>Güncel Kurlar</h2><p id="rateUpdatedText">${esc(rateUpdated)} · Otomatik veri</p></div></div><div class="rategrid live-rates"><div class="rate"><small>Dolar / TL</small><b>₺${fnum(rateQuotes.USD.value)}</b></div><div class="rate"><small>Euro / TL</small><b>₺${fnum(rateQuotes.EUR.value)}</b></div><div class="rate"><small>22 Ayar Altın</small><b>₺${fnum(rateQuotes.GOLD22.sell)}</b><span class="rate-detail">Gösterge · ₺/gr</span></div><div class="rate"><small>24 Ayar Altın</small><b>₺${fnum(rateQuotes.GOLD24.sell)}</b><span class="rate-detail">Gösterge · ₺/gr</span></div><div class="rate"><small>Çeyrek Altın</small><b>₺${fnum(rateQuotes.CEYREK.sell)}</b><span class="rate-detail">Hesaplanan · 22 ayar</span></div><div class="rate"><small>Yarım Altın</small><b>₺${fnum(rateQuotes.YARIM.sell)}</b><span class="rate-detail">Hesaplanan · 22 ayar</span></div><div class="rate"><small>Tam Altın</small><b>₺${fnum(rateQuotes.TAM.sell)}</b><span class="rate-detail">Hesaplanan · 22 ayar</span></div></div><p class="sub rate-note">Altın fiyatı canlı veri kaynağından otomatik yenilenir. USD ve EUR için TCMB’nin en son yayımladığı günlük gösterge kurlar kullanılır. Sistem arka planda otomatik kontrol yapar.</p></section>`}
+function days(d){return Math.ceil((new Date(d+'T12:00:00')-new Date(new Date().toDateString()))/86400000)}
+function due(p){let d=days(p.dueDate);return p.status==='odendi'?'<span class="badge ok">Ödendi</span>':d<0?'<span class="badge late">Gecikti</span>':d<=3?'<span class="badge warn">Yaklaşıyor</span>':`<span class="badge">${d} gün</span>`}
+function paymentRow(p,full=false){
+  let late=p.status==='bekliyor' && days(p.dueDate)<0;
+  let lateDays=late?Math.abs(days(p.dueDate)):0;
+  return `<div class="item ${late?'overdue-payment':''}" style="${late?'background:#fff1f2;border-color:#fecdd3;':''}">
+    ${deleteMode.payments?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.payments.has(p.id)?'checked':''} onchange="toggleDeleteSelection('payments','${p.id}')"><span></span></label>`:''}
+    <div class="icon ${late?'out':(p.status==='odendi'?'in':'out')}">${late?'!':(p.recurring?'↻':'◷')}</div>
+    <div class="itemmain"><b>${esc(p.title)}</b>
+      <div class="sub">${esc(p.category)} · Vade: ${fd(p.dueDate)} · ${esc(member(p.memberId))} · ${assetLabels[p.asset||'TRY']||'TL'}${p.recurring?' · Her ay · Kalan '+(p.remaining??p.months??0)+' ay':''}</div>
+      ${late?`<div class="overdue-text">Vadesi geçti · ${lateDays} gün gecikti</div>`:''}
+    </div>
+    <div style="text-align:right"><div class="amount ${late?'late-amount':''}">${fnum(p.amount)} ${assetLabels[p.asset||'TRY']||'TL'}</div><div class="sub ${late?'late-amount':''}">${late?'Gecikmiş':(p.status==='odendi'?'Ödendi':'Bekliyor')}</div></div>
+    ${(full||tab==='ozet')&&!deleteMode.payments?`<button class="primary pay-action" style="padding:6px 8px;font-size:10px" onclick="togglePay('${p.id}')">${p.status==='bekliyor'?'Ödendi':'Geri Al'}</button>`:''}
+  </div>`
+}
+function txRecurringProgress(t){
+  if(!t.recurringId&&!t.scheduledRecurring)return '';
+  const total=Math.max(1,Number(t.scheduleTotalMonths)||1);
+  const index=Math.max(1,Number(t.scheduleMonthIndex)||1);
+  const remaining=Math.max(0,total-index+1);
+  return `${index}/${total}. ay · Kalan ${remaining} ay`;
+}
+function txRow(t){return `<div class="item ${deleteMode.transactions?'selectable-item':''}">${deleteMode.transactions?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.transactions.has(t.id)?'checked':''} onchange="toggleDeleteSelection('transactions','${t.id}')"><span></span></label>`:''}<div class="icon ${t.type==='gelir'?'in':'out'}">${t.type==='gelir'?'↑':'↓'}</div><div class="itemmain"><b>${esc(t.description)}</b><div class="sub">${esc(t.category)} · ${fd(t.date)} · ${esc(member(t.memberId))} · ${assetLabels[t.asset]||'TL'}${t.paymentId?' · Planlı':t.recurringId?' · Düzenli · '+txRecurringProgress(t):''}</div></div><div class="amount ${t.type==='gelir'?'in':'out'}">${t.type==='gelir'?'+':'−'}${fnum(t.amount)} ${assetLabels[t.asset]||'TL'}</div></div>`}
+function empty(){return '<div class="empty">Kayıt bulunamadı.</div>'}
+function transactions(){
+  let rows=S.transactions.filter(t=>(txFilter==='tumu'||t.type===txFilter)&&dateInRange(t.date,dateFilters.transactions,window._filterDates?.transactions?.start,window._filterDates?.transactions?.end)).sort((a,b)=>b.date.localeCompare(a.date));
+  const historyDeleteActions=deleteMode.transactions
+    ? `<button class="secondary" onclick="cancelDeleteMode('transactions')">İptal</button><button class="dangerbtn" onclick="askDelete('transactions')" ${deleteSelected.transactions.size?'':'disabled'}>Seçili Sil (${deleteSelected.transactions.size})</button>`
+    : `<button class="secondary" onclick="enterDeleteMode('transactions')">Sil</button>`;
+  return `<div class="stack">${title('Gelir ve Giderler','Tüm aile işlemlerini kaydedin ve filtreleyin.')}
+    <section class="panel add-action-panel transactions-add-card"><div><h2>Yeni İşlem Ekle</h2><p>Tek seferlik işlem veya seçtiğiniz ay sayısı kadar ayrı tarihli gelir/gider kaydı oluşturun.</p></div><button class="primary" onclick="openTxModal()">+ İşlem Ekle</button></section>
+    <section class="panel tx-history-panel"><div class="panelhead tx-history-head"><div><h2>İşlem Geçmişi</h2><p>${rows.length} işlem listeleniyor</p></div><div class="tx-history-actions"><div class="segment">${[['tumu','Tümü'],['gelir','Gelir'],['gider','Gider']].map(x=>`<button class="${txFilter===x[0]?'active':''}" onclick="txFilter='${x[0]}';render()">${x[1]}</button>`).join('')}</div>${dateFilterUI('transactions')}${historyDeleteActions}</div></div>${dateFilters.transactions==='month'?'<p class="sub" style="margin:0 0 8px">Bu Ay filtresi açık. İleri tarihli düzenli kayıtları görmek için “Tarih Seç” ile başlangıç ve bitiş tarihini belirle.</p>':''}<div class="mobilelist list tx-history-list">${rows.map(txRow).join('')||empty()}</div><div class="tx-table-scroll"><table class="table"><thead><tr><th>Tarih</th><th>Açıklama</th><th>Kategori</th><th>Ekleyen</th><th>Tutar</th><th></th></tr></thead><tbody>${rows.map(t=>`<tr><td>${fd(t.date)}</td><td>${esc(t.description)}${t.recurringId?`<div class="sub">Düzenli · ${esc(txRecurringProgress(t))}</div>`:''}</td><td>${esc(t.category)}</td><td>${esc(member(t.memberId))}</td><td style="color:${t.type==='gelir'?'var(--income)':'var(--expense)'}">${t.type==='gelir'?'+':'−'}${fmt(t.amount)} ${assetLabels[t.asset]||'TL'}</td><td>${deleteMode.transactions?`<input type="checkbox" ${deleteSelected.transactions.has(t.id)?'checked':''} onchange="toggleDeleteSelection('transactions','${t.id}')">`:''}</td></tr>`).join('')}</tbody></table></div></section>
+  </div>`;
+}
+function regularTransactionsPanel(){
+  const allPlans=(S.recurringTransactions||[]).slice();
+  const plans=allPlans.filter(r=>{
+    const relevantDate=(Number(r.remaining)>0?(r.nextDate||r.startDate):(r.lastGeneratedDate||r.startDate||r.createdAt))||date();
+    return dateInRange(relevantDate,dateFilters.recurringTransactions,window._filterDates?.recurringTransactions?.start,window._filterDates?.recurringTransactions?.end);
+  }).sort((a,b)=>(b.createdAt||b.startDate||'').localeCompare(a.createdAt||a.startDate||''));
+  const deleteActions=deleteMode.recurringTransactions
+    ? `<button class="secondary" onclick="cancelDeleteMode('recurringTransactions')">İptal</button><button class="dangerbtn" onclick="askDelete('recurringTransactions')" ${deleteSelected.recurringTransactions.size?'':'disabled'}>Seçili Sil (${deleteSelected.recurringTransactions.size})</button>`
+    : `<button class="secondary" onclick="enterDeleteMode('recurringTransactions')">Sil</button>`;
+  return `<section class="panel regular-tx-panel"><div class="panelhead regular-tx-panelhead"><div><h2>Düzenli Gelir / Gider</h2><p>${allPlans.filter(x=>x.active&&x.remaining>0).length} aktif plan · ${plans.length} kayıt gösteriliyor</p></div><div class="regular-tx-header-actions">${dateFilterUI('recurringTransactions')}<div class="regular-tx-delete-actions">${deleteActions}</div></div></div>${plans.length?`<div class="list regular-tx-list">${plans.map(r=>{
+    const status=r.remaining<=0?'Tamamlandı':r.active?'Aktif':'Duraklatıldı';
+    const next=r.remaining>0&&r.nextDate?` · Sıradaki: ${fd(r.nextDate)}`:'';
+    return `<div class="item regular-tx-row ${deleteMode.recurringTransactions?'selectable-item':''}">${deleteMode.recurringTransactions?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.recurringTransactions.has(r.id)?'checked':''} onchange="toggleDeleteSelection('recurringTransactions','${r.id}')"><span></span></label>`:''}<div class="icon ${r.type==='gelir'?'in':'out'}">↻</div><div class="itemmain"><b>${esc(r.description||r.category)}</b><div class="sub">${r.type==='gelir'?'Düzenli gelir':'Düzenli gider'} · ${esc(r.category)} · ${esc(member(r.memberId))} · ${r.generatedCount||0}/${r.months} işlendi${next}</div><small class="sub">${status} · ${Math.max(0,r.remaining||0)} ay kaldı</small></div><div class="regular-tx-actions"><b class="amount ${r.type==='gelir'?'in':'out'}">${fnum(r.amount)} ${assetLabels[r.asset]||'TL'}</b>${r.remaining>0&&!deleteMode.recurringTransactions?`<button class="secondary" onclick="toggleRecurringTx('${r.id}')">${r.active?'Duraklat':'Devam Et'}</button>`:''}</div></div>`;
+  }).join('')}</div>`:empty()}</section>`;
+}
+
+function showFormModal(title,html){
+  const modal=document.getElementById('modal');
+  const titleEl=document.getElementById('modalTitle');
+  const bodyEl=document.getElementById('modalBody');
+  if(!modal||!titleEl||!bodyEl){console.error('Ekleme penceresi bulunamadı.');return;}
+  titleEl.textContent=title;
+  bodyEl.innerHTML=html;
+  modal.classList.add('show');
+  // Dinamik açılan formlardaki para alanlarını ana form alanlarıyla aynı şekilde biçimlendir.
+  const firstInput=bodyEl.querySelector('input:not([type="hidden"]):not([type="date"])');
+  if(firstInput) firstInput.focus({preventScroll:true});
+}
+function openTxModal(){showFormModal('Yeni İşlem',txForm());}
+function openPayModal(){showFormModal('Yeni Planlı Ödeme',paymentForm());}
+function openGoalModal(){showFormModal('Yeni Birikim Hedefi',goalForm());}
+function openLoanModal(){showFormModal('Elden Borç Kaydı',loanForm());}
+function openSavingMoveModal(id,sign){
+  const goal=(S.goals||[]).find(x=>x.id===id);
+  if(!goal||goalIsCompleted(goal))return;
+  showFormModal(sign>0?'Birikim Ekle':'Birikim Çıkar',savingMoveForm(goal,sign));
+  const asset=document.getElementById('asset-'+id);
+  if(asset)asset.value=goal.targetAsset||'TRY';
+}
+function savingMoveForm(g,sign){
+  const verb=sign>0?'Ekle':'Çıkar';
+  return `<form onsubmit="submitSavingMove(event,'${g.id}',${sign})"><div class="field"><label>Birikim Hedefi</label><input value="${esc(g.name)}" readonly></div><div class="row2"><div class="field"><label>Miktar</label><input id="amt-${g.id}" type="number" min="0.001" step="0.001" placeholder="Miktar" required></div><div class="field"><label>Kur Türü</label><select id="asset-${g.id}" aria-label="Kur Türü" class="goal-asset-select">${assetOptions}</select></div><div class="field"><label>Tarih</label><input id="saveDate-${g.id}" type="date" value="${date()}" required></div></div><button class="primary">Birikime ${verb}</button></form>`;
+}
+function submitSavingMove(e,id,sign){e.preventDefault();adjust(id,sign);}
+
+function txForm(){return `<form onsubmit="addTx(event)"><div class="segment"><button type="button" id="tg" class="active" onclick="setTxType('gider')">Gider</button><button type="button" id="ti" onclick="setTxType('gelir')">Gelir</button></div><input type="hidden" id="txType" value="gider"><div class="row2"><div class="field"><label>Tutar / Miktar</label><input id="txAmount" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="0,00" required></div><div class="field"><label>Varlık / Kur Türü</label><select id="txAsset">${assetOptions}</select></div><div class="field"><label>Tarih / Başlangıç</label><input id="txDate" type="date" value="${date()}" required></div><div class="field"><label>Kategori</label><select id="txCat"><option>Market</option><option>Fatura</option><option>Kira</option><option>Kredi</option><option>Eğitim</option><option>Sağlık</option><option>Ulaşım</option><option>Maaş</option><option>Ek Gelir</option><option>Diğer</option></select></div><div class="field"><label>Aile Bireyi</label><select id="txMember">${S.members.map(m=>`<option value="${m.id}" ${m.id===S.active?'selected':''}>${esc(m.name)}</option>`).join('')}</select></div></div><div class="field"><label>Açıklama</label><input id="txDesc" placeholder="Örn: Maaş, haftalık market"></div><div class="segment tx-recurrence-toggle" style="margin:10px 0"><button type="button" id="onceTx" class="active" onclick="setTxRecurring(false)">Tek Sefer</button><button type="button" id="monthlyTx" onclick="setTxRecurring(true)">Düzenli Gider</button></div><input type="hidden" id="txRecurring" value="0"><div id="txRecurringOptions" class="field" style="display:none"><label>Kaç Ay Eklensin?</label><input id="txMonths" type="number" min="2" max="600" step="1" value="12" inputmode="numeric"><div class="sub">Seçilen ay sayısı kadar ayrı kayıt oluşturulur. Her ayın tarihi ve tutarı işlem geçmişinde ayrı görünür.</div></div><button class="primary" id="tx-submit-btn">Ekle</button></form>`}
+
+function setTxType(t){
+  let type=byId('txType'),g=byId('tg'),i=byId('ti');
+  if(type)type.value=t;
+  if(g)g.classList.toggle('active',t==='gider');
+  if(i)i.classList.toggle('active',t==='gelir');
+  let b=byId('tx-submit-btn');
+  if(b)b.textContent=t==='gelir'?'Gelir Ekle':'Ekle';
+  let monthly=byId('monthlyTx');
+  if(monthly)monthly.textContent=t==='gelir'?'Düzenli Gelir':'Düzenli Gider';
+}
+
+function setTxRecurring(v){
+  const r=byId('txRecurring'),once=byId('onceTx'),monthly=byId('monthlyTx'),box=byId('txRecurringOptions');
+  if(r)r.value=v?'1':'0';
+  if(once)once.classList.toggle('active',!v);
+  if(monthly)monthly.classList.toggle('active',v);
+  if(box)box.style.display=v?'block':'none';
+  if(v&&byId('txMonths')&&!byId('txMonths').value)byId('txMonths').value='12';
+}
+function updateTxSubmitLabel(){
+  const btn=document.getElementById('tx-submit-btn');
+  if(!btn)return;
+  let type='';
+  const checked=document.querySelector('input[name="txType"]:checked');
+  if(checked) type=checked.value;
+  else{
+    const select=document.getElementById('txType')||document.querySelector('[name="txType"]');
+    if(select) type=select.value;
+  }
+  btn.textContent=(type==='gelir'||type==='income'||type==='Gelir')?'Gelir Ekle':'Ekle';
+}
+
+function addTx(e){
+  e.preventDefault();
+  const amount=parseMoney(byId('txAmount')?.value);
+  if(amount<=0)return;
+  const type=byId('txType')?.value||'gider';
+  const category=byId('txCat')?.value||'Diğer';
+  const startDate=byId('txDate')?.value||date();
+  const description=(byId('txDesc')?.value||'').trim()||category;
+  const asset=byId('txAsset')?.value||'TRY';
+  const memberId=byId('txMember')?.value||S.active;
+  if(byId('txRecurring')?.value==='1'){
+    const months=Math.max(2,Math.min(600,Math.floor(Number(byId('txMonths')?.value)||12)));
+    const scheduleId=String(uid());
+    const anchorDay=Number(startDate.slice(-2))||1;
+    let occurrenceDate=startDate;
+    S.transactions=S.transactions||[];
+    for(let i=0;i<months;i++){
+      const occurrenceId=`${scheduleId}-occ-${i}`;
+      S.transactions.unshift({
+        id:occurrenceId,recurringId:scheduleId,recurringOccurrenceId:occurrenceId,
+        scheduledRecurring:true,scheduleMonthIndex:i+1,scheduleTotalMonths:months,
+        type,amount,asset,category,date:occurrenceDate,description,memberId
+      });
+      occurrenceDate=monthlyNextDate(occurrenceDate,anchorDay);
+    }
+  }else{
+    S.transactions.unshift({id:uid(),type,amount,asset,category,date:startDate,description,memberId});
+  }
+  closeModal();
+  save();
+}
+function delTx(id){S.transactions=S.transactions.filter(t=>t.id!==id);save()}
+function monthlyNextDate(iso,anchorDay){
+  const parts=String(iso||date()).split('-').map(Number);
+  const next=new Date(parts[0],parts[1],1,12);
+  const lastDay=new Date(next.getFullYear(),next.getMonth()+1,0).getDate();
+  next.setDate(Math.min(Number(anchorDay)||parts[2]||1,lastDay));
+  return `${next.getFullYear()}-${String(next.getMonth()+1).padStart(2,'0')}-${String(next.getDate()).padStart(2,'0')}`;
+}
+function processDueRecurringTransactions(){
+  // Eski sürümdeki tekil planları, aynı ay tarihlerini koruyarak ayrı işlem kayıtlarına dönüştür.
+  const plans=S.recurringTransactions||[];
+  if(!plans.length)return false;
+  S.transactions=S.transactions||[];
+  let changed=false;
+  plans.forEach(r=>{
+    const remaining=Math.max(0,Number(r.remaining??r.months)||0);
+    if(!r.active||r.paused||remaining<=0)return;
+    const anchorDay=Number(r.anchorDay)||Number((r.nextDate||r.startDate||date()).slice(-2))||1;
+    let occurrenceDate=r.nextDate||r.startDate||date();
+    const firstIndex=Math.max(0,Number(r.generatedCount)||0);
+    for(let i=0;i<remaining;i++){
+      const occurrenceId=`${r.id}-occ-${firstIndex+i}`;
+      if(!S.transactions.some(t=>t.id===occurrenceId||t.recurringOccurrenceId===occurrenceId)){
+        S.transactions.unshift({
+          id:occurrenceId,recurringOccurrenceId:occurrenceId,recurringId:r.id,
+          scheduledRecurring:true,scheduleMonthIndex:firstIndex+i+1,scheduleTotalMonths:Number(r.months)||remaining,
+          type:r.type,amount:Number(r.amount)||0,asset:r.asset||'TRY',
+          category:r.category||'Diğer',date:occurrenceDate,
+          description:r.description||r.category||'Düzenli işlem',memberId:r.memberId||S.active
+        });
+      }
+      occurrenceDate=monthlyNextDate(occurrenceDate,anchorDay);
+    }
+    changed=true;
+  });
+  // Plan tablosu artık kullanılmıyor; geçmişe eklenmiş taksitler S.transactions içinde kalır.
+  S.recurringTransactions=[];
+  return true;
+}
+function toggleRecurringTx(id){
+  const r=(S.recurringTransactions||[]).find(x=>x.id===id);
+  if(!r||r.remaining<=0)return;
+  if(r.active){
+    r.active=false;r.paused=true;r.pausedAt=date();
+  }else{
+    r.active=true;r.paused=false;r.pausedAt=null;
+    r.nextDate=date();
+    r.anchorDay=Number(date().slice(-2));
+  }
+  save();
+}
+function deleteRecurringTx(id){
+  if(!confirm('Düzenli işlem planı silinsin mi? Önceden oluşturulan işlem kayıtları korunur.'))return;
+  S.recurringTransactions=(S.recurringTransactions||[]).filter(x=>x.id!==id);
+  save();
+}
+function payments(){let rows=S.payments.filter(p=>(payFilter==='tumu'||p.status===payFilter)&&dateInRange(p.dueDate,dateFilters.payments,window._filterDates?.payments?.start,window._filterDates?.payments?.end)).sort((a,b)=>a.status===b.status?a.dueDate.localeCompare(b.dueDate):a.status==='bekliyor'?-1:1),pending=S.payments.filter(p=>p.status==='bekliyor').reduce((a,x)=>a+x.amount,0);return `<div class="stack">${title('Planlanan Ödemeler','Kredi, fatura ve kira gibi ödemelerin vadelerini takip edin.')}<div class="alert">${S.payments.some(p=>isOverdue(p))?`<strong style="color:#b42318">Vadesi geçmiş ${S.payments.filter(p=>isOverdue(p)).length} ödeme var.</strong>`:(S.payments.filter(p=>p.status==='bekliyor'&&days(p.dueDate)<=7).length?`Yaklaşan ödemelerinizi kontrol edin.`:'Yakın tarihte ödeme bulunmuyor.')}<p><strong style="color:#b42318">Vadesi geçmiş toplam: ${fmt(S.payments.filter(p=>isOverdue(p)).reduce((a,x)=>a+x.amount,0))}</strong></p></div><div class="split"><section class="panel add-action-panel"><div><h2>Yeni Planlı Ödeme</h2><p>Tek sefer veya her ay düzenli ödeme tanımlayın.</p></div><button class="primary" onclick="openPayModal()">+ Ödeme Ekle</button></section><section class="panel"><div class="panelhead"><div><h2>Planlanan Ödemeler</h2><p>${rows.length} kayıt listeleniyor</p></div><div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><div class="segment">${[['tumu','Tümü'],['bekliyor','Bekliyor'],['odendi','Ödendi']].map(x=>`<button class="${payFilter===x[0]?'active':''}" onclick="payFilter='${x[0]}';render()">${x[1]}</button>`).join('')}</div>${deleteMode.payments?`<button class="secondary" onclick="cancelDeleteMode('payments')">İptal</button><button class="dangerbtn" onclick="askDelete('payments')" ${deleteSelected.payments.size?'':'disabled'}>Seçili Sil (${deleteSelected.payments.size})</button>`:`<button class="secondary" onclick="enterDeleteMode('payments')">Sil</button>`}</div></div>${dateFilterUI('payments')}<div class="list payments-list">${rows.map(p=>paymentRow(p,true)).join('')||empty()}</div><p class="sub" style="margin-top:12px">“Ödendi” işaretlenen ödemeler otomatik olarak giderlere eklenir; geri alındığında ilgili gider kaydı kaldırılır.</p></section></div></div>`}
+function paymentForm(){return `<form onsubmit="addPay(event)"><div class="field"><label>Ödeme Adı</label><input id="pTitle" placeholder="Elektrik, kira, kredi..." required></div><div class="row2"><div class="field"><label>Tutar / Miktar</label><input id="pAmount" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="0,00" required></div><div class="field"><label>Varlık / Kur Türü</label><select id="pAsset">${assetOptions}</select></div><div class="field"><label>Vade Tarihi</label><input id="pDate" type="date" value="${date()}" required></div><div class="field"><label>Kategori</label><select id="pCat"><option>Fatura</option><option>Kira</option><option>Kredi</option><option>Aidat</option><option>Eğitim</option><option>Diğer</option></select></div><div class="field"><label>Aile Bireyi</label><select id="pMember">${S.members.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select></div></div><div class="segment" style="margin:10px 0"><button type="button" id="oncePay" class="active" onclick="setPayRecurring(false)">Tek Sefer</button><button type="button" id="monthlyPay" onclick="setPayRecurring(true)">Her Ay Düzenli</button></div><input type="hidden" id="pRecurring" value="0"><div id="recurringOptions" class="field" style="display:none"><label>Kaç Ay Devam Edecek?</label><input id="pMonths" type="number" min="2" step="1" value="2" inputmode="numeric"><div class="sub">En az 2 ay seçilebilir. Örn. 12 = 12 ay boyunca.</div></div><button class="primary">Ödeme Ekle</button></form>`}
+function setPayRecurring(v){let r=byId('pRecurring'),o=byId('oncePay'),m=byId('monthlyPay'),box=byId('recurringOptions');if(r)r.value=v?'1':'0';if(o)o.classList.toggle('active',!v);if(m)m.classList.toggle('active',v);if(box)box.style.display=v?'block':'none'}
+function addPay(e){e.preventDefault();let amount=parseMoney(byId('pAmount')?.value),rec=byId('pRecurring')?.value==='1',months=rec?Math.max(2,Number(byId('pMonths')?.value)||2):1;if(amount<=0)return;S.payments.push({id:uid(),title:(byId('pTitle')?.value||'').trim(),category:byId('pCat')?.value||'Diğer',amount:amount,asset:byId('pAsset')?.value||'TRY',dueDate:byId('pDate')?.value||date(),status:'bekliyor',memberId:byId('pMember')?.value||S.active,recurring:rec,interval:'aylik',months:months,remaining:months});closeModal();save()}
+function togglePay(id){let p=S.payments.find(x=>x.id===id);if(!p)return;if(p.status==='bekliyor'){let tx={id:uid(),type:'gider',amount:p.amount,asset:p.asset||'TRY',category:p.category,date:date(),description:'Planlı ödeme: '+p.title,memberId:p.memberId,paymentId:p.id};S.transactions.unshift(tx);if(p.recurring){p.remaining=Math.max(0,(Number(p.remaining)||Number(p.months)||1)-1);if(p.remaining>0){p.dueDate=addMonths(p.dueDate,1);p.status='bekliyor';p.lastPaidDate=tx.date}else{p.status='odendi';p.transactionId=tx.id}}else{p.status='odendi';p.transactionId=tx.id}}else{S.transactions=S.transactions.filter(t=>t.paymentId!==id);p.status='bekliyor';if(p.recurring){p.remaining=Math.max(1,Number(p.remaining)||Number(p.months)||1);p.dueDate=p.lastPaidDate?addMonths(p.lastPaidDate,1):p.dueDate}delete p.transactionId}save()}
+function delPay(id){S.transactions=S.transactions.filter(t=>t.paymentId!==id);S.payments=S.payments.filter(p=>p.id!==id);save()}
+function setLoanDirection(direction){
+  const el=byId('loanDirection'),given=byId('loanGiven'),taken=byId('loanTaken'),submit=byId('loanSubmit');
+  if(el)el.value=direction;
+  if(given)given.classList.toggle('active',direction==='given');
+  if(taken)taken.classList.toggle('active',direction==='taken');
+  if(submit)submit.textContent=direction==='given'?'Borç Verme Kaydet':'Borç Alma Kaydet';
+}
+function loanForm(){
+  return `<form onsubmit="addLoan(event)"><div class="segment" style="margin-bottom:12px"><button id="loanGiven" type="button" class="active" onclick="setLoanDirection('given')">Borç Verdim</button><button id="loanTaken" type="button" onclick="setLoanDirection('taken')">Borç Aldım</button></div><input type="hidden" id="loanDirection" value="given"><div class="field"><label>Kişi / Karşı Taraf</label><input id="loanPerson" maxlength="80" placeholder="Örn: Mehmet" required></div><div class="row2"><div class="field"><label>Tutar</label><input id="loanAmount" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="0,00" required></div><div class="field"><label>Kur Türü</label><select id="loanAsset">${assetOptions}</select></div><div class="field"><label>Borç Verme / Alma Tarihi</label><input id="loanDate" type="date" value="${date()}" required></div><div class="field"><label>Borç Kapama Tarihi (kapandıysa, isteğe bağlı)</label><input id="loanCloseDate" type="date"></div><div class="field"><label>Geri Ödeme Vadesi (isteğe bağlı)</label><input id="loanDueDate" type="date"></div><div class="field"><label>Aile Bireyi</label><select id="loanMember">${S.members.map(m=>`<option value="${m.id}" ${m.id===S.active?'selected':''}>${esc(m.name)}</option>`).join('')}</select></div></div><div class="field"><label>Açıklama (isteğe bağlı)</label><input id="loanDesc" maxlength="160" placeholder="Örn: Araç tamiri için verilen borç"></div><button id="loanSubmit" class="primary">Borç Verme Kaydet</button><p class="sub loan-form-note">Borç kayıtları gelir/gider ve birikim hedefi toplamlarından ayrı tutulur.</p></form>`;
+}
+function addLoan(e){
+  e.preventDefault();
+  const amount=parseMoney(byId('loanAmount')?.value);
+  const person=(byId('loanPerson')?.value||'').trim();
+  const borrowDate=byId('loanDate')?.value||date();
+  const closedAt=byId('loanCloseDate')?.value||'';
+  if(amount<=0||!person)return;
+  if(closedAt && closedAt < borrowDate){alert('Borç kapama tarihi, borç verme/alma tarihinden önce olamaz.');return;}
+  S.loans=S.loans||[];
+  S.loans.unshift({
+    id:String(uid()),
+    direction:byId('loanDirection')?.value||'given',
+    person,amount,asset:byId('loanAsset')?.value||'TRY',
+    date:borrowDate,
+    closedAt:closedAt||null,
+    dueDate:byId('loanDueDate')?.value||'',
+    memberId:byId('loanMember')?.value||S.active,
+    description:(byId('loanDesc')?.value||'').trim(),
+    status:closedAt?'closed':'open',createdAt:date()
+  });
+  closeModal();
+  save();
+}
+function safeAddCalendarMonths(iso, n){
+  const [year, month, day] = String(iso).split('-').map(Number);
+  const first = new Date(year, month - 1 + n, 1, 12);
+  const lastDay = new Date(first.getFullYear(), first.getMonth() + 1, 0, 12).getDate();
+  const y = first.getFullYear(), m = String(first.getMonth() + 1).padStart(2, '0'), d = String(Math.min(day, lastDay)).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+function loanDurationText(l){
+  if(!l.closedAt || !l.date) return '';
+  const durationStart = l.createdAt || l.date;
+  const start = new Date(durationStart + 'T12:00:00'), end = new Date(l.closedAt + 'T12:00:00');
+  if(Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return '';
+  const totalDays = Math.round((end - start) / 86400000);
+  if(totalDays === 0) return 'Kapatılma süresi: Aynı gün';
+  let months = 0;
+  while(months < 1200 && safeAddCalendarMonths(durationStart, months + 1) <= l.closedAt) months++;
+  if(months === 0) return `Kapatılma süresi: ${totalDays} gün`;
+  const anchor = new Date(safeAddCalendarMonths(durationStart, months) + 'T12:00:00');
+  const extraDays = Math.max(0, Math.round((end - anchor) / 86400000));
+  return `Kapatılma süresi: ${months} ay${extraDays ? ` ${extraDays} gün` : ''} (${totalDays} gün)`;
+}
+function loanStatusText(l){
+  if(l.status==='closed')return 'Kapandı';
+  if(l.dueDate&&days(l.dueDate)<0)return `Vadesi geçti · ${Math.abs(days(l.dueDate))} gün`;
+  return 'Açık';
+}
+function loanRow(l){
+  const closed=l.status==='closed';
+  const overdue=!closed&&l.dueDate&&days(l.dueDate)<0;
+  const direction=l.direction==='given'?'Borç verdim':'Borç aldım';
+  const dateDetails=`Verme/Alma: ${fd(l.date)}${l.createdAt?' · Kayıt: '+fd(l.createdAt):''}${l.dueDate?' · Vade: '+fd(l.dueDate):''}${closed&&l.closedAt?' · Kapama: '+fd(l.closedAt):''}`;
+  const duration=closed?loanDurationText(l):'';
+  return `<div class="item loan-row ${deleteMode.loans?'selectable-item ':''}${overdue?'overdue-payment':''}" style="${overdue?'background:#fff1f2;border-color:#fecdd3;':''}">${deleteMode.loans?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.loans.has(l.id)?'checked':''} onchange="toggleDeleteSelection('loans','${l.id}')"><span></span></label>`:''}<div class="icon ${l.direction==='given'?'out':'in'}">${l.direction==='given'?'↗':'↙'}</div><div class="itemmain"><b>${esc(l.person)} · ${direction}</b><div class="sub">${dateDetails} · ${esc(member(l.memberId))} · ${assetLabels[l.asset]||l.asset}</div>${l.description?`<div class="sub">${esc(l.description)}</div>`:''}${duration?`<small class="sub loan-duration">${duration}</small>`:''}<small class="sub ${overdue?'late-amount':''}">${loanStatusText(l)}</small></div><div class="loan-row-side"><b class="amount">${fnum(l.amount)} ${assetLabels[l.asset]||l.asset}</b>${!deleteMode.loans?`<button class="secondary" onclick="toggleLoanStatus('${l.id}')">${closed?'Yeniden Aç':'Borcu Kapat'}</button>`:''}</div></div>`;
+}
+function openLoanCloseModal(id){
+  const loan=(S.loans||[]).find(x=>x.id===id);
+  if(!loan)return;
+  const durationStart=loan.createdAt||loan.date||date();
+  showFormModal('Borç Kapat',`<form onsubmit="confirmLoanClose(event,'${id}')"><div class="field"><label>Borç Verme / Alma Tarihi</label><input type="date" value="${esc(loan.date||date())}" readonly></div><div class="field"><label>Listeye Eklenme Tarihi (süre hesabı)</label><input type="date" value="${esc(durationStart)}" readonly></div><div class="field"><label>Borç Kapama Tarihi</label><input id="loanCloseDateConfirm" type="date" value="${date()}" min="${esc(durationStart)}" required></div><p class="sub">Kapatılma süresi, borcun listeye eklendiği tarihten seçtiğiniz kapama tarihine kadar hesaplanır.</p><button class="primary">Borcu Kapat</button></form>`);
+}
+function confirmLoanClose(e,id){
+  e.preventDefault();
+  const loan=(S.loans||[]).find(x=>x.id===id);
+  const closedAt=byId('loanCloseDateConfirm')?.value||'';
+  if(!loan||!closedAt)return;
+  const durationStart=loan.createdAt||loan.date||'';
+  if(closedAt < durationStart){alert('Kapama tarihi, borç kaydının listeye eklendiği tarihten önce olamaz.');return;}
+  loan.status='closed';
+  loan.closedAt=closedAt;
+  closeModal();
+  save();
+}
+function toggleLoanStatus(id){
+  const loan=(S.loans||[]).find(x=>x.id===id);
+  if(!loan)return;
+  if(loan.status==='closed'){
+    loan.status='open';
+    loan.closedAt=null;
+    save();
+  }else openLoanCloseModal(id);
+}
+function deleteLoan(id){
+  if(!confirm('Bu borç kaydı silinsin mi?'))return;
+  S.loans=(S.loans||[]).filter(x=>x.id!==id);
+  save();
+}
+function loanTotal(direction){
+  return (S.loans||[]).filter(l=>l.direction===direction&&l.status!=='closed')
+    .reduce((sum,l)=>sum+(Number(l.amount)||0)*(rates[l.asset]||1),0);
+}
+function loansPanel(){
+  S.loans=S.loans||[];
+  const rows=S.loans.filter(l=>loanFilter==='all'||(loanFilter==='open'?l.status!=='closed':l.status==='closed')).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const deleteActions=deleteMode.loans
+    ? `<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="secondary" onclick="cancelDeleteMode('loans')">İptal</button><button class="dangerbtn" onclick="askDelete('loans')" ${deleteSelected.loans.size?'':'disabled'}>Seçili Sil (${deleteSelected.loans.size})</button></div>`
+    : `<button class="secondary" onclick="enterDeleteMode('loans')">Sil</button>`;
+  return `<section id="loansPanel" class="panel loan-records-panel"><div class="panelhead"><div><h2>Elden Borç Kayıtları</h2><p>${rows.length} kayıt · Filtreye uyan tüm kayıtlar</p></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><div class="segment loan-filter">${[['open','Açık'],['closed','Kapalı'],['all','Tümü']].map(x=>`<button type="button" class="${loanFilter===x[0]?'active':''}" onclick="loanFilter='${x[0]}';render()">${x[1]}</button>`).join('')}</div>${deleteActions}</div></div><div class="list">${rows.map(loanRow).join('')||empty()}</div></section>`;
+}
+function savings(){
+  const total=S.goals.reduce((a,g)=>a+holdingsValue(g.holdings),0);
+  const history=(S.savingMovements||[]).filter(x=>dateInRange(x.date,dateFilters.movements,window._filterDates?.movements?.start,window._filterDates?.movements?.end)).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const completedGoals=S.goals.filter(goalIsCompleted),activeGoals=S.goals.filter(g=>!goalIsCompleted(g)),shownGoals=savingsFilter==='completed'?completedGoals:activeGoals;
+  const loans=S.loans||[],activeGiven=loans.filter(l=>l.direction==='given'&&l.status!=='closed'),activeTaken=loans.filter(l=>l.direction==='taken'&&l.status!=='closed');
+  return `<div class="stack savings-page">${title('Birikim Hedefleri','TL, döviz ve altın birikimlerinizi güncel kurla izleyin.')}
+    <div class="savings-overview-grid">
+      <section class="panel stat savings-overview-card"><small>Toplam Birikim</small><div class="value">${fmt(total)}</div><small>${activeGoals.length} devam eden hedef</small></section>
+      <section class="panel stat savings-overview-card"><small>Verdiğim (Alacağım)</small><div class="value">${fmt(loanTotal('given'))}</div><small>${activeGiven.length} açık kayıt</small></section>
+      <section class="panel stat savings-overview-card"><small>Aldığım (Ödeyeceğim)</small><div class="value">${fmt(loanTotal('taken'))}</div><small>${activeTaken.length} açık kayıt</small></section>
+      <section class="panel stat savings-overview-card"><small>Net Alacak</small><div class="value">${fmt(loanTotal('given')-loanTotal('taken'))}</div><small>Kurla TL karşılığı</small></section>
+    </div>
+    <div class="savings-main-layout">
+      <div class="stack savings-tools-column">
+        <section class="panel add-action-panel"><div><h2>Yeni Birikim Hedefi</h2><p>Bir hedef oluşturup birikimlerini takip edin.</p></div><button class="primary" onclick="openGoalModal()">+ Hedef Ekle</button></section>
+        <section class="panel add-action-panel"><div><h2>Elden Borç Kaydı</h2><p>Verdiğiniz veya aldığınız borcu ekleyin.</p></div><button class="primary" onclick="openLoanModal()">+ Borç Ekle</button></section>
+        ${ratesPanel()}
+      </div>
+      <section class="savings-goals-column"><div class="panelhead" style="margin-bottom:8px"><div><h2>Birikim Hedefleri</h2><p>Hedeflerinizi durumlarına göre görüntüleyin.</p></div>${deleteMode.goals?`<div style="display:flex;gap:6px"><button class="secondary" onclick="cancelDeleteMode('goals')">İptal</button><button class="dangerbtn" onclick="askDelete('goals')" ${deleteSelected.goals.size?'':'disabled'}>Seçili Sil (${deleteSelected.goals.size})</button></div>`:`<button class="secondary" onclick="enterDeleteMode('goals')">Sil</button>`}</div><div class="segment saving-tabs"><button class="${savingsFilter==='active'?'active':''}" onclick="savingsFilter='active';render()">Devam Eden (${activeGoals.length})</button><button class="${savingsFilter==='completed'?'active':''}" onclick="savingsFilter='completed';render()">Tamamlanan (${completedGoals.length})</button></div><section class="goalgrid">${shownGoals.map(g=>goalCard(g)).join('')||empty()}</section></section>
+    </div>
+    <div class="savings-bottom-grid">
+      <section class="panel saving-history-panel"><div class="panelhead saving-history-head"><div><h2>Birikim Hareket Geçmişi</h2><p>Seçtiğiniz tarih aralığındaki birikim işlemleri.</p></div><div class="saving-history-actions">${dateFilterUI('movements')}${deleteMode.movements?`<div class="saving-history-delete-actions"><button class="secondary" onclick="cancelDeleteMode('movements')">İptal</button><button class="dangerbtn" onclick="askDelete('movements')" ${deleteSelected.movements.size?'':'disabled'}>Seçili Sil (${deleteSelected.movements.size})</button></div>`:`<button class="secondary" onclick="enterDeleteMode('movements')">Sil</button>`}</div></div><div class="list saving-history-list">${history.length?history.map(savingRow).join(''):empty()}</div></section>
+      ${loansPanel()}
+    </div>
+  </div>`;
+}
+function savingRow(x){
+  let g=S.goals.find(g=>g.id===x.goalId),completed=g?goalIsCompleted(g):false;
+  return `<div class="item ${deleteMode.movements?'selectable-item':''}">${deleteMode.movements?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.movements.has(x.id)?'checked':''} onchange="toggleDeleteSelection('movements','${x.id}')"><span></span></label>`:''}<div class="icon ${x.sign>0?'in':'out'}">${x.sign>0?'+':'−'}</div><div class="itemmain"><b>${esc(x.goalName)}</b><div class="sub">${fd(x.date)} · ${assetLabels[x.asset]||x.asset} · Kur/Fiyat: ${fmt(x.rate||0)} · ${esc(member(x.memberId))}${completed?` · <span class="goal-completed-badge">Tamamlandı</span>`:''}</div></div><div class="amount ${x.sign>0?'in':'out'}">${x.sign>0?'+':'−'}${fnum(x.quantity)} ${assetLabels[x.asset]||x.asset}</div></div>`}
+function deleteSavingMovement(id){let x=(S.savingMovements||[]).find(m=>m.id===id);if(!x)return;let g=S.goals.find(g=>g.id===x.goalId);if(g){g.holdings[x.asset]=Math.max(0,(g.holdings[x.asset]||0)-x.quantity*x.sign)}S.savingMovements=S.savingMovements.filter(m=>m.id!==id);save()}
+function goalForm(){return `<form onsubmit="addGoal(event)"><div class="field"><label>Hedef Adı</label><input id="gName" placeholder="Örn: Tatil birikimi" required></div><div class="row2"><div class="field"><label>Hedef Tutarı</label><input id="gTarget" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="0,00" required></div><div class="field"><label>Hedef Kur Türü</label><select id="gAsset">${assetOptions}</select></div><div class="field"><label>Hedefe Başlama Tarihi</label><input id="gStartDate" type="date" value="${date()}" required></div><div class="field"><label>Sahibi</label><select id="gMember">${S.members.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select></div></div><button class="primary">Hedef Oluştur</button></form>`}
+function addGoal(e){e.preventDefault();let target=parseMoney(byId('gTarget')?.value),name=(byId('gName')?.value||'').trim();if(target<=0||!name)return;S.goals.push({id:uid(),name:name,target:target,targetAsset:byId('gAsset')?.value||'TRY',startDate:byId('gStartDate')?.value||date(),completionDate:null,memberId:byId('gMember')?.value||S.active,holdings:{TRY:0,USD:0,EUR:0,GOLD22:0,GOLD24:0,CEYREK:0,YARIM:0,TAM:0}});closeModal();save()}
+function goalCard(g,compact=false){
+  let total=goalValueInTarget(g),pct=g.target?total/g.target*100:0,completed=goalIsCompleted(g),held=Object.entries(g.holdings).filter(x=>x[1]>0);
+  let completion=findGoalCompletionDate(g);
+  let duration=completed?goalDurationText({...g,completionDate:completion}):'';
+  return `<article class="panel goal">
+    <div class="goalhead">
+      <div class="goalname"><div class="pig" aria-label="Kur">¤</div><div><b>${esc(g.name)}</b><div class="sub">${esc(member(g.memberId))}</div></div></div>
+      <div style="display:flex;gap:6px;align-items:center">${completed?`<span class="goal-completed-badge">Tamamlandı</span>`:`<span class="goal-active-badge">Devam Ediyor</span>`}${!compact?(deleteMode.goals?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.goals.has(g.id)?'checked':''} onchange="toggleDeleteSelection('goals','${g.id}')"><span></span></label>`:''):''}</div>
+    </div>
+    <div><div style="display:flex;justify-content:space-between"><b>${moneyInAsset(total,g.targetAsset||'TRY')}</b><b style="color:var(--primary)">%${Math.round(pct)}</b></div><div class="progress"><i style="width:${Math.min(100,pct)}%"></i></div><div class="goalmeta"><span>Hedef: ${moneyInAsset(g.target,g.targetAsset||'TRY')}</span><span>${completed?'Hedef tamamlandı':'Kalan: '+moneyInAsset(Math.max(0,g.target-total),g.targetAsset||'TRY')}</span></div>${completed&&duration?`<div class="goal-duration">${duration} sürede tamamlandı.</div>`:''}</div>
+    <div class="assets">${held.map(x=>`<span class="asset ${x[0].startsWith('GOLD')||['CEYREK','YARIM','TAM'].includes(x[0])?'gold':''}">${assetLabels[x[0]]||x[0]}: ${fnum(x[1])}</span>`).join('')}</div>
+    ${!compact&&!completed?`<div class="goal-actions goal-modal-actions"><button class="primary" onclick="openSavingMoveModal('${g.id}',1)">+ Birikim Ekle</button><button class="outline" onclick="openSavingMoveModal('${g.id}',-1)">Birikim Çıkar</button></div>`:''}
+  </article>`
+}
+function adjust(id,sign){let g=S.goals.find(x=>x.id===id),assetEl=byId('asset-'+id),amtEl=byId('amt-'+id),dateEl=byId('saveDate-'+id),a=assetEl?.value,v=Number(amtEl?.value)||0,saveDate=dateEl?.value||date();if(!g||!a||v<=0)return;let beforeTotal=goalValueInTarget(g),qty=sign>0?v:-v;g.holdings[a]=Math.max(0,(g.holdings[a]||0)+qty);let afterTotal=goalValueInTarget(g);S.savingMovements=S.savingMovements||[];S.savingMovements.unshift({id:uid(),goalId:id,goalName:g.name,asset:a,quantity:v,sign:sign,date:saveDate,rate:rates[a]||1,memberId:g.memberId});if(beforeTotal<Number(g.target||0)&&afterTotal>=Number(g.target||0))g.completionDate=saveDate;if(afterTotal<Number(g.target||0))g.completionDate=null;if(amtEl)amtEl.value='';closeModal();save()}
+function delGoal(id){S.goals=S.goals.filter(g=>g.id!==id);save()}
+
+function cloudPayload(){
+  const copy=JSON.parse(JSON.stringify(S));
+  delete copy.active;       // active profile is device-local, not family-wide
+  delete copy.family;       // authoritative family metadata lives in public.families
+  delete copy.rateData;     // FX cache is device-local; avoid needless syncs
+  return copy;
+}
+function stableStringify(value){
+  if(value===null||typeof value!=='object')return JSON.stringify(value);
+  if(Array.isArray(value))return '['+value.map(stableStringify).join(',')+']';
+  return '{'+Object.keys(value).sort().map(k=>JSON.stringify(k)+':'+stableStringify(value[k])).join(',')+'}';
+}
+function localOnlyState(profileId,displayName){
+  return {members:[{id:profileId,name:displayName}],active:profileId,transactions:[],recurringTransactions:[],payments:[],goals:[],savingMovements:[],loans:[],rateData:S.rateData||{updated:rateUpdated,quotes:rateQuotes},family:{id:'local-'+uid(),name:'Ailem',inviteToken:''}};
+}
+function rememberLocalBackup(){
+  try{
+    const key=KEY+'-before-cloud-'+new Date().toISOString().replace(/[:.]/g,'-');
+    localStorage.setItem(key,JSON.stringify(S));
+  }catch(e){console.warn('Yerel yedek oluşturulamadı',e)}
+}
+function setCloudMessage(message,type=''){cloud.message=message||'';cloud.messageType=type;}
+function cloudErrorText(error){
+  const raw=String(error?.message||error?.error_description||error||'Bilinmeyen hata');
+  if(/Invalid login credentials/i.test(raw))return 'E-posta veya şifre hatalı.';
+  if(/Email not confirmed/i.test(raw))return 'Önce e-posta adresine gönderilen onay bağlantısına tıkla.';
+  if(/User already registered/i.test(raw))return 'Bu e-posta ile hesap var. Giriş yapmayı dene.';
+  if(/USER_ALREADY_IN_FAMILY/i.test(raw))return 'Bu hesap zaten bir aileye bağlı.';
+  if(/INVITE_INVALID_OR_EXPIRED/i.test(raw))return 'Davet kodu geçersiz, süresi dolmuş veya daha önce kullanılmış.';
+  if(/ALREADY_FAMILY_MEMBER/i.test(raw))return 'Bu hesap zaten bu ailenin üyesi.';
+  if(/PROFILE_ID_ALREADY_USED/i.test(raw))return 'Bu profil bu ailede kullanılıyor. Sayfayı yenileyip tekrar dene.';
+  if(/Failed to fetch|NetworkError/i.test(raw))return 'Supabase bağlantısı kurulamadı. İnternetini ve proje URL/key bilgilerini kontrol et.';
+  return raw;
+}
+function persistLocalOnly(){
+  S.rateData={updated:rateUpdated,quotes:rateQuotes};
+  localStorage.setItem(KEY,JSON.stringify(S));
+}
+function applySharedState(data,preferredActive=null){
+  const oldActive=preferredActive||S.active;
+  const localRates=S.rateData||{updated:rateUpdated,quotes:rateQuotes};
+  S={...seed(),...(data||{})};
+  S.members=Array.isArray(S.members)?S.members:[];
+  S.transactions=Array.isArray(S.transactions)?S.transactions:[];
+  S.recurringTransactions=(S.recurringTransactions||[]).map(r=>({...r,asset:r.asset||'TRY',months:Math.max(2,Number(r.months)||2),remaining:Math.max(0,Number(r.remaining??r.months)||0),generatedCount:Math.max(0,Number(r.generatedCount)||0),nextDate:r.nextDate||r.startDate||date(),anchorDay:Number(r.anchorDay)||Number((r.startDate||date()).slice(-2)),active:r.active!==false&&!r.paused&&Number(r.remaining??r.months)>0}));
+  S.transactions=S.transactions.map(t=>({...t,asset:t.asset||'TRY'}));
+  S.loans=(S.loans||[]).map(l=>({...l,asset:l.asset||'TRY',status:l.status||'open',memberId:l.memberId||S.active,date:l.date||String(l.createdAt||date()).slice(0,10),closedAt:l.closedAt||null}));
+  S.payments=(S.payments||[]).map(p=>({...p,recurring:!!p.recurring,interval:p.interval||'aylik',months:Math.max(1,Number(p.months)||1),remaining:Math.max(0,Number(p.remaining??(p.recurring?Number(p.months)||1:1)))}));
+  S.savingMovements=(S.savingMovements||[]).map(m=>({...m,date:m.date||date()}));
+  S.goals=(S.goals||[]).map(g=>{g.targetAsset=g.targetAsset||'TRY';g.startDate=g.startDate||date();g.holdings=g.holdings||{};if(g.holdings.GOLD!=null&&g.holdings.GOLD24==null){g.holdings.GOLD24=g.holdings.GOLD;delete g.holdings.GOLD}Object.keys(assetLabels).forEach(k=>{if(g.holdings[k]==null)g.holdings[k]=0});return g;});
+  if(cloud.member&&!S.members.some(m=>m.id===cloud.member.profile_id))S.members.push({id:cloud.member.profile_id,name:cloud.member.display_name||'Aile üyesi'});
+  S.active=S.members.some(m=>m.id===oldActive)?oldActive:(S.members.some(m=>m.id===cloud.member?.profile_id)?cloud.member.profile_id:(S.members[0]?.id||'m-ahmet'));
+  S.family={id:cloud.family?.id||'local-'+uid(),name:cloud.family?.name||'Ailem',inviteToken:''};
+  S.rateData=localRates;
+  if(S.rateData?.quotes)Object.assign(rateQuotes,S.rateData.quotes);
+  localStorage.setItem(KEY,JSON.stringify(S));
+  render();
+}
+async function refreshCloudRoster(){
+  if(!sb||!cloud.family?.id)return;
+  const {data,error}=await sb.from('family_members').select('family_id,user_id,profile_id,display_name,role,joined_at').eq('family_id',cloud.family.id).order('joined_at',{ascending:true});
+  if(error){console.warn('Aile üyeleri alınamadı',error);return}
+  cloud.roster=data||[];
+}
+function teardownCloudChannel(){
+  if(cloud.channel&&sb){try{sb.removeChannel(cloud.channel)}catch(e){}}
+  cloud.channel=null;
+}
+function setupCloudRealtime(){
+  if(!sb||!cloud.family?.id)return;
+  teardownCloudChannel();
+  const fid=cloud.family.id;
+  cloud.channel=sb.channel('family-sync-'+fid)
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'family_state',filter:'family_id=eq.'+fid},payload=>{
+      const incoming=payload?.new?.state;
+      if(!incoming||typeof incoming!=='object')return;
+      const incomingJson=stableStringify(incoming);
+      if(incomingJson===cloud.lastCloudJson||incomingJson===cloud.pendingWriteJson)return;
+      if(cloud.localPending||cloud.writeInFlight||cloud.saveTimer||document.getElementById('modal')?.classList.contains('show')){
+        cloud.pendingRemoteState=incoming;
+        setCloudMessage('Başka bir cihazda değişiklik yapıldı. Formu tamamladıktan sonra güncel veriler eşitlenecek.');
+        return;
+      }
+      applySharedState(incoming);
+      cloud.lastCloudJson=incomingJson;
+      setCloudMessage('Aile verileri eşitlendi.','success');
+      render();
+    })
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'families',filter:'id=eq.'+fid},payload=>{
+      if(payload?.new?.name){cloud.family.name=payload.new.name;S.family={id:fid,name:payload.new.name,inviteToken:''};persistLocalOnly();render();}
+    })
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'family_members',filter:'family_id=eq.'+fid},()=>{refreshCloudRoster().then(render)})
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'family_members',filter:'family_id=eq.'+fid},()=>{refreshCloudRoster().then(render)})
+    .on('postgres_changes',{event:'DELETE',schema:'public',table:'family_members',filter:'family_id=eq.'+fid},()=>{refreshCloudRoster().then(render)})
+    .subscribe();
+}
+async function syncCloudNow(){
+  if(!sb||!cloud.user||!cloud.member||!cloud.family||!cloud.syncReady)return;
+  const payload=cloudPayload(),json=stableStringify(payload);
+  if(json===cloud.lastCloudJson){cloud.localPending=false;return}
+  if(cloud.writeInFlight){cloud.writeAgain=true;return}
+  cloud.writeInFlight=true;cloud.pendingWriteJson=json;cloud.localPending=true;
+  const {error}=await sb.from('family_state').upsert({family_id:cloud.family.id,state:payload,updated_by:cloud.user.id,updated_at:new Date().toISOString()},{onConflict:'family_id'});
+  cloud.writeInFlight=false;cloud.pendingWriteJson='';
+  if(error){setCloudMessage('Buluta kaydedilemedi: '+cloudErrorText(error),'error');cloud.localPending=false;render();return}
+  cloud.lastCloudJson=json;cloud.localPending=false;
+  if(cloud.pendingRemoteState){cloud.pendingRemoteState=null;}
+  if(cloud.writeAgain){cloud.writeAgain=false;scheduleCloudSync();return}
+  if(stableStringify(cloudPayload())!==cloud.lastCloudJson){scheduleCloudSync();return}
+}
+function scheduleCloudSync(){
+  if(!cloud?.syncReady||!cloud.member||!cloud.user||!sb)return;
+  const json=stableStringify(cloudPayload());
+  if(json===cloud.lastCloudJson&&!cloud.writeInFlight)return;
+  cloud.localPending=true;
+  if(cloud.saveTimer)clearTimeout(cloud.saveTimer);
+  cloud.saveTimer=setTimeout(()=>{cloud.saveTimer=null;syncCloudNow()},350);
+}
+async function loadCurrentFamily(){
+  if(!sb||!cloud.user)return;
+  const {data:members,error:memberError}=await sb.from('family_members').select('family_id,user_id,profile_id,display_name,role,joined_at').eq('user_id',cloud.user.id).limit(1);
+  if(memberError)throw memberError;
+  const membership=members?.[0]||null;
+  if(!membership){
+    teardownCloudChannel();cloud.member=null;cloud.family=null;cloud.roster=[];cloud.syncReady=false;cloud.lastCloudJson='';cloud.inviteToken='';cloud.inviteUrl='';
+    return;
+  }
+  cloud.member=membership;
+  const {data:familyData,error:familyError}=await sb.from('families').select('id,name,owner_id,created_at').eq('id',membership.family_id).single();
+  if(familyError)throw familyError;
+  const {data:stateRow,error:stateError}=await sb.from('family_state').select('state,updated_at').eq('family_id',membership.family_id).maybeSingle();
+  if(stateError)throw stateError;
+  cloud.family=familyData;
+  await refreshCloudRoster();
+  if(stateRow?.state&&typeof stateRow.state==='object'&&Object.keys(stateRow.state).length){
+    const sameFamily=S.family?.id===familyData.id;
+    if(!sameFamily)rememberLocalBackup();
+    cloud.syncReady=false;
+    const remoteStateJson=stableStringify(stateRow.state);
+    applySharedState(stateRow.state,sameFamily?null:membership.profile_id);
+    cloud.lastCloudJson=remoteStateJson;
+    cloud.syncReady=true;
+    if(stableStringify(cloudPayload())!==remoteStateJson)scheduleCloudSync();
+    const changed=processDueRecurringTransactions();
+    if(changed)save();
+    setupCloudRealtime();
+    await loadExistingInvite();
+    setCloudMessage('Ortak aile ağı bağlı. Değişiklikler otomatik eşitlenir.','success');
+  }else{
+    cloud.syncReady=false;
+    setupCloudRealtime();
+    setCloudMessage(membership.role==='owner'?'Ortak aile verileri henüz başlatılmamış. Aşağıdan yerel kayıtları aktarabilir veya boş başlayabilirsin.':'Aile verileri henüz yönetici tarafından başlatılmamış. Aile yöneticisinin Aile sekmesinden başlatması gerekiyor.','');
+  }
+}
+async function loadExistingInvite(){
+  if(!sb||!cloud.family||!cloud.user)return;
+  const {data,error}=await sb.from('family_invites').select('token,expires_at,created_at').eq('family_id',cloud.family.id).eq('created_by',cloud.user.id).is('used_at',null).gt('expires_at',new Date().toISOString()).order('created_at',{ascending:false}).limit(1);
+  if(!error&&data?.length){cloud.inviteToken=data[0].token;cloud.inviteUrl=buildInviteUrl(data[0].token)}
+}
+function buildInviteUrl(token){return window.location.origin+window.location.pathname+'?invite='+encodeURIComponent(token)}
+async function handleCloudSession(session){
+  const newId=session?.user?.id||null;
+  cloud.session=session||null;cloud.user=session?.user||null;
+  if(newId===cloud.handledUserId){render();return}
+  cloud.handledUserId=newId;
+  cloud.loading=!!newId;cloud.message='';cloud.messageType='';
+  if(!newId){
+    cloud.authView='login';
+    const hadCloudFamily=!!cloud.member;
+    teardownCloudChannel();cloud.member=null;cloud.family=null;cloud.roster=[];cloud.syncReady=false;cloud.inviteToken='';cloud.inviteUrl='';
+    if(hadCloudFamily){S=localOnlyState(uid(),'Yerel profil');persistLocalOnly();}
+    cloud.loading=false;render();return;
+  }
+  render();
+  try{await loadCurrentFamily()}
+  catch(error){console.error('Supabase aile bağlantısı kurulamadı',error);setCloudMessage('Supabase bağlantısı sırasında hata: '+cloudErrorText(error),'error')}
+  finally{cloud.loading=false;render()}
+}
+async function initCloud(){
+  if(!sb){cloud.initialized=true;cloud.loading=false;setCloudMessage('Supabase JavaScript kitaplığı yüklenemedi. İnternet bağlantısını kontrol edip sayfayı yenile.','error');render();return}
+  const {data,error}=await sb.auth.getSession();
+  if(error)console.warn('Oturum okunamadı',error);
+  cloud.initialized=true;
+  await handleCloudSession(data?.session||null);
+  sb.auth.onAuthStateChange((_event,session)=>{setTimeout(()=>{handleCloudSession(session).catch(err=>console.error(err))},0)});
+}
+async function cloudSignIn(e){
+  e.preventDefault();const email=(byId('cloudEmail')?.value||'').trim().toLowerCase(),password=byId('cloudPassword')?.value||'';
+  if(!email||!password)return;
+  cloud.busy=true;setCloudMessage('Giriş yapılıyor…');render();
+  const {data,error}=await sb.auth.signInWithPassword({email,password});
+  cloud.busy=false;
+  if(error){setCloudMessage(cloudErrorText(error),'error');render();return}
+  setCloudMessage('Giriş başarılı. Aile bağlantısı kontrol ediliyor.','success');
+  await handleCloudSession(data.session);
+}
+function showSignUpScreen(){
+  cloud.authView='signup';
+  setCloudMessage('');
+  render();
+}
+function showLoginScreen(){
+  cloud.authView='login';
+  setCloudMessage('');
+  render();
+}
+async function cloudSignUp(e){
+  if(e)e.preventDefault();
+  const displayName=(byId('signupDisplayName')?.value||'').trim().replace(/\s+/g,' ');
+  const email=(byId('signupEmail')?.value||'').trim().toLowerCase();
+  const password=byId('signupPassword')?.value||'';
+  const confirmPassword=byId('signupPasswordConfirm')?.value||'';
+  if(!displayName||!email||!password||!confirmPassword){setCloudMessage('Aile içinde görünecek adını, e-posta adresini ve tüm şifre alanlarını doldur.','error');render();return}
+  if(displayName.length>80){setCloudMessage('Görünür ad en fazla 80 karakter olabilir.','error');render();return}
+  if(password.length<6){setCloudMessage('Şifre en az 6 karakter olmalı.','error');render();return}
+  if(password!==confirmPassword){setCloudMessage('Şifreler eşleşmiyor. Lütfen tekrar kontrol et.','error');render();return}
+  cloud.busy=true;setCloudMessage('Hesap oluşturuluyor…');render();
+  const redirect=window.location.origin+window.location.pathname+(pendingInviteToken?'?invite='+encodeURIComponent(pendingInviteToken):'');
+  const {data,error}=await sb.auth.signUp({email,password,options:{data:{display_name:displayName},emailRedirectTo:redirect}});
+  cloud.busy=false;
+  if(error){setCloudMessage(cloudErrorText(error),'error');render();return}
+  if(data.session){setCloudMessage('Hesap oluşturuldu.','success');await handleCloudSession(data.session)}
+  else{setCloudMessage('Hesap oluşturuldu. E-postana gönderilen onay bağlantısını aç. Ardından giriş ekranına dönüp giriş yap.','success');render()}
+}
+async function cloudSignOut(){
+  if(!sb)return;
+  cloud.busy=true;render();
+  const {error}=await sb.auth.signOut();
+  cloud.busy=false;
+  if(error){setCloudMessage(cloudErrorText(error),'error');render();return}
+  await handleCloudSession(null);
+}
+function currentVisibleName(){return String(cloud.member?.display_name||cloud.user?.user_metadata?.display_name||'').trim()}
+async function createCloudFamily(e){
+  e.preventDefault();if(!sb||!cloud.user)return;
+  const name=(byId('cloudFamilyName')?.value||'').trim();
+  const importLocal=!!byId('cloudImportLocal')?.checked;
+  const displayName=currentVisibleName();
+  if(!displayName){setCloudMessage('Önce Aile ayarlarından aile içinde görünecek adını kaydet.','error');render();return}
+  if(!name){setCloudMessage('Aile adını gir.','error');render();return}
+  const profileId=S.members.some(m=>m.id===S.active)?S.active:uid();
+  cloud.busy=true;setCloudMessage('Aile oluşturuluyor…');render();
+  const {data,error}=await sb.rpc('create_family',{p_name:name,p_profile_id:profileId,p_display_name:displayName});
+  if(error){cloud.busy=false;setCloudMessage(cloudErrorText(error),'error');render();return}
+  cloud.family={id:data.family_id,name,owner_id:cloud.user.id};
+  cloud.member={family_id:data.family_id,user_id:cloud.user.id,profile_id:profileId,display_name:displayName,role:'owner'};
+  if(!importLocal){rememberLocalBackup();S=localOnlyState(profileId,displayName)}
+  else{const ownProfile=S.members.find(m=>m.id===profileId);if(ownProfile)ownProfile.name=displayName;else S.members.push({id:profileId,name:displayName})}
+  S.family={id:data.family_id,name,inviteToken:''};S.active=profileId;
+  const payload=cloudPayload();
+  const {error:saveError}=await sb.from('family_state').upsert({family_id:data.family_id,state:payload,updated_by:cloud.user.id,updated_at:new Date().toISOString()},{onConflict:'family_id'});
+  cloud.busy=false;
+  if(saveError){cloud.syncReady=false;setCloudMessage('Aile oluştu ancak başlangıç verisi kaydedilemedi: '+cloudErrorText(saveError),'error');render();await loadCurrentFamily();return}
+  persistLocalOnly();cloud.lastCloudJson=stableStringify(cloudPayload());cloud.syncReady=true;
+  await refreshCloudRoster();setupCloudRealtime();setCloudMessage(importLocal?'Aile oluşturuldu; bu cihazdaki kayıtlar ortak alana aktarıldı.':'Boş aile oluşturuldu. Mevcut yerel kayıtların bu tarayıcıda yedek olarak saklandı.','success');
+  render();
+}
+function extractInviteToken(value){
+  const raw=String(value||'').trim();
+  const match=raw.match(/[?&]invite=([^&#]+)/i);
+  return match?decodeURIComponent(match[1]):raw;
+}
+async function joinCloudFamily(e){
+  e.preventDefault();if(!sb||!cloud.user)return;
+  const token=extractInviteToken(byId('cloudInviteToken')?.value||pendingInviteToken);
+  const displayName=currentVisibleName();
+  if(!token||!displayName){setCloudMessage('Önce Aile ayarlarından aile içinde görünecek adını kaydet.','error');render();return}
+  const profileId=uid();cloud.busy=true;setCloudMessage('Davet doğrulanıyor…');render();
+  const {data,error}=await sb.rpc('accept_family_invite',{p_token:token,p_profile_id:profileId,p_display_name:displayName});
+  if(error){cloud.busy=false;setCloudMessage(cloudErrorText(error),'error');render();return}
+  pendingInviteToken='';
+  try{history.replaceState({},'',window.location.pathname)}catch(e){}
+  cloud.member={family_id:data.family_id,user_id:cloud.user.id,profile_id:profileId,display_name:displayName,role:'member'};
+  const {data:familyData,error:familyError}=await sb.from('families').select('id,name,owner_id,created_at').eq('id',data.family_id).single();
+  if(familyError){cloud.busy=false;setCloudMessage(cloudErrorText(familyError),'error');render();return}
+  cloud.family=familyData;
+  const {data:stateRow,error:stateError}=await sb.from('family_state').select('state,updated_at').eq('family_id',data.family_id).single();
+  if(stateError){cloud.busy=false;setCloudMessage(cloudErrorText(stateError),'error');render();return}
+  if(!stateRow?.state||!Object.keys(stateRow.state).length){cloud.busy=false;setCloudMessage('Aile verileri henüz yönetici tarafından başlatılmamış. Yönetici Aile sekmesinden başlatmalı.','error');render();return}
+  rememberLocalBackup();cloud.syncReady=false;const remoteStateJson=stableStringify(stateRow.state);applySharedState(stateRow.state,profileId);
+  if(!S.members.some(m=>m.id===profileId))S.members.push({id:profileId,name:displayName});
+  S.active=profileId;S.family={id:familyData.id,name:familyData.name,inviteToken:''};
+  persistLocalOnly();cloud.lastCloudJson=remoteStateJson;cloud.syncReady=true;cloud.busy=false;
+  await refreshCloudRoster();setupCloudRealtime();setCloudMessage('Aileye katıldın. Ortak veriler eşitlendi.','success');
+  save();
+}
+async function initializeEmptyFamily(importLocal){
+  if(!sb||!cloud.user||cloud.member?.role!=='owner'||!cloud.family)return;
+  cloud.busy=true;render();
+  const profileId=cloud.member.profile_id,displayName=cloud.member.display_name||member(profileId)||'Aile yöneticisi';
+  if(!importLocal){rememberLocalBackup();S=localOnlyState(profileId,displayName)}
+  if(!S.members.some(m=>m.id===profileId))S.members.push({id:profileId,name:displayName});
+  S.active=profileId;S.family={id:cloud.family.id,name:cloud.family.name,inviteToken:''};
+  const {error}=await sb.from('family_state').upsert({family_id:cloud.family.id,state:cloudPayload(),updated_by:cloud.user.id,updated_at:new Date().toISOString()},{onConflict:'family_id'});
+  cloud.busy=false;
+  if(error){setCloudMessage('Ortak veriler başlatılamadı: '+cloudErrorText(error),'error');render();return}
+  persistLocalOnly();cloud.lastCloudJson=stableStringify(cloudPayload());cloud.syncReady=true;setupCloudRealtime();await refreshCloudRoster();setCloudMessage(importLocal?'Mevcut kayıtlar ortak aileye aktarıldı.':'Boş ortak aile başlatıldı.','success');render();
+}
+async function createCloudInvite(){
+  if(!sb||!cloud.user||!cloud.family||!cloud.member||!cloud.syncReady)return;
+  cloud.busy=true;setCloudMessage('Davet bağlantısı oluşturuluyor…');render();
+  const token=uid();
+  const expiresAt=new Date(Date.now()+7*24*60*60*1000).toISOString();
+  const {error}=await sb.from('family_invites').insert({family_id:cloud.family.id,token,created_by:cloud.user.id,expires_at:expiresAt});
+  cloud.busy=false;
+  if(error){setCloudMessage('Davet oluşturulamadı: '+cloudErrorText(error),'error');render();return}
+  cloud.inviteToken=token;cloud.inviteUrl=buildInviteUrl(token);
+  setCloudMessage('Davet bağlantısı 7 gün geçerli ve bir kez kullanılabilir.','success');render();
+}
+async function copyCloudInvite(){
+  if(!cloud.inviteUrl)return;
+  try{await navigator.clipboard.writeText(cloud.inviteUrl);setCloudMessage('Davet bağlantısı panoya kopyalandı.','success');render()}
+  catch(e){const ta=document.createElement('textarea');ta.value=cloud.inviteUrl;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();setCloudMessage('Davet bağlantısı kopyalandı.','success');render()}
+}
+function renderCloudQr(){
+  const el=byId('cloudInviteQr');if(!el)return;el.innerHTML='';
+  if(!cloud.inviteUrl){el.textContent='Davet bağlantısı oluşturulunca QR burada görünür.';return}
+  if(window.QRCode){new QRCode(el,{text:cloud.inviteUrl,width:180,height:180,colorDark:'#273238',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M})}
+  else{el.textContent='QR kitaplığı yüklenemedi. Davet bağlantısını kopyalayabilirsin.'}
+}
+async function removeCloudMember(userId){
+  if(!sb||cloud.member?.role!=='owner'||!cloud.family||userId===cloud.user?.id)return;
+  if(!confirm('Bu aile üyesinin erişimi kaldırılacak. Devam edilsin mi?'))return;
+  const {error}=await sb.from('family_members').delete().eq('family_id',cloud.family.id).eq('user_id',userId);
+  if(error){setCloudMessage('Üye kaldırılamadı: '+cloudErrorText(error),'error');render();return}
+  await refreshCloudRoster();setCloudMessage('Aile üyesinin erişimi kaldırıldı.','success');render();
+}
+async function saveFamilyName(e){
+  e.preventDefault();const name=(byId('familyNameInput')?.value||'').trim();if(!name)return;
+  if(cloud.family&&cloud.member?.role==='owner'&&sb){
+    const {error}=await sb.from('families').update({name}).eq('id',cloud.family.id);
+    if(error){setCloudMessage('Aile adı güncellenemedi: '+cloudErrorText(error),'error');render();return}
+    cloud.family.name=name;S.family={id:cloud.family.id,name,inviteToken:''};persistLocalOnly();setCloudMessage('Aile adı güncellendi.','success');render();
+  }else{setCloudMessage('Aile adını yalnızca aile yöneticisi değiştirebilir.','error');render()}
+}
+function cloudAuthUI(){
+  if(!sb)return `<section class="panel cloud-panel"><h2>Ortak Aile Ağı</h2><p class="sub">Supabase bağlantısı yüklenemedi. İnternet bağlantısını kontrol edip sayfayı yenile.</p></section>`;
+  if(cloud.loading)return `<section class="panel cloud-panel"><div class="cloud-topline"><h2>Ortak Aile Ağı</h2><span class="cloud-pill">Bağlanıyor…</span></div><p class="sub">Hesap ve aile üyeliği kontrol ediliyor.</p></section>`;
+  if(!cloud.session)return `<section class="panel cloud-panel"><h2>Ortak Aile Ağı</h2><p class="sub">Giriş ve hesap oluşturma işlemleri artık uygulama açılış ekranından yapılır.</p></section>`;
+  if(!cloud.member){const visibleName=currentVisibleName();return `<section class="panel cloud-panel"><div class="cloud-topline"><div><h2>Ortak Aile Ağı</h2><p class="sub">Giriş yapıldı: ${esc(cloud.user?.email||'')}</p></div><button class="outline" type="button" onclick="cloudSignOut()">Çıkış Yap</button></div>${cloud.message?`<div class="cloud-message ${cloud.messageType}">${esc(cloud.message)}</div>`:''}<div class="cloud-grid"><div class="cloud-subpanel"><h3>Yeni Aile Oluştur</h3><p>Aileyi oluşturduğunda yönetici olursun. Yerel kayıtlarını ilk ortak veri olarak aktarabilirsin.</p><form onsubmit="createCloudFamily(event)"><div class="field"><label>Aile Adı</label><input id="cloudFamilyName" maxlength="80" value="${esc(S.family?.name||'Ailem')}" required></div><label class="cloud-note" style="display:flex;gap:8px;align-items:flex-start"><input id="cloudImportLocal" type="checkbox" ${LOCAL_DATA_EXISTED?'checked':''} style="margin-top:2px"> Bu cihazdaki mevcut gelir/gider, ödeme, birikim ve borç kayıtlarını ortak aileye aktar. ${LOCAL_DATA_EXISTED?'':'Bu cihazda daha önce kaydedilmiş yerel veri bulunamadı.'}</label><button class="primary" ${cloud.busy||!visibleName?'disabled':''}>Aile Oluştur</button></form></div><div class="cloud-subpanel"><h3>Davet Koduyla Katıl</h3><p>Aile yöneticisinin gönderdiği davet bağlantısını veya kodunu buraya gir.</p><form onsubmit="joinCloudFamily(event)"><div class="field"><label>Davet kodu veya bağlantısı</label><input id="cloudInviteToken" value="${esc(pendingInviteToken)}" placeholder="Davet kodu / bağlantı" required></div><p class="cloud-note">Aile içinde görünecek adın: <b>${esc(visibleName||'Henüz belirlenmedi')}</b>. Adını değiştirmek için bu sayfadaki “Ailede Görünen Ad” alanını kullan.</p><button class="primary" ${cloud.busy||!visibleName?'disabled':''}>Aileye Katıl</button></form></div></div><p class="cloud-note">Aynı hesap yalnızca bir aileye bağlanacak şekilde tasarlanmıştır. Katıldıktan sonra aile kayıtları bu cihazdaki yerel durumun yerini alır; önce bir yerel yedek oluşturulur.</p></section>`;}
+  const roster=(cloud.roster||[]).map((m,i)=>`<div class="cloud-person"><div class="avatar" style="background:${['#397b70','#6d7db5','#b47b45','#8c5d8f'][i%4]}">${esc((m.display_name||'?').slice(0,1).toUpperCase())}</div><div class="cloud-person-main"><b>${esc(m.display_name||'Aile üyesi')}</b><small>${m.role==='owner'?'Yönetici':'Üye'} · ${fd(String(m.joined_at||date()).slice(0,10))}</small></div>${cloud.member?.role==='owner'&&m.role!=='owner'?`<button class="ghost" onclick="removeCloudMember('${m.user_id}')">Erişimi Kaldır</button>`:''}</div>`).join('');
+  const emptyState=!cloud.syncReady;
+  return `<section class="panel cloud-panel"><div class="cloud-topline"><div><h2>Ortak Aile Ağı</h2><p class="sub">${esc(cloud.user?.email||'')} · ${esc(cloud.family?.name||'Ailem')}</p></div><div class="cloud-actions"><span class="cloud-pill ${cloud.syncReady?'online':'offline'}">${cloud.syncReady?'Bağlı · Otomatik eşitleme':'Başlatma bekleniyor'}</span><button class="outline" type="button" onclick="cloudSignOut()">Çıkış Yap</button></div></div>${cloud.message?`<div class="cloud-message ${cloud.messageType}">${esc(cloud.message)}</div>`:''}${!emptyState?(cloud.member?.role==='owner'?`<div class="cloud-subpanel" style="margin-top:12px"><h3>Aile ayarları</h3><form onsubmit="saveFamilyName(event)" class="family-name-form"><div class="field"><label>Aile Adı</label><input id="familyNameInput" value="${esc(cloud.family?.name||'Ailem')}" maxlength="80" required></div><button class="primary">Kaydet</button></form></div>`:`<div class="cloud-subpanel" style="margin-top:12px"><h3>Aile</h3><p>Ortak aile: <b>${esc(cloud.family?.name||'Ailem')}</b></p><p class="cloud-note">Aile adını yalnızca yönetici değiştirebilir.</p></div>`):''}${emptyState?`<div class="cloud-subpanel"><h3>Ortak verileri başlat</h3><p>Aile oluşturulmuş ancak ortak kayıtlar henüz başlatılmamış. Bu adım, mevcut cihazdaki kayıtları ortak aileye aktarabilir.</p><label class="cloud-note" style="display:flex;gap:8px;align-items:flex-start;margin-bottom:10px"><input id="cloudInitImport" type="checkbox" ${LOCAL_DATA_EXISTED?'checked':''} style="margin-top:2px"> Bu cihazdaki kayıtları aktar.</label><button class="primary" onclick="initializeEmptyFamily(!!byId('cloudInitImport')?.checked)" ${cloud.busy?'disabled':''}>Ortak Verileri Başlat</button></div>`:`<div class="cloud-grid"><div class="cloud-subpanel"><h3>Aile daveti</h3><p>Bağlantı 7 gün geçerlidir ve bir kez kullanılabilir. Gönderdiğin kişi e-posta hesabıyla giriş yaparak katılabilir.</p><div class="cloud-invite-grid"><div id="cloudInviteQr" class="cloud-qr">${cloud.inviteUrl?'QR hazırlanıyor…':'Henüz davet oluşturulmadı.'}</div><div class="cloud-invite-info"><div class="cloud-actions"><button class="primary" type="button" onclick="createCloudInvite()" ${cloud.busy?'disabled':''}>${cloud.inviteUrl?'Yeni Davet Oluştur':'Davet Oluştur'}</button>${cloud.inviteUrl?`<button class="outline" type="button" onclick="copyCloudInvite()">Bağlantıyı Kopyala</button>`:''}</div>${cloud.inviteUrl?`<p class="cloud-note" style="overflow-wrap:anywhere;margin-top:9px">${esc(cloud.inviteUrl)}</p>`:''}</div></div></div><div class="cloud-subpanel"><h3>Aile üyeleri (${cloud.roster.length})</h3><div class="cloud-roster">${roster||'<p>Henüz aile üyesi yok.</p>'}</div></div></div>`}<p class="cloud-note" style="margin-top:10px">Veriler Supabase'e gönderilir. Aile üyeleri aynı kayıtları görür. Aynı anda birden çok cihazda yapılan değişikliklerde bu tek kayıtlı JSON modelinde son kaydedilen durum geçerli olabilir; önemli değişiklikleri tamamlandıktan sonra diğer cihazlarda kontrol edin.</p></section>`;
+}
+function profileNamePanel(){
+  if(!cloud.session)return '';
+  const profileId=cloud.member?.profile_id;
+  const localName=profileId?S.members.find(m=>m.id===profileId)?.name:'';
+  const visibleName=currentVisibleName()||localName||'';
+  return `<section class="panel"><div class="panelhead"><div><h2>Ailede Görünen Ad</h2><p>Diğer aile üyeleri bu adı görür. İstediğin zaman buradan değiştirebilirsin.</p></div></div><form onsubmit="saveVisibleName(event)"><div class="field"><label for="visibleNameInput">Görünür ad</label><input id="visibleNameInput" maxlength="80" value="${esc(visibleName)}" placeholder="Örn: Vedat Yıldırım" required></div><button class="primary" ${cloud.busy?'disabled':''}>Adımı Kaydet</button></form></section>`;
+}
+async function saveVisibleName(e){
+  e.preventDefault();if(!sb||!cloud.user)return;
+  const name=(byId('visibleNameInput')?.value||'').trim().replace(/\s+/g,' ');
+  if(!name){setCloudMessage('Aile içinde görünecek adını yaz.','error');render();return}
+  if(name.length>80){setCloudMessage('Görünür ad en fazla 80 karakter olabilir.','error');render();return}
+  cloud.busy=true;setCloudMessage('Görünür ad güncelleniyor…');render();
+  try{
+    if(cloud.member){const {error}=await sb.rpc('update_my_family_display_name',{p_display_name:name});if(error)throw error}
+    const {data,error:authError}=await sb.auth.updateUser({data:{display_name:name}});
+    if(authError&&!cloud.member)throw authError;
+    if(data?.user)cloud.user=data.user;else if(cloud.user)cloud.user={...cloud.user,user_metadata:{...(cloud.user.user_metadata||{}),display_name:name}};
+    if(cloud.member)cloud.member={...cloud.member,display_name:name};
+    const profileId=cloud.member?.profile_id;
+    if(profileId){const own=S.members.find(m=>m.id===profileId);if(own)own.name=name;else S.members.push({id:profileId,name})}
+    else{const active=S.members.find(m=>m.id===S.active);if(active)active.name=name}
+    cloud.roster=(cloud.roster||[]).map(m=>m.user_id===cloud.user.id?{...m,display_name:name}:m);
+    cloud.busy=false;setCloudMessage('Aile içinde görünen adın güncellendi.','success');save();
+  }catch(error){cloud.busy=false;setCloudMessage('Ad güncellenemedi: '+cloudErrorText(error)+(cloud.member?' — Aile üyelerinin adını değiştirme SQL güncellemesi henüz çalıştırılmamış olabilir.':''),'error');render()}
+}
+function family(){
+  return `<div class="stack">${title('Aile Paylaşımı','Aile oluştur, davet gönder veya davet bağlantısıyla ortak aileye katıl.')}${profileNamePanel()}${cloudAuthUI()}<section class="panel"><div class="panelhead"><div><h2>İşlemlerde Kullanılan Profiller</h2><p>Gelir, gider ve birikim kayıtlarını aile bireylerine atamak için kullanılır. Bunlar bulut hesabı üyelerinden ayrı profil etiketleridir.</p></div><button class="primary" onclick="openMember()">+ Profil Ekle</button></div><div class="family">${S.members.map((m,i)=>`<div class="member"><div class="avatar" style="background:${['#397b70','#6d7db5','#b47b45','#8c5d8f'][i%4]}">${esc(m.name[0])}</div><div style="flex:1"><b>${esc(m.name)}</b><small>${m.id===S.active?'Aktif profil':'İşlem profili'}</small></div>${S.members.length>1?`<button class="ghost" onclick="delMember('${m.id}')">Sil</button>`:''}</div>`).join('')}</div></section></div>`;
+}
+function openMember(){document.getElementById('modalTitle').textContent='Aile Bireyi Ekle';document.getElementById('modalBody').innerHTML=`<form onsubmit="addMember(event)"><div class="field"><label>Ad</label><input id="newMember" required placeholder="Örn: Mehmet"></div><button class="primary">Ekle</button></form>`;document.getElementById('modal').classList.add('show')}
+function addMember(e){e.preventDefault();let n=(byId('newMember')?.value||'').trim();if(!n)return;S.members.push({id:uid(),name:n});closeModal();save()}
+function delMember(id){if(S.members.length<=1)return;S.members=S.members.filter(m=>m.id!==id);if(S.active===id)S.active=S.members[0].id;save()}
+
+function enterDeleteMode(type){
+  deleteMode[type]=true;
+  deleteSelected[type]=new Set();
+  render();
+}
+function cancelDeleteMode(type){
+  deleteMode[type]=false;
+  deleteSelected[type]=new Set();
+  render();
+}
+function toggleDeleteSelection(type,id){
+  if(deleteSelected[type].has(id)) deleteSelected[type].delete(id);
+  else deleteSelected[type].add(id);
+  render();
+}
+function askDelete(type){
+  let count=deleteSelected[type].size;
+  if(!count)return;
+  document.getElementById('modalTitle').textContent='Silme Onayı';
+  document.getElementById('modalBody').innerHTML=`<div class="confirmbox"><div class="confirmicon">!</div><h3>${count} kayıt silinecek</h3><p>Seçtiğiniz kayıtlar kalıcı olarak silinecek. Bu işlem geri alınamaz.</p><div class="confirmactions"><button class="secondary" onclick="closeModal()">Vazgeç</button><button class="dangerbtn" onclick="confirmDelete('${type}')">Evet, Sil</button></div></div>`;
+  document.getElementById('modal').classList.add('show');
+}
+function confirmDelete(type){
+  let ids=deleteSelected[type];
+  if(type==='transactions'){
+    S.transactions=S.transactions.filter(x=>!ids.has(x.id));
+  }else if(type==='recurringTransactions'){
+    S.recurringTransactions=(S.recurringTransactions||[]).filter(x=>!ids.has(x.id));
+  }else if(type==='payments'){
+    S.transactions=S.transactions.filter(t=>!Array.from(ids).some(id=>t.paymentId===id));
+    S.payments=S.payments.filter(x=>!ids.has(x.id));
+  }else if(type==='goals'){
+    S.goals=S.goals.filter(x=>!ids.has(x.id));
+    S.savingMovements=(S.savingMovements||[]).filter(x=>!ids.has(x.goalId));
+  }else if(type==='movements'){
+    (S.savingMovements||[]).filter(x=>ids.has(x.id)).forEach(x=>{
+      let g=S.goals.find(g=>g.id===x.goalId);
+      if(g)g.holdings[x.asset]=Math.max(0,(g.holdings[x.asset]||0)-x.quantity*x.sign);
+    });
+    S.savingMovements=(S.savingMovements||[]).filter(x=>!ids.has(x.id));
+  }else if(type==='loans'){
+    S.loans=(S.loans||[]).filter(x=>!ids.has(x.id));
+  }
+  closeModal();
+  deleteMode[type]=false;
+  deleteSelected[type]=new Set();
+  save();
+}
+
+function closeModal(){document.getElementById('modal').classList.remove('show');setTimeout(applyPendingRemoteIfSafe,250)}
+function applyPendingRemoteIfSafe(){if(!cloud.pendingRemoteState||cloud.localPending||cloud.writeInFlight||cloud.saveTimer||document.getElementById('modal')?.classList.contains('show'))return;const incoming=cloud.pendingRemoteState;cloud.pendingRemoteState=null;const json=stableStringify(incoming);if(json!==cloud.lastCloudJson){applySharedState(incoming);cloud.lastCloudJson=json;setCloudMessage('Aile verileri eşitlendi.','success');render()}}
+document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+if(processDueRecurringTransactions())save();else render();
+try{updateTxSubmitLabel();}catch(e){}
+
+document.addEventListener('change',function(e){
+  const t=e.target;
+  if(t && (t.name==='txType' || t.id==='txType')) updateTxSubmitLabel();
+});
+
+try{startRateAutoRefresh();}catch(e){}
+initCloud().catch(e=>{console.error('Supabase başlatma hatası',e);cloud.initialized=true;cloud.loading=false;setCloudMessage(cloudErrorText(e),'error');render()});
+</script>
+<script>
+// PWA: register the offline app shell. Supabase data still requires internet access.
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js', { scope: './' })
+      .catch((error) => console.warn('Aile Bütçem PWA kaydı tamamlanamadı:', error));
+  });
+}
+</script>
+</body>
+</html>
