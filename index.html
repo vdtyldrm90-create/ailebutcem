@@ -317,6 +317,15 @@ form{display:flex;flex-direction:column;gap:11px}.row2{display:grid;grid-templat
 .settings-menu button{width:100%;display:flex;align-items:center;gap:10px;border:0;background:transparent;color:var(--fg);text-align:left;padding:11px 10px;border-radius:9px;font-size:13px;font-weight:650}
 .settings-menu button:hover,.settings-menu button:focus-visible{background:var(--soft);outline:0}
 .settings-menu-icon{width:24px;flex:none;text-align:center;color:var(--primary);font-size:16px}.settings-menu-copy{display:flex;flex-direction:column;gap:2px;min-width:0}.settings-menu-copy small{font-size:10px;line-height:1.25;font-weight:500;color:var(--muted)}
+
+.home-list-head-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap;min-width:0}
+.home-list-head-actions .date-filter,.home-list-filter .date-filter{display:flex;gap:4px;flex-wrap:wrap;margin:0;transform:none}
+.home-list-head-actions .date-filter button,.home-list-filter .date-filter button{min-height:29px;padding:5px 7px;font-size:10px}
+.home-list-filter{margin:8px 0 10px;display:flex;justify-content:flex-end}
+.home-payments-preview .list{max-height:none;overflow:visible}
+.loan-settlement-amount{font-weight:700;color:var(--primary);margin-top:4px}
+@media(max-width:720px){.home-list-head-actions{width:100%;justify-content:flex-start}.home-list-head-actions .date-filter{width:100%}.home-list-filter{justify-content:flex-start}.home-list-head-actions .date-filter button,.home-list-filter .date-filter button{flex:1}}
+
 </style>
 
 <style>
@@ -1128,7 +1137,7 @@ function rememberActiveTab(value){
 let S=JSON.parse(localStorage.getItem(KEY)||'null')||seed(),tab=readActiveTab(),txFilter='tumu',payFilter='tumu';
 let reportMode='monthly',reportYear=new Date().getFullYear(),reportMonth=new Date().getMonth(),reportIncomeCategory='*',reportExpenseCategory='*';
 let deleteMode={transactions:false,recurringTransactions:false,payments:false,goals:false,movements:false,loans:false};
-let dateFilters={transactions:'month',recurringTransactions:'month',payments:'month',movements:'month',home:'month'};
+let dateFilters={transactions:'all',recurringTransactions:'all',payments:'all',movements:'all',home:'all'};
 let savingsFilter='active',loanFilter='open';
 
 let deleteSelected={transactions:new Set(),recurringTransactions:new Set(),payments:new Set(),goals:new Set(),movements:new Set(),loans:new Set()};
@@ -1383,8 +1392,8 @@ function dateInRange(iso,type,start,end){
   return true;
 }
 function dateFilterUI(kind){
-  let f=dateFilters[kind]||'month';
-  return `<div class="date-filter"><button class="${f==='month'?'active':''}" onclick="dateFilters.${kind}='month';render()">Bu Ay</button><button class="${f==='six'?'active':''}" onclick="dateFilters.${kind}='six';render()">Son 6 Ay</button><button class="${f==='custom'?'active':''}" onclick="dateFilters.${kind}='custom';render()">Tarih Seç</button>${f==='custom'?`<input type="date" id="${kind}Start" value="${window._filterDates?.[kind]?.start||''}" onchange="setCustomDate('${kind}','start',this.value)"><span>–</span><input type="date" id="${kind}End" value="${window._filterDates?.[kind]?.end||''}" onchange="setCustomDate('${kind}','end',this.value)">`:''}</div>`;
+  let f=dateFilters[kind]||'all';
+  return `<div class="date-filter"><button class="${f==='all'?'active':''}" onclick="dateFilters.${kind}='all';render()">Tümü</button><button class="${f==='month'?'active':''}" onclick="dateFilters.${kind}='month';render()">Bu Ay</button><button class="${f==='six'?'active':''}" onclick="dateFilters.${kind}='six';render()">Son 6 Ay</button><button class="${f==='custom'?'active':''}" onclick="dateFilters.${kind}='custom';render()">Tarih Seç</button>${f==='custom'?`<input type="date" id="${kind}Start" value="${window._filterDates?.[kind]?.start||''}" onchange="setCustomDate('${kind}','start',this.value)"><span>–</span><input type="date" id="${kind}End" value="${window._filterDates?.[kind]?.end||''}" onchange="setCustomDate('${kind}','end',this.value)">`:''}</div>`;
 }
 function setCustomDate(kind,part,value){
   window._filterDates=window._filterDates||{};
@@ -1548,7 +1557,7 @@ function reportPaymentOccurrences(p){
 function reportPeriod(start,end){
   const today=date();
   const result={actualIncome:0,actualExpense:0,plannedIncome:0,plannedExpense:0,transactions:0,plannedPayments:0,incomeCategories:{},expenseCategories:{}};
-  const inPeriod=iso=>!!iso&&iso>=start&&iso<=end;
+  const inPeriod=iso=>{const day=String(iso||'').slice(0,10);return !!day&&day>=start&&day<=end;};
   const addCategory=(bucketName,name,kind,amount)=>{
     const key=(name||'Diğer').trim()||'Diğer';
     const bucket=result[bucketName];
@@ -1558,7 +1567,7 @@ function reportPeriod(start,end){
   (S.transactions||[]).forEach(t=>{
     if(!inPeriod(t.date))return;
     const amount=(Number(t.amount)||0)*(rates[t.asset||'TRY']||1);
-    const future=t.date>today;
+    const future=String(t.date||'').slice(0,10)>today;
     const isIncome=t.type==='gelir'||t.type==='income';
     if(isIncome){
       result[future?'plannedIncome':'actualIncome']+=amount;
@@ -1659,7 +1668,7 @@ function reports(){
     const data=reportPeriod(reportIso(reportYear,reportMonth,1),reportIso(reportYear,reportMonth,new Date(reportYear,reportMonth+1,0).getDate()));
     if(!data.incomeCategories.some(r=>r.category===reportIncomeCategory))reportIncomeCategory='*';
     if(!data.expenseCategories.some(r=>r.category===reportExpenseCategory))reportExpenseCategory='*';
-    return `<div class="stack">${title('Ekonomik Raporlar','Geçmiş harcamaları ve gelecek dönem planlarını ay veya yıl bazında inceleyin.')}<section class="panel report-controls"><div class="panelhead"><div><h2>Rapor Dönemi</h2><p>İncelemek istediğiniz dönemi seçin.</p></div><div class="report-mode"><button class="${reportMode==='monthly'?'active':''}" onclick="reportSetMode('monthly')">Ay</button><button class="${reportMode==='yearly'?'active':''}" onclick="reportSetMode('yearly')">Yıl</button></div></div><div class="report-control-actions"><label class="field" style="gap:4px;flex:1;min-width:115px"><span class="sub">Ay</span><select class="report-month-select" aria-label="Rapor ayı" onchange="reportSetMonth(this.value)">${monthOptions}</select></label><label class="field" style="gap:4px;flex:1;min-width:95px"><span class="sub">Yıl</span><select class="report-year-select" aria-label="Rapor yılı" onchange="reportSetYear(this.value)">${yearOptions}</select></label></div><div class="report-period-label">Gösterilen dönem: <b>${esc(periodLabel)}</b></div></section><div class="report-stat-grid">${reportStat('Gerçekleşen Gelir',data.actualIncome,'income','↑')}${reportStat('Gerçekleşen Gider',data.actualExpense,'expense','↓')}${reportStat('Planlanan Gelir',data.plannedIncome,'report-plan-income','↗')}${reportStat('Planlanan Gider',data.plannedExpense,'report-plan-expense','↘')}</div><section class="panel report-chart-panel"><div class="panelhead"><div><h2>Gelir / Gider Karşılaştırması</h2><p>${esc(periodLabel)} · gerçekleşen ve planlanan tutarlar</p></div></div><div class="report-chart-legend">${reportLegend('#5aab86','Gerçekleşen gelir')}${reportLegend('#d9776b','Gerçekleşen gider')}${reportLegend('#b7dccc','Planlanan gelir')}${reportLegend('#efb8ad','Planlanan gider')}</div>${reportChartMonthly(data)}<div class="report-netline"><span>Gerçekleşen net bütçe: <strong>${fmt(data.actualNet)}</strong></span><span>Planlanan net: <strong>${fmt(data.plannedNet)}</strong></span></div><p class="report-chart-note">Planlanan giderlere vadesi gelmiş ancak ödenmemiş ödemeler ve ileri tarihli giderler dahildir. Döviz ve altın tutarları güncel gösterge kurlarıyla TL karşılığına çevrilir; geçmiş dönemler de güncel kurlar üzerinden hesaplanır.</p></section><div class="report-distribution-grid">${reportDistributionPanel(data,'income',reportIncomeCategory)}${reportDistributionPanel(data,'expense',reportExpenseCategory)}</div></div>`;
+    return `<div class="stack">${title('Ekonomik Raporlar','Geçmiş harcamaları ve gelecek dönem planlarını ay veya yıl bazında inceleyin.')}<section class="panel report-controls"><div class="panelhead"><div><h2>Rapor Dönemi</h2><p>İncelemek istediğiniz dönemi seçin.</p></div><div class="report-mode"><button class="${reportMode==='monthly'?'active':''}" onclick="reportSetMode('monthly')">Ay</button><button class="${reportMode==='yearly'?'active':''}" onclick="reportSetMode('yearly')">Yıl</button></div></div><div class="report-control-actions"><label class="field" style="gap:4px;flex:1;min-width:115px"><span class="sub">Ay</span><select class="report-month-select" aria-label="Rapor ayı" onchange="reportSetMonth(this.value)">${monthOptions}</select></label><label class="field" style="gap:4px;flex:1;min-width:95px"><span class="sub">Yıl</span><select class="report-year-select" aria-label="Rapor yılı" onchange="reportSetYear(this.value)">${yearOptions}</select></label></div><div class="report-period-label">Gösterilen dönem: <b>${esc(periodLabel)}</b></div></section><div class="report-stat-grid">${reportStat('Gerçekleşen Gelir',data.actualIncome,'income','↑')}${reportStat('Gerçekleşen Gider',data.actualExpense,'expense','↓')}${reportStat('Planlanan Gelir',data.plannedIncome,'report-plan-income','↗')}${reportStat('Planlanan Gider',data.plannedExpense,'report-plan-expense','↘')}</div><section class="panel report-chart-panel"><div class="panelhead"><div><h2>Gelir / Gider Karşılaştırması</h2><p>${esc(periodLabel)} · gerçekleşen ve planlanan tutarlar</p></div></div><div class="report-chart-legend">${reportLegend('#5aab86','Gerçekleşen gelir')}${reportLegend('#d9776b','Gerçekleşen gider')}${reportLegend('#b7dccc','Planlanan gelir')}${reportLegend('#efb8ad','Planlanan gider')}</div>${reportChartMonthly(data)}<div class="report-netline"><span>Gerçekleşen net bütçe: <strong>${fmt(data.actualNet)}</strong></span><span>Planlanan net: <strong>${fmt(data.plannedNet)}</strong></span></div><p class="report-chart-note">Her gelir/gider yalnızca kendi tarihinin bulunduğu ayda hesaplanır; önceki ayın geliri sonraki aya taşınmaz. Planlanan giderlere vadesi gelmiş ancak ödenmemiş ödemeler ve ileri tarihli giderler dahildir. Döviz ve altın tutarları güncel gösterge kurlarıyla TL karşılığına çevrilir; geçmiş dönemler de güncel kurlar üzerinden hesaplanır.</p></section><div class="report-distribution-grid">${reportDistributionPanel(data,'income',reportIncomeCategory)}${reportDistributionPanel(data,'expense',reportExpenseCategory)}</div></div>`;
   }
   const rows=Array.from({length:12},(_,m)=>{
     const start=reportIso(reportYear,m,1),end=reportIso(reportYear,m,new Date(reportYear,m+1,0).getDate());
@@ -1668,7 +1677,7 @@ function reports(){
   const total=reportAggregate(rows);
   if(!total.incomeCategories.some(r=>r.category===reportIncomeCategory))reportIncomeCategory='*';
   if(!total.expenseCategories.some(r=>r.category===reportExpenseCategory))reportExpenseCategory='*';
-  return `<div class="stack">${title('Ekonomik Raporlar','Geçmiş harcamaları ve gelecek dönem planlarını ay veya yıl bazında inceleyin.')}<section class="panel report-controls"><div class="panelhead"><div><h2>Rapor Dönemi</h2><p>Seçilen yılın 12 aylık görünümü.</p></div><div class="report-mode"><button class="${reportMode==='monthly'?'active':''}" onclick="reportSetMode('monthly')">Ay</button><button class="${reportMode==='yearly'?'active':''}" onclick="reportSetMode('yearly')">Yıl</button></div></div><div class="report-control-actions"><label class="field" style="gap:4px;flex:1;min-width:95px"><span class="sub">Yıl</span><select class="report-year-select" aria-label="Rapor yılı" onchange="reportSetYear(this.value)">${yearOptions}</select></label></div><div class="report-period-label">Gösterilen dönem: <b>${esc(periodLabel)}</b></div></section><div class="report-stat-grid">${reportStat('Gerçekleşen Gelir',total.actualIncome,'income','↑')}${reportStat('Gerçekleşen Gider',total.actualExpense,'expense','↓')}${reportStat('Planlanan Gelir',total.plannedIncome,'report-plan-income','↗')}${reportStat('Planlanan Gider',total.plannedExpense,'report-plan-expense','↘')}</div><section class="panel report-chart-panel"><div class="panelhead"><div><h2>Aylara Göre Harcama</h2><p>${reportYear} · gerçekleşen ve planlanan gider</p></div></div><div class="report-chart-legend">${reportLegend('#d9776b','Gerçekleşen gider')}${reportLegend('#efb8ad','Planlanan gider')}</div>${reportChartYearly(rows)}<div class="report-netline"><span>Yılın gerçekleşen net bütçesi: <strong>${fmt(total.actualNet)}</strong></span><span>Planlanan net: <strong>${fmt(total.plannedNet)}</strong></span></div><p class="report-chart-note">Çubukların üzerine geldiğinizde aylık tutarlar görünür. Mobil cihazlarda ay ay tablo da aşağıda listelenir.</p></section><section class="panel report-breakdown"><div class="panelhead"><div><h2>Ay Detayı</h2><p>Gerçekleşen ve planlanan tutarlar</p></div></div>${reportYearBreakdown(rows,total)}</section><div class="report-distribution-grid">${reportDistributionPanel(total,'income',reportIncomeCategory)}${reportDistributionPanel(total,'expense',reportExpenseCategory)}</div></div>`;
+  return `<div class="stack">${title('Ekonomik Raporlar','Geçmiş harcamaları ve gelecek dönem planlarını ay veya yıl bazında inceleyin.')}<section class="panel report-controls"><div class="panelhead"><div><h2>Rapor Dönemi</h2><p>Seçilen yılın 12 aylık görünümü.</p></div><div class="report-mode"><button class="${reportMode==='monthly'?'active':''}" onclick="reportSetMode('monthly')">Ay</button><button class="${reportMode==='yearly'?'active':''}" onclick="reportSetMode('yearly')">Yıl</button></div></div><div class="report-control-actions"><label class="field" style="gap:4px;flex:1;min-width:95px"><span class="sub">Yıl</span><select class="report-year-select" aria-label="Rapor yılı" onchange="reportSetYear(this.value)">${yearOptions}</select></label></div><div class="report-period-label">Gösterilen dönem: <b>${esc(periodLabel)}</b></div></section><div class="report-stat-grid">${reportStat('Gerçekleşen Gelir',total.actualIncome,'income','↑')}${reportStat('Gerçekleşen Gider',total.actualExpense,'expense','↓')}${reportStat('Planlanan Gelir',total.plannedIncome,'report-plan-income','↗')}${reportStat('Planlanan Gider',total.plannedExpense,'report-plan-expense','↘')}</div><section class="panel report-chart-panel"><div class="panelhead"><div><h2>Aylara Göre Harcama</h2><p>${reportYear} · gerçekleşen ve planlanan gider</p></div></div><div class="report-chart-legend">${reportLegend('#d9776b','Gerçekleşen gider')}${reportLegend('#efb8ad','Planlanan gider')}</div>${reportChartYearly(rows)}<div class="report-netline"><span>Yılın gerçekleşen net bütçesi: <strong>${fmt(total.actualNet)}</strong></span><span>Planlanan net: <strong>${fmt(total.plannedNet)}</strong></span></div><p class="report-chart-note">Her kayıt yalnızca kendi tarihinin bulunduğu ayda hesaplanır; gelecek tarihli düzenli gelirler ilgili ayda planlanan gelir olarak görünür, önceki ayın toplamına eklenmez. Çubukların üzerine geldiğinizde aylık tutarlar görünür. Mobil cihazlarda ay ay tablo da aşağıda listelenir.</p></section><section class="panel report-breakdown"><div class="panelhead"><div><h2>Ay Detayı</h2><p>Gerçekleşen ve planlanan tutarlar</p></div></div>${reportYearBreakdown(rows,total)}</section><div class="report-distribution-grid">${reportDistributionPanel(total,'income',reportIncomeCategory)}${reportDistributionPanel(total,'expense',reportExpenseCategory)}</div></div>`;
 }
 
 
@@ -1679,8 +1688,33 @@ function summary(kind='home'){
       out=list.filter(t=>t.type==='gider').reduce((a,x)=>a+x.amount,0);
   return `<div class="grid3"><div class="panel stat income"><small>Toplam Gelir</small><div class="value">${fmt(inc)}</div></div><div class="panel stat expense"><small>Toplam Gider</small><div class="value">${fmt(out)}</div></div><div class="panel stat net"><small>Net Bütçe</small><div class="value">${fmt(inc-out)}</div></div></div>`;
 }
-function home(){let upcoming=S.payments.filter(p=>p.status==='bekliyor'&&days(p.dueDate)<=7).sort((a,b)=>{let ao=days(a.dueDate)<0,bo=days(b.dueDate)<0;if(ao!==bo)return ao?-1:1;return a.dueDate.localeCompare(b.dueDate)}),total=upcoming.reduce((a,x)=>a+x.amount,0),overdue=upcoming.filter(p=>isOverdue(p)),overTotal=overdue.reduce((a,x)=>a+x.amount,0),future=upcoming.filter(p=>!isOverdue(p)),futureTotal=future.reduce((a,x)=>a+x.amount,0);return `<div class="stack">${title(`Merhaba, ${esc(member(S.active))}`,'Ailenizin finansal durumuna genel bakış.')}<div class="home-summary-wrap"><div class="home-summary-filter">${dateFilterUI('home')}</div>${summary('home').replace('grid3','grid3 '+(overdue.length?'home-summary-overdue':''))}</div>${upcoming.length?`<section class="alert ${overdue.length?'danger':''}"><div class="alerthead"><div>${overdue.length?`<b class="home-overdue-title">⚠ ${overdue.length} vadesi geçmiş ödeme var</b><p class="home-overdue-total">Vadesi geçmiş toplam: ${fmt(overTotal)}</p>${future.length?`<p class="home-upcoming-total">Yaklaşan ödemeler: ${fmt(futureTotal)}</p>`:''}`:`<b>${upcoming.length} yaklaşan ödeme</b><p>7 gün içinde toplam ${fmt(total)}</p>`}</div><button class="ghost" onclick="go('odemeler')">Tümü</button></div><div class="list">${upcoming.slice(0,5).map(paymentRow).join('')}</div></section>`:`<section class="panel"><b style="font-size:13px">Önümüzdeki 7 gün içinde ödeme yok</b><p class="sub">Tüm planlı ödemeler kontrol altında.</p></section>`}${homeLoansMini()}<div class="grid2"><section class="panel"><div class="panelhead"><div><h2>Son İşlemler</h2><p>Son eklenen işlemler</p></div><button class="ghost" onclick="go('islemler')">Tümü</button></div><div class="list">${S.transactions.filter(t=>t.date<=date()).slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5).map(txRow).join('')||empty()}</div></section><section class="stack"><ratesPanel/><section class="panel"><div class="panelhead"><div><h2>Birikim Hedefleri</h2><p>Güncel kurla hedef ilerlemesi</p></div><button class="ghost" onclick="go('birikim')">Tümü</button></div><div class="goalgrid" style="grid-template-columns:1fr">${S.goals.filter(g=>!goalIsCompleted(g)).slice(0,3).map(g=>goalCard(g,true)).join('')||empty()}</div></section></section></div></div>`}
-
+function home(){
+  const today=date();
+  const upcoming=S.payments.filter(p=>p.status==='bekliyor'&&days(p.dueDate)<=7).sort((a,b)=>{
+    const ao=days(a.dueDate)<0,bo=days(b.dueDate)<0;
+    if(ao!==bo)return ao?-1:1;
+    return (a.dueDate||'').localeCompare(b.dueDate||'');
+  });
+  const total=upcoming.reduce((a,x)=>a+x.amount,0);
+  const overdue=upcoming.filter(p=>isOverdue(p));
+  const overTotal=overdue.reduce((a,x)=>a+x.amount,0);
+  const future=upcoming.filter(p=>!isOverdue(p));
+  const futureTotal=future.reduce((a,x)=>a+x.amount,0);
+  const homePayments=S.payments.filter(p=>dateInRange(p.dueDate,dateFilters.payments,window._filterDates?.payments?.start,window._filterDates?.payments?.end)).slice().sort((a,b)=>{
+    const ar=a.status==='bekliyor'?0:1,br=b.status==='bekliyor'?0:1;
+    if(ar!==br)return ar-br;
+    return (a.dueDate||'').localeCompare(b.dueDate||'');
+  }).slice(0,5);
+  const homeTransactions=S.transactions.filter(t=>dateInRange(t.date,dateFilters.transactions,window._filterDates?.transactions?.start,window._filterDates?.transactions?.end)).slice().sort((a,b)=>{
+    const af=String(a.date||'').slice(0,10)>today,bf=String(b.date||'').slice(0,10)>today;
+    if(af!==bf)return af?1:-1;
+    return af?(a.date||'').localeCompare(b.date||''):(b.date||'').localeCompare(a.date||'');
+  }).slice(0,5);
+  const upcomingMessage=upcoming.length
+    ? (overdue.length?`<b class="home-overdue-title">⚠ ${overdue.length} vadesi geçmiş ödeme var</b><p class="home-overdue-total">Vadesi geçmiş toplam: ${fmt(overTotal)}</p>${future.length?`<p class="home-upcoming-total">7 gün içindeki yaklaşan ödemeler: ${fmt(futureTotal)}</p>`:''}`:`<b>${upcoming.length} yaklaşan ödeme</b><p>7 gün içinde toplam ${fmt(total)}</p>`)
+    : '<b>Önümüzdeki 7 gün içinde vadesi yaklaşan ödeme yok</b><p>Planlı ödeme kayıtlarını seçtiğiniz tarihe göre aşağıda görebilirsiniz.</p>';
+  return `<div class="stack">${title(`Merhaba, ${esc(member(S.active))}`,'Ailenizin finansal durumuna genel bakış.')}<div class="home-summary-wrap"><div class="home-summary-filter">${dateFilterUI('home')}</div>${summary('home').replace('grid3','grid3 '+(overdue.length?'home-summary-overdue':''))}</div><section class="alert ${overdue.length?'danger':''} home-payments-preview"><div class="alerthead"><div>${upcomingMessage}</div><button class="ghost" onclick="go('odemeler')">Tüm ödemeler</button></div><div class="home-list-filter">${dateFilterUI('payments')}</div><div class="list">${homePayments.map(paymentRow).join('')||empty()}</div></section>${homeLoansMini()}<div class="grid2"><section class="panel home-transactions-preview"><div class="panelhead"><div><h2>Son İşlemler</h2><p>${homeTransactions.length} kayıt · en fazla 5 işlem</p></div><div class="home-list-head-actions">${dateFilterUI('transactions')}<button class="ghost" onclick="go('islemler')">Tüm işlemler</button></div></div><div class="list">${homeTransactions.map(txRow).join('')||empty()}</div></section><section class="stack"><ratesPanel/><section class="panel"><div class="panelhead"><div><h2>Birikim Hedefleri</h2><p>Güncel kurla hedef ilerlemesi</p></div><button class="ghost" onclick="go('birikim')">Tümü</button></div><div class="goalgrid" style="grid-template-columns:1fr">${S.goals.filter(g=>!goalIsCompleted(g)).slice(0,3).map(g=>goalCard(g,true)).join('')||empty()}</div></section></section></div></div>`;
+}
 function homeLoansMini(){
   const given=(S.loans||[]).filter(l=>l.direction==='given'&&l.status!=='closed').length;
   const taken=(S.loans||[]).filter(l=>l.direction==='taken'&&l.status!=='closed').length;
@@ -1904,8 +1938,7 @@ function txRecurringProgress(t){
   if(!t.recurringId&&!t.scheduledRecurring)return '';
   const total=Math.max(1,Number(t.scheduleTotalMonths)||1);
   const index=Math.max(1,Number(t.scheduleMonthIndex)||1);
-  const remaining=Math.max(0,total-index+1);
-  return `${index}/${total}. ay · Kalan ${remaining} ay`;
+  return `${index}/${total}. ay`;
 }
 function txRow(t){return `<div class="item ${deleteMode.transactions?'selectable-item':''}">${deleteMode.transactions?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.transactions.has(t.id)?'checked':''} onchange="toggleDeleteSelection('transactions','${t.id}')"><span></span></label>`:''}<div class="icon ${t.type==='gelir'?'in':'out'}">${t.type==='gelir'?'↑':'↓'}</div><div class="itemmain"><b>${esc(t.description)}</b><div class="sub">${esc(t.category)} · ${fd(t.date)} · ${esc(member(t.memberId))} · ${assetLabels[t.asset]||'TL'}${t.paymentId?' · Planlı':t.recurringId?' · Düzenli · '+txRecurringProgress(t):''}</div></div><div class="amount ${t.type==='gelir'?'in':'out'}">${t.type==='gelir'?'+':'−'}${fnum(t.amount)} ${assetLabels[t.asset]||'TL'}</div></div>`}
 function empty(){return '<div class="empty">Kayıt bulunamadı.</div>'}
@@ -2167,25 +2200,33 @@ function loanRow(l){
   const closed=l.status==='closed';
   const overdue=!closed&&l.dueDate&&days(l.dueDate)<0;
   const direction=l.direction==='given'?'Borç verdim':'Borç aldım';
+  const assetName=assetLabels[l.asset]||l.asset||'TL';
   const dateDetails=`Verme/Alma: ${fd(l.date)}${l.createdAt?' · Kayıt: '+fd(l.createdAt):''}${l.dueDate?' · Vade: '+fd(l.dueDate):''}${closed&&l.closedAt?' · Kapama: '+fd(l.closedAt):''}`;
   const duration=closed?loanDurationText(l):'';
-  return `<div class="item loan-row ${deleteMode.loans?'selectable-item ':''}${overdue?'overdue-payment':''}" style="${overdue?'background:#fff1f2;border-color:#fecdd3;':''}">${deleteMode.loans?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.loans.has(l.id)?'checked':''} onchange="toggleDeleteSelection('loans','${l.id}')"><span></span></label>`:''}<div class="icon ${l.direction==='given'?'out':'in'}">${l.direction==='given'?'↗':'↙'}</div><div class="itemmain"><b>${esc(l.person)} · ${direction}</b><div class="sub">${dateDetails} · ${esc(member(l.memberId))} · ${assetLabels[l.asset]||l.asset}</div>${l.description?`<div class="sub">${esc(l.description)}</div>`:''}${duration?`<small class="sub loan-duration">${duration}</small>`:''}<small class="sub ${overdue?'late-amount':''}">${loanStatusText(l)}</small></div><div class="loan-row-side"><b class="amount">${fnum(l.amount)} ${assetLabels[l.asset]||l.asset}</b>${!deleteMode.loans?`<button class="secondary" onclick="toggleLoanStatus('${l.id}')">${closed?'Yeniden Aç':'Borcu Kapat'}</button>`:''}</div></div>`;
+  const closeAmount=closed?`<div class="sub loan-settlement-amount">${l.direction==='given'?'Tahsil edilen':'Geri ödenen'}: ${fnum(l.closedAmount??l.amount)} ${assetName}</div>`:'';
+  return `<div class="item loan-row ${deleteMode.loans?'selectable-item ':''}${overdue?'overdue-payment':''}" style="${overdue?'background:#fff1f2;border-color:#fecdd3;':''}">${deleteMode.loans?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.loans.has(l.id)?'checked':''} onchange="toggleDeleteSelection('loans','${l.id}')"><span></span></label>`:''}<div class="icon ${l.direction==='given'?'out':'in'}">${l.direction==='given'?'↗':'↙'}</div><div class="itemmain"><b>${esc(l.person)} · ${direction}</b><div class="sub">${dateDetails} · ${esc(member(l.memberId))} · ${assetName}</div>${l.description?`<div class="sub">${esc(l.description)}</div>`:''}${closeAmount}${duration?`<small class="sub loan-duration">${duration}</small>`:''}<small class="sub ${overdue?'late-amount':''}">${loanStatusText(l)}</small></div><div class="loan-row-side"><b class="amount">${fnum(l.amount)} ${assetName}</b>${!deleteMode.loans?`<button class="secondary" onclick="toggleLoanStatus('${l.id}')">${closed?'Yeniden Aç':'Borcu Kapat'}</button>`:''}</div></div>`;
 }
 function openLoanCloseModal(id){
   const loan=(S.loans||[]).find(x=>x.id===id);
   if(!loan)return;
   const durationStart=loan.createdAt||loan.date||date();
-  showFormModal('Borç Kapat',`<form onsubmit="confirmLoanClose(event,'${id}')"><div class="field"><label>Borç Verme / Alma Tarihi</label><input type="date" value="${esc(loan.date||date())}" readonly></div><div class="field"><label>Listeye Eklenme Tarihi (süre hesabı)</label><input type="date" value="${esc(durationStart)}" readonly></div><div class="field"><label>Borç Kapama Tarihi</label><input id="loanCloseDateConfirm" type="date" value="${date()}" min="${esc(durationStart)}" required></div><p class="sub">Kapatılma süresi, borcun listeye eklendiği tarihten seçtiğiniz kapama tarihine kadar hesaplanır.</p><button class="primary">Borcu Kapat</button></form>`);
+  const amountLabel=loan.direction==='given'?'Tahsil ettiğiniz tutar':'Geri ödediğiniz tutar';
+  const amountHelp=loan.direction==='given'?'Bu borç için elinize geçen toplam tutarı yazın.':'Bu borcu kapatırken ödediğiniz toplam tutarı yazın.';
+  const assetName=assetLabels[loan.asset||'TRY']||loan.asset||'TL';
+  showFormModal('Borç Kapat',`<form class="loan-form ${loan.direction==='given'?'loan-form-given':'loan-form-taken'}" onsubmit="confirmLoanClose(event,'${id}')"><div class="field"><label>Borç Verme / Alma Tarihi</label><input type="date" value="${esc(loan.date||date())}" readonly></div><div class="field"><label>Listeye Eklenme Tarihi (süre hesabı)</label><input type="date" value="${esc(durationStart)}" readonly></div><div class="field"><label>Borç Kapama Tarihi</label><input id="loanCloseDateConfirm" type="date" value="${date()}" min="${esc(durationStart)}" required></div><div class="field"><label for="loanClosedAmount">${amountLabel} (${esc(assetName)})</label><input id="loanClosedAmount" type="text" inputmode="decimal" autocomplete="off" data-money value="${moneyText(Number(loan.amount)||0)}" required><small class="sub">${amountHelp}</small></div><p class="sub">Kapatılma süresi, borcun listeye eklendiği tarihten seçtiğiniz kapama tarihine kadar hesaplanır.</p><button class="primary">Borcu Kapat</button></form>`);
 }
 function confirmLoanClose(e,id){
   e.preventDefault();
   const loan=(S.loans||[]).find(x=>x.id===id);
   const closedAt=byId('loanCloseDateConfirm')?.value||'';
+  const closedAmount=parseMoney(byId('loanClosedAmount')?.value);
   if(!loan||!closedAt)return;
+  if(!(closedAmount>0)){alert('Tahsil edilen veya geri ödenen tutar sıfırdan büyük olmalı.');return;}
   const durationStart=loan.createdAt||loan.date||'';
   if(closedAt < durationStart){alert('Kapama tarihi, borç kaydının listeye eklendiği tarihten önce olamaz.');return;}
   loan.status='closed';
   loan.closedAt=closedAt;
+  loan.closedAmount=closedAmount;
   closeModal();
   save();
 }
@@ -2195,6 +2236,7 @@ function toggleLoanStatus(id){
   if(loan.status==='closed'){
     loan.status='open';
     loan.closedAt=null;
+    loan.closedAmount=null;
     save();
   }else openLoanCloseModal(id);
 }
@@ -2213,7 +2255,7 @@ function loansPanel(){
   const deleteActions=deleteMode.loans
     ? `<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="secondary" onclick="cancelDeleteMode('loans')">İptal</button><button class="dangerbtn" onclick="askDelete('loans')" ${deleteSelected.loans.size?'':'disabled'}>Seçili Sil (${deleteSelected.loans.size})</button></div>`
     : `<button class="secondary" onclick="enterDeleteMode('loans')">Sil</button>`;
-  return `<section id="loansPanel" class="panel loan-records-panel"><div class="panelhead"><div><h2>Elden Borç Kayıtları</h2><p>${rows.length} kayıt · Filtreye uyan tüm kayıtlar</p></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><div class="segment loan-filter">${[['open','Açık'],['closed','Kapalı'],['all','Tümü']].map(x=>`<button type="button" class="${loanFilter===x[0]?'active':''}" onclick="loanFilter='${x[0]}';render()">${x[1]}</button>`).join('')}</div>${deleteActions}</div></div><div class="list">${rows.map(loanRow).join('')||empty()}</div></section>`;
+  return `<section id="loansPanel" class="panel loan-records-panel"><div class="panelhead"><div><h2>Elden Borç Kayıtları</h2><p>${rows.length} kayıt · Filtreye uyan tüm kayıtlar</p></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><div class="segment loan-filter">${[['open','Açık'],['all','Tümü']].map(x=>`<button type="button" class="${loanFilter===x[0]?'active':''}" onclick="loanFilter='${x[0]}';render()">${x[1]}</button>`).join('')}</div>${deleteActions}</div></div><div class="list">${rows.map(loanRow).join('')||empty()}</div></section>`;
 }
 function savings(){
   const total=S.goals.reduce((a,g)=>a+holdingsValue(g.holdings),0);
