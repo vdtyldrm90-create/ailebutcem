@@ -585,8 +585,34 @@ input,textarea{ text-transform:uppercase; }
 }
 </style>
 
+<style>
+/* Uygulama öncesi zorunlu giriş / hesap oluşturma ekranı */
+.auth-gate{display:none;min-height:100svh;box-sizing:border-box;padding:24px 16px;align-items:center;justify-content:center;background:radial-gradient(circle at top left,#e7f4ef 0,transparent 46%),var(--bg,#f4f7f6)}
+body.auth-pending .auth-gate,body.auth-required .auth-gate{display:flex}
+body.auth-pending .app,body.auth-required .app{display:none!important}
+.auth-gate-wrap{width:min(440px,100%)}
+.auth-brand{display:flex;align-items:center;justify-content:center;gap:11px;margin-bottom:20px;color:var(--fg,#21312e)}
+.auth-brand-mark{width:48px;height:48px;border-radius:15px;background:var(--primary,#34796b);display:grid;place-items:center;color:#fff;font-size:25px;font-weight:850;box-shadow:0 7px 18px #34796b30}
+.auth-brand-text b{display:block;font-size:23px;letter-spacing:-.5px}
+.auth-brand-text span{font-size:12px;color:var(--muted,#74817d)}
+.auth-card{background:var(--card,#fff);border:1px solid var(--border,#e0e8e4);border-radius:24px;padding:25px;box-shadow:0 16px 45px #193b3010}
+.auth-card h1{font-size:23px;line-height:1.2;margin:0 0 7px;color:var(--fg,#21312e)}
+.auth-card .auth-intro{font-size:13px;line-height:1.55;color:var(--muted,#74817d);margin:0 0 20px}
+.auth-card .field{margin-bottom:13px}
+.auth-card .field label{display:block;margin-bottom:6px;font-size:12px;font-weight:750;color:var(--fg,#21312e)}
+.auth-card .field input{width:100%;box-sizing:border-box;min-height:46px;border:1px solid var(--border,#dce5e1);border-radius:12px;padding:11px 12px;font:inherit;font-size:14px;background:var(--card,#fff);color:var(--fg,#21312e);text-transform:none!important;}
+.auth-card .auth-submit{width:100%;min-height:46px;justify-content:center;margin-top:5px}
+.auth-card .auth-secondary{width:100%;min-height:44px;justify-content:center;margin-top:9px}
+.auth-message{margin:0 0 14px;padding:10px 12px;border-radius:11px;background:var(--soft,#f2f6f4);color:var(--fg,#21312e);font-size:12px;line-height:1.5}
+.auth-message.error{background:#fff0ee;color:#ad403a}.auth-message.success{background:#e8f5ec;color:#28794d}
+.auth-footnote{font-size:11px;line-height:1.5;color:var(--muted,#74817d);margin:15px 2px 0;text-align:center}
+.auth-loading{width:min(440px,100%);padding:24px;border:1px solid var(--border,#e0e8e4);border-radius:22px;background:var(--card,#fff);text-align:center;color:var(--muted,#74817d)}
+@media(max-width:480px){.auth-gate{padding:18px 13px}.auth-card{padding:21px 17px;border-radius:20px}.auth-card h1{font-size:21px}.auth-brand-text b{font-size:21px}}
+</style>
+
 </head>
-<body>
+<body class="auth-pending">
+<div id="authGate" class="auth-gate" aria-live="polite"></div>
 <div class="app">
 <header><div class="head"><div class="brand"><div class="logo">₺</div><div><b>Aile Bütçem</b><span>Bütçe · Birikim · Ödemeler</span></div></div><select id="memberSelect" class="profile"></select></div>
 <nav class="desktop-nav" id="desktopNav"></nav></header>
@@ -600,9 +626,9 @@ input,textarea{ text-transform:uppercase; }
 const KEY='aile-butcem-v0-single-v1';
 const LOCAL_DATA_EXISTED=!!localStorage.getItem(KEY);
 const SUPABASE_URL='https://lakbtousqphmqpzoyzcr.supabase.co';
-const SUPABASE_PUBLISHABLE_KEY='sb_publishable_N1roEOU-xp89NrnV2X6KIg_RIHjtupY';
+const SUPABASE_PUBLISHABLE_KEY='sb_publishable_8V87VjAFirRmVgANiKmJUg_0FstaxZH';
 const sb=(window.supabase&&window.supabase.createClient)?window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY):null;
-let cloud={session:null,user:null,member:null,family:null,roster:[],loading:false,busy:false,syncReady:false,channel:null,saveTimer:null,writeInFlight:false,writeAgain:false,lastCloudJson:'',pendingWriteJson:'',pendingRemoteState:null,message:'',messageType:'',inviteToken:'',inviteUrl:'',handledUserId:undefined,localPending:false};
+let cloud={initialized:false,session:null,user:null,member:null,family:null,roster:[],loading:false,busy:false,syncReady:false,channel:null,saveTimer:null,writeInFlight:false,writeAgain:false,lastCloudJson:'',pendingWriteJson:'',pendingRemoteState:null,message:'',messageType:'',inviteToken:'',inviteUrl:'',handledUserId:undefined,localPending:false};
 let pendingInviteToken='';
 try{pendingInviteToken=(new URLSearchParams(window.location.search).get('invite')||'').trim()}catch(e){}
 let rates={TRY:1,USD:49.0170,EUR:55.5892,GOLD22:6191.826,GOLD24:6587.048,CEYREK:11170.053,YARIM:22340.107,TAM:44680.213};
@@ -832,7 +858,34 @@ function setCustomDate(kind,part,value){
   render();
 }
 
-function render(){document.getElementById('memberSelect').innerHTML=S.members.map(m=>`<option value="${m.id}" ${m.id===S.active?'selected':''}>${esc(m.name)}</option>`).join('');nav();let m=document.getElementById('main');m.innerHTML=tab==='ozet'?home():tab==='islemler'?transactions():tab==='odemeler'?payments():tab==='birikim'?savings():tab==='raporlar'?reports():family();if(tab==='aile'&&cloud.inviteUrl)setTimeout(renderCloudQr,0)}
+function renderAuthGate(){
+  const gate=document.getElementById('authGate');
+  if(!gate)return;
+  if(!cloud.initialized){
+    document.body.classList.add('auth-pending');
+    document.body.classList.remove('auth-required');
+    gate.innerHTML='<div class="auth-loading"><div class="auth-brand-mark" style="margin:0 auto 13px">₺</div><b style="display:block;color:var(--fg);margin-bottom:6px">Aile Bütçem</b><span>Oturumunuz güvenli şekilde kontrol ediliyor…</span></div>';
+    return;
+  }
+  if(cloud.session){
+    document.body.classList.remove('auth-pending','auth-required');
+    gate.innerHTML='';
+    return;
+  }
+  document.body.classList.remove('auth-pending');
+  document.body.classList.add('auth-required');
+  const message=cloud.message?`<div class="auth-message ${esc(cloud.messageType||'')}">${esc(cloud.message)}</div>`:'';
+  gate.innerHTML=`<div class="auth-gate-wrap"><div class="auth-brand"><div class="auth-brand-mark">₺</div><div class="auth-brand-text"><b>Aile Bütçem</b><span>Aile bütçesi · Birikim · Ödemeler</span></div></div><section class="auth-card"><h1>Hesabına giriş yap</h1><p class="auth-intro">Aile bütçeni görüntülemek ve diğer aile bireyleriyle ortak kullanmak için giriş yap veya yeni bir hesap oluştur.</p>${message}<form onsubmit="cloudSignIn(event)"><div class="field"><label for="cloudEmail">E-posta adresi</label><input id="cloudEmail" name="email" type="email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" placeholder="ornek@eposta.com" style="text-transform:none" required></div><div class="field"><label for="cloudPassword">Şifre</label><input id="cloudPassword" name="password" type="password" autocomplete="current-password" minlength="6" placeholder="En az 6 karakter" required></div><button class="primary auth-submit" ${cloud.busy?'disabled':''}>${cloud.busy?'Lütfen bekleyin…':'Giriş Yap'}</button><button type="button" class="outline auth-secondary" onclick="cloudSignUp()" ${cloud.busy?'disabled':''}>Yeni Hesap Oluştur</button></form><p class="auth-footnote">E-posta ve şifren Supabase tarafından güvenli şekilde yönetilir. Hesap oluşturduğunda e-posta onayı istenebilir.</p></section></div>`;
+}
+function render(){
+  renderAuthGate();
+  if(!cloud.initialized||!cloud.session)return;
+  document.getElementById('memberSelect').innerHTML=S.members.map(m=>`<option value="${m.id}" ${m.id===S.active?'selected':''}>${esc(m.name)}</option>`).join('');
+  nav();
+  let m=document.getElementById('main');
+  m.innerHTML=tab==='ozet'?home():tab==='islemler'?transactions():tab==='odemeler'?payments():tab==='birikim'?savings():tab==='raporlar'?reports():family();
+  if(tab==='aile'&&cloud.inviteUrl)setTimeout(renderCloudQr,0);
+}
 function title(a,b){return `<div class="title"><h1>${a}</h1><p>${b}</p></div>`}
 function summary(kind='home'){
   let list=S.transactions.filter(t=>(kind!=='home'||t.date<=date())&&dateInRange(t.date,dateFilters[kind]||'month',window._filterDates?.[kind]?.start,window._filterDates?.[kind]?.end)),
@@ -1580,9 +1633,10 @@ async function handleCloudSession(session){
   finally{cloud.loading=false;render()}
 }
 async function initCloud(){
-  if(!sb){cloud.loading=false;setCloudMessage('Supabase JavaScript kitaplığı yüklenemedi. İnternet bağlantısını kontrol edip sayfayı yenile.','error');render();return}
+  if(!sb){cloud.initialized=true;cloud.loading=false;setCloudMessage('Supabase JavaScript kitaplığı yüklenemedi. İnternet bağlantısını kontrol edip sayfayı yenile.','error');render();return}
   const {data,error}=await sb.auth.getSession();
   if(error)console.warn('Oturum okunamadı',error);
+  cloud.initialized=true;
   await handleCloudSession(data?.session||null);
   sb.auth.onAuthStateChange((_event,session)=>{setTimeout(()=>{handleCloudSession(session).catch(err=>console.error(err))},0)});
 }
@@ -1720,14 +1774,14 @@ async function saveFamilyName(e){
 function cloudAuthUI(){
   if(!sb)return `<section class="panel cloud-panel"><h2>Ortak Aile Ağı</h2><p class="sub">Supabase bağlantısı yüklenemedi. İnternet bağlantısını kontrol edip sayfayı yenile.</p></section>`;
   if(cloud.loading)return `<section class="panel cloud-panel"><div class="cloud-topline"><h2>Ortak Aile Ağı</h2><span class="cloud-pill">Bağlanıyor…</span></div><p class="sub">Hesap ve aile üyeliği kontrol ediliyor.</p></section>`;
-  if(!cloud.session)return `<section class="panel cloud-panel"><div class="cloud-topline"><div><h2>Ortak Aile Ağı</h2><p class="sub">Bir hesapla giriş yap veya yeni hesap oluştur. Veriler aile üyelerine eşitlenir.</p></div><span class="cloud-pill offline">Giriş yapılmadı</span></div>${cloud.message?`<div class="cloud-message ${cloud.messageType}">${esc(cloud.message)}</div>`:''}<form onsubmit="cloudSignIn(event)"><div class="row2"><div class="field"><label>E-posta</label><input id="cloudEmail" type="email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" placeholder="ornek@eposta.com" required></div><div class="field"><label>Şifre</label><input id="cloudPassword" type="password" autocomplete="current-password" minlength="6" required></div></div><div class="cloud-actions"><button class="primary" ${cloud.busy?'disabled':''}>Giriş Yap</button><button type="button" class="outline" onclick="cloudSignUp()" ${cloud.busy?'disabled':''}>Yeni Hesap Oluştur</button></div></form><p class="cloud-note">Hesap oluşturduğunda e-posta onayı istenebilir. Şifre ve e-posta Supabase Auth üzerinden yönetilir; uygulamada saklanmaz.</p></section>`;
+  if(!cloud.session)return `<section class="panel cloud-panel"><h2>Ortak Aile Ağı</h2><p class="sub">Giriş ve hesap oluşturma işlemleri artık uygulama açılış ekranından yapılır.</p></section>`;
   if(!cloud.member)return `<section class="panel cloud-panel"><div class="cloud-topline"><div><h2>Ortak Aile Ağı</h2><p class="sub">Giriş yapıldı: ${esc(cloud.user?.email||'')}</p></div><button class="outline" type="button" onclick="cloudSignOut()">Çıkış Yap</button></div>${cloud.message?`<div class="cloud-message ${cloud.messageType}">${esc(cloud.message)}</div>`:''}<div class="cloud-grid"><div class="cloud-subpanel"><h3>Yeni Aile Oluştur</h3><p>Aileyi oluşturduğunda yönetici olursun. Yerel kayıtlarını ilk ortak veri olarak aktarabilirsin.</p><form onsubmit="createCloudFamily(event)"><div class="field"><label>Aile Adı</label><input id="cloudFamilyName" maxlength="80" value="${esc(S.family?.name||'Ailem')}" required></div><label class="cloud-note" style="display:flex;gap:8px;align-items:flex-start"><input id="cloudImportLocal" type="checkbox" ${LOCAL_DATA_EXISTED?'checked':''} style="margin-top:2px"> Bu cihazdaki mevcut gelir/gider, ödeme, birikim ve borç kayıtlarını ortak aileye aktar. ${LOCAL_DATA_EXISTED?'':'Bu cihazda daha önce kaydedilmiş yerel veri bulunamadı.'}</label><button class="primary" ${cloud.busy?'disabled':''}>Aile Oluştur</button></form></div><div class="cloud-subpanel"><h3>Davet Koduyla Katıl</h3><p>Aile yöneticisinin gönderdiği davet bağlantısını veya kodunu buraya gir.</p><form onsubmit="joinCloudFamily(event)"><div class="field"><label>Davet kodu veya bağlantısı</label><input id="cloudInviteToken" value="${esc(pendingInviteToken)}" placeholder="Davet kodu / bağlantı" required></div><div class="field"><label>Ailede görünecek adın</label><input id="cloudJoinName" value="${esc((cloud.user?.email||'Aile üyesi').split('@')[0])}" maxlength="80" required></div><button class="primary" ${cloud.busy?'disabled':''}>Aileye Katıl</button></form></div></div><p class="cloud-note">Aynı hesap yalnızca bir aileye bağlanacak şekilde tasarlanmıştır. Katıldıktan sonra aile kayıtları bu cihazdaki yerel durumun yerini alır; önce bir yerel yedek oluşturulur.</p></section>`;
   const roster=(cloud.roster||[]).map((m,i)=>`<div class="cloud-person"><div class="avatar" style="background:${['#397b70','#6d7db5','#b47b45','#8c5d8f'][i%4]}">${esc((m.display_name||'?').slice(0,1).toUpperCase())}</div><div class="cloud-person-main"><b>${esc(m.display_name||'Aile üyesi')}</b><small>${m.role==='owner'?'Yönetici':'Üye'} · ${fd(String(m.joined_at||date()).slice(0,10))}</small></div>${cloud.member?.role==='owner'&&m.role!=='owner'?`<button class="ghost" onclick="removeCloudMember('${m.user_id}')">Erişimi Kaldır</button>`:''}</div>`).join('');
   const emptyState=!cloud.syncReady;
   return `<section class="panel cloud-panel"><div class="cloud-topline"><div><h2>Ortak Aile Ağı</h2><p class="sub">${esc(cloud.user?.email||'')} · ${esc(cloud.family?.name||'Ailem')}</p></div><div class="cloud-actions"><span class="cloud-pill ${cloud.syncReady?'online':'offline'}">${cloud.syncReady?'Bağlı · Otomatik eşitleme':'Başlatma bekleniyor'}</span><button class="outline" type="button" onclick="cloudSignOut()">Çıkış Yap</button></div></div>${cloud.message?`<div class="cloud-message ${cloud.messageType}">${esc(cloud.message)}</div>`:''}${!emptyState?(cloud.member?.role==='owner'?`<div class="cloud-subpanel" style="margin-top:12px"><h3>Aile ayarları</h3><form onsubmit="saveFamilyName(event)" class="family-name-form"><div class="field"><label>Aile Adı</label><input id="familyNameInput" value="${esc(cloud.family?.name||'Ailem')}" maxlength="80" required></div><button class="primary">Kaydet</button></form></div>`:`<div class="cloud-subpanel" style="margin-top:12px"><h3>Aile</h3><p>Ortak aile: <b>${esc(cloud.family?.name||'Ailem')}</b></p><p class="cloud-note">Aile adını yalnızca yönetici değiştirebilir.</p></div>`):''}${emptyState?`<div class="cloud-subpanel"><h3>Ortak verileri başlat</h3><p>Aile oluşturulmuş ancak ortak kayıtlar henüz başlatılmamış. Bu adım, mevcut cihazdaki kayıtları ortak aileye aktarabilir.</p><label class="cloud-note" style="display:flex;gap:8px;align-items:flex-start;margin-bottom:10px"><input id="cloudInitImport" type="checkbox" ${LOCAL_DATA_EXISTED?'checked':''} style="margin-top:2px"> Bu cihazdaki kayıtları aktar.</label><button class="primary" onclick="initializeEmptyFamily(!!byId('cloudInitImport')?.checked)" ${cloud.busy?'disabled':''}>Ortak Verileri Başlat</button></div>`:`<div class="cloud-grid"><div class="cloud-subpanel"><h3>Aile daveti</h3><p>Bağlantı 7 gün geçerlidir ve bir kez kullanılabilir. Gönderdiğin kişi e-posta hesabıyla giriş yaparak katılabilir.</p><div class="cloud-invite-grid"><div id="cloudInviteQr" class="cloud-qr">${cloud.inviteUrl?'QR hazırlanıyor…':'Henüz davet oluşturulmadı.'}</div><div class="cloud-invite-info"><div class="cloud-actions"><button class="primary" type="button" onclick="createCloudInvite()" ${cloud.busy?'disabled':''}>${cloud.inviteUrl?'Yeni Davet Oluştur':'Davet Oluştur'}</button>${cloud.inviteUrl?`<button class="outline" type="button" onclick="copyCloudInvite()">Bağlantıyı Kopyala</button>`:''}</div>${cloud.inviteUrl?`<p class="cloud-note" style="overflow-wrap:anywhere;margin-top:9px">${esc(cloud.inviteUrl)}</p>`:''}</div></div></div><div class="cloud-subpanel"><h3>Aile üyeleri (${cloud.roster.length})</h3><div class="cloud-roster">${roster||'<p>Henüz aile üyesi yok.</p>'}</div></div></div>`}<p class="cloud-note" style="margin-top:10px">Veriler Supabase'e gönderilir. Aile üyeleri aynı kayıtları görür. Aynı anda birden çok cihazda yapılan değişikliklerde bu tek kayıtlı JSON modelinde son kaydedilen durum geçerli olabilir; önemli değişiklikleri tamamlandıktan sonra diğer cihazlarda kontrol edin.</p></section>`;
 }
 function family(){
-  return `<div class="stack">${title('Aile Paylaşımı','Hesabını bağla, aile oluştur veya davet bağlantısıyla ortak aileye katıl.')}${cloudAuthUI()}<section class="panel"><div class="panelhead"><div><h2>İşlemlerde Kullanılan Profiller</h2><p>Gelir, gider ve birikim kayıtlarını aile bireylerine atamak için kullanılır. Bunlar bulut hesabı üyelerinden ayrı profil etiketleridir.</p></div><button class="primary" onclick="openMember()">+ Profil Ekle</button></div><div class="family">${S.members.map((m,i)=>`<div class="member"><div class="avatar" style="background:${['#397b70','#6d7db5','#b47b45','#8c5d8f'][i%4]}">${esc(m.name[0])}</div><div style="flex:1"><b>${esc(m.name)}</b><small>${m.id===S.active?'Aktif profil':'İşlem profili'}</small></div>${S.members.length>1?`<button class="ghost" onclick="delMember('${m.id}')">Sil</button>`:''}</div>`).join('')}</div></section></div>`;
+  return `<div class="stack">${title('Aile Paylaşımı','Aile oluştur, davet gönder veya davet bağlantısıyla ortak aileye katıl.')}${cloudAuthUI()}<section class="panel"><div class="panelhead"><div><h2>İşlemlerde Kullanılan Profiller</h2><p>Gelir, gider ve birikim kayıtlarını aile bireylerine atamak için kullanılır. Bunlar bulut hesabı üyelerinden ayrı profil etiketleridir.</p></div><button class="primary" onclick="openMember()">+ Profil Ekle</button></div><div class="family">${S.members.map((m,i)=>`<div class="member"><div class="avatar" style="background:${['#397b70','#6d7db5','#b47b45','#8c5d8f'][i%4]}">${esc(m.name[0])}</div><div style="flex:1"><b>${esc(m.name)}</b><small>${m.id===S.active?'Aktif profil':'İşlem profili'}</small></div>${S.members.length>1?`<button class="ghost" onclick="delMember('${m.id}')">Sil</button>`:''}</div>`).join('')}</div></section></div>`;
 }
 function openMember(){document.getElementById('modalTitle').textContent='Aile Bireyi Ekle';document.getElementById('modalBody').innerHTML=`<form onsubmit="addMember(event)"><div class="field"><label>Ad</label><input id="newMember" required placeholder="Örn: Mehmet"></div><button class="primary">Ekle</button></form>`;document.getElementById('modal').classList.add('show')}
 function addMember(e){e.preventDefault();let n=(byId('newMember')?.value||'').trim();if(!n)return;S.members.push({id:uid(),name:n});closeModal();save()}
@@ -1795,7 +1849,7 @@ document.addEventListener('change',function(e){
 });
 
 try{startRateAutoRefresh();}catch(e){}
-initCloud().catch(e=>{console.error('Supabase başlatma hatası',e);cloud.loading=false;setCloudMessage(cloudErrorText(e),'error');render()});
+initCloud().catch(e=>{console.error('Supabase başlatma hatası',e);cloud.initialized=true;cloud.loading=false;setCloudMessage(cloudErrorText(e),'error');render()});
 </script>
 </body>
 </html>
