@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aile-butcem-pwa-v23';
+const CACHE_NAME = 'aile-butcem-pwa-v24';
 const APP_SHELL = [
   './',
   './index.html',

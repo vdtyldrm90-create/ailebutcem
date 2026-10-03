@@ -1171,6 +1171,61 @@ body.cloud-cache-loading #main button,body.cloud-cache-loading #main input,body.
 }
 </style>
 
+
+<style id="movement-single-row-summary-labels">
+/* Birikim hareketinin tarih/profil/maliyet/değer/K-Z alanlarını tek sırada göster. */
+.movement-financial-grid{
+  grid-template-columns:repeat(5,minmax(0,1fr)) !important;
+  gap:4px 6px !important;
+  align-items:start;
+  padding:7px 6px !important;
+}
+.movement-financial-grid>span:not(.goal-completed-note){min-width:0;overflow:hidden}
+.movement-financial-grid small{font-size:8px !important;line-height:1.2;overflow-wrap:anywhere;display:block}
+.movement-financial-grid b{font-size:9px !important;line-height:1.25;overflow-wrap:anywhere;word-break:normal;display:block}
+.movement-financial-grid .goal-completed-note{grid-column:1/-1}
+@media(max-width:520px){
+  .movement-financial-grid{grid-template-columns:repeat(5,minmax(0,1fr)) !important;gap:3px 4px !important;padding:6px 4px !important}
+  .movement-financial-grid small{font-size:7.5px !important}
+  .movement-financial-grid b{font-size:8px !important;letter-spacing:-.1px}
+}
+@media(max-width:360px){
+  .movement-financial-grid{gap:2px 3px !important;padding:5px 3px !important}
+  .movement-financial-grid small{font-size:7px !important}
+  .movement-financial-grid b{font-size:7.5px !important}
+}
+/* Birikim özeti: koyu pastel kartlar ve büyük, kalın, çerçeveli etiketler. */
+#main .savings-total-card{
+  background:linear-gradient(145deg,#f3ebfc 0%,#e6d9f5 100%) !important;
+  border-color:#cbb8e5 !important;
+  box-shadow:0 8px 20px rgba(94,62,143,.12),0 1px 3px rgba(94,62,143,.06) !important;
+}
+#main .savings-overview-card .savings-card-label{
+  display:inline-flex !important;
+  align-items:center;
+  width:max-content;
+  max-width:100%;
+  padding:5px 9px !important;
+  margin:0 0 8px !important;
+  border:1px solid currentColor !important;
+  border-radius:999px !important;
+  font-size:13px !important;
+  font-weight:850 !important;
+  line-height:1.15 !important;
+  letter-spacing:.12px;
+  text-transform:uppercase;
+  white-space:normal;
+}
+#main .savings-total-card .savings-card-label{color:#54377d !important;background:#e0d1f1;border-color:#bca5d9 !important}
+#main .savings-loan-summary-grid>.savings-overview-card:nth-child(1) .savings-card-label{color:#216744 !important;background:#dff1e6;border-color:#add7bd !important}
+#main .savings-loan-summary-grid>.savings-overview-card:nth-child(2) .savings-card-label{color:#9b4039 !important;background:#fbe5e2;border-color:#efc0ba !important}
+#main .savings-loan-summary-grid>.savings-overview-card:nth-child(3) .savings-card-label{color:#245f92 !important;background:#e1eef9;border-color:#b8d3ec !important}
+#main .savings-total-card .value{color:#442d68}
+@media(max-width:520px){
+  #main .savings-overview-card .savings-card-label{font-size:10px !important;padding:4px 6px !important;margin-bottom:6px !important;letter-spacing:0}
+}
+</style>
+
 </head>
 <body class="auth-pending">
 <div id="authGate" class="auth-gate" aria-live="polite"></div>
@@ -2543,11 +2598,11 @@ function savings(){
   const loans=S.loans||[],activeGiven=loans.filter(l=>l.direction==='given'&&l.status!=='closed'),activeTaken=loans.filter(l=>l.direction==='taken'&&l.status!=='closed');
   return `<div class="stack savings-page">${title('Birikim Hedefleri','TL, döviz ve altın birikimlerinizi güncel kurla izleyin.')}
     <div class="savings-overview-grid">
-      <section class="panel stat savings-overview-card savings-total-card"><small>Toplam Birikim</small><div class="value">${fmt(total)}</div><small>${activeGoals.length} devam eden hedef</small>${pl.cost>0?`<small class="savings-total-pl ${pl.profit>=0?'pl-positive':'pl-negative'}">Takip edilen K/Z: ${signedMoney(pl.profit)} (${signedPercent(pl.percent)})</small>`:''}</section>
+      <section class="panel stat savings-overview-card savings-total-card"><small class="savings-card-label savings-label-total">Toplam Birikim</small><div class="value">${fmt(total)}</div><small>${activeGoals.length} devam eden hedef</small>${pl.cost>0?`<small class="savings-total-pl ${pl.profit>=0?'pl-positive':'pl-negative'}">Takip edilen K/Z: ${signedMoney(pl.profit)} (${signedPercent(pl.percent)})</small>`:''}</section>
       <div class="savings-loan-summary-grid">
-        <section class="panel stat savings-overview-card"><small>Verdiğim (Alacağım)</small><div class="value">${fmt(loanTotal('given'))}</div><small>${activeGiven.length} açık kayıt</small></section>
-        <section class="panel stat savings-overview-card"><small>Aldığım (Ödeyeceğim)</small><div class="value">${fmt(loanTotal('taken'))}</div><small>${activeTaken.length} açık kayıt</small></section>
-        <section class="panel stat savings-overview-card"><small>Net Alacak</small><div class="value">${fmt(loanTotal('given')-loanTotal('taken'))}</div><small>Kurla TL karşılığı</small></section>
+        <section class="panel stat savings-overview-card"><small class="savings-card-label savings-label-given">Verdiğim (Alacağım)</small><div class="value">${fmt(loanTotal('given'))}</div><small>${activeGiven.length} açık kayıt</small></section>
+        <section class="panel stat savings-overview-card"><small class="savings-card-label savings-label-taken">Aldığım (Ödeyeceğim)</small><div class="value">${fmt(loanTotal('taken'))}</div><small>${activeTaken.length} açık kayıt</small></section>
+        <section class="panel stat savings-overview-card"><small class="savings-card-label savings-label-net">Net Alacak</small><div class="value">${fmt(loanTotal('given')-loanTotal('taken'))}</div><small>Kurla TL karşılığı</small></section>
       </div>
     </div>
     <div class="savings-main-layout">
@@ -2598,7 +2653,51 @@ function savingRow(x,lotState=acquisitionLotState()){
   const signPositive=Number(x.sign)>0;
   return `<div class="item saving-movement-item ${deleteMode.movements?'selectable-item':''}">${deleteMode.movements?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.movements.has(x.id)?'checked':''} onchange="toggleDeleteSelection('movements','${x.id}')"><span></span></label>`:''}<div class="icon ${signPositive?'in':'out'}" aria-label="${signPositive?'Birikim eklendi':'Birikim çıkarıldı'}">${signPositive?'＋':'↘'}</div><div class="itemmain"><b>${esc(x.goalName)}</b><div class="sub">${completed?`<span class="goal-completed-badge">Tamamlandı</span>`:''}${signPositive?'Birikim eklendi':'Birikim çıkarıldı'}</div>${detail}</div><div class="amount ${signPositive?'in':'out'}">${signPositive?'+':'−'}${fnum(qty)} ${assetName}</div></div>`;
 }
-function deleteSavingMovement(id){let x=(S.savingMovements||[]).find(m=>m.id===id);if(!x)return;let g=S.goals.find(g=>g.id===x.goalId);if(g){g.holdings[x.asset]=Math.max(0,(g.holdings[x.asset]||0)-x.quantity*x.sign)}S.savingMovements=S.savingMovements.filter(m=>m.id!==id);save()}
+function reconcileGoalAfterMovementDeletion(g, deletedIds){
+  if(!g)return;
+  g.holdings=g.holdings||{};
+  // Remove zero-quantity asset chips so a deleted movement no longer leaves an icon under its goal.
+  for(const [asset,rawQty] of Object.entries(g.holdings)){
+    const qty=Number(rawQty)||0;
+    if(qty<=1e-8)delete g.holdings[asset];
+  }
+  const target=Number(g.target)||0;
+  const currentValue=goalValueInTarget(g);
+  const remaining=(S.savingMovements||[]).filter(m=>String(m.goalId)===String(g.id));
+  if(currentValue+1e-8<target){
+    g.completionDate=null;g.completionMemberId=null;g.completionMovementId=null;
+    return;
+  }
+  const completionMoveStillExists=!!g.completionMovementId&&remaining.some(m=>String(m.id)===String(g.completionMovementId));
+  const completionMoveWasDeleted=!!g.completionMovementId&&deletedIds?.has(String(g.completionMovementId));
+  if(g.completionDate&&completionMoveStillExists&&!completionMoveWasDeleted)return;
+  // The deleted movement may have marked completion. Replay surviving history to find the point
+  // at which the target was reached, using the same current valuation basis as goalValueInTarget.
+  const timeline=remaining.slice().sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))||String(a.createdAt||'').localeCompare(String(b.createdAt||'')));
+  const replay={};let crossed=null;
+  const targetRate=currentPurchaseRate(g.targetAsset||'TRY')||1;
+  for(const m of timeline){
+    const asset=m.asset||'TRY';
+    const delta=(Number(m.quantity)||0)*(Number(m.sign)||1);
+    replay[asset]=Math.max(0,(Number(replay[asset])||0)+delta);
+    const value=Object.entries(replay).reduce((sum,[a,q])=>sum+Math.max(0,Number(q)||0)*currentExitRate(a),0)/targetRate;
+    if(value+1e-8>=target){crossed=m;break;}
+  }
+  if(crossed){
+    g.completionDate=crossed.date||date();
+    g.completionMemberId=crossed.memberId||g.memberId||S.active||null;
+    g.completionMovementId=crossed.id;
+  }else if(timeline.length){
+    const fallback=timeline[timeline.length-1];
+    g.completionDate=fallback.date||date();
+    g.completionMemberId=fallback.memberId||g.memberId||S.active||null;
+    g.completionMovementId=fallback.id;
+  }else{
+    // Preserve any legacy holding that has no movement history, but remove stale completion metadata.
+    g.completionDate=null;g.completionMemberId=null;g.completionMovementId=null;
+  }
+}
+function deleteSavingMovement(id){const x=(S.savingMovements||[]).find(m=>String(m.id)===String(id));if(!x)return;const deletedIds=new Set([String(x.id)]);const g=S.goals.find(g=>String(g.id)===String(x.goalId));if(g){g.holdings=g.holdings||{};g.holdings[x.asset]=Math.max(0,(Number(g.holdings[x.asset])||0)-(Number(x.quantity)||0)*(Number(x.sign)||0));if(g.holdings[x.asset]<=1e-8)delete g.holdings[x.asset]}S.savingMovements=(S.savingMovements||[]).filter(m=>String(m.id)!==String(id));if(g)reconcileGoalAfterMovementDeletion(g,deletedIds);save()}
 function goalForm(){return `<form class="goal-form" onsubmit="addGoal(event)"><div class="field"><label>Hedef Adı</label><input id="gName" placeholder="Örn: Tatil birikimi" required></div><div class="row2"><div class="field"><label>Hedef Tutarı</label><input id="gTarget" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="0,00" required></div><div class="field"><label>Hedef Kur Türü</label><select id="gAsset">${assetOptions}</select></div><div class="field"><label>Hedefe Başlama Tarihi</label><input id="gStartDate" type="date" value="${date()}" required></div><div class="field"><label>Sahibi</label><select id="gMember">${S.members.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select></div></div><button class="primary">Hedef Oluştur</button></form>`}
 function addGoal(e){e.preventDefault();let target=parseMoney(byId('gTarget')?.value),name=(byId('gName')?.value||'').trim();if(target<=0||!name)return;S.goals.push({id:uid(),name:name,target:target,targetAsset:byId('gAsset')?.value||'TRY',startDate:byId('gStartDate')?.value||date(),completionDate:null,memberId:byId('gMember')?.value||S.active,holdings:{TRY:0,USD:0,EUR:0,GOLD22:0,GOLD24:0,CEYREK:0,YARIM:0,TAM:0}});closeModal();save()}
 function goalCompletionDetails(g){
@@ -3472,11 +3571,22 @@ function confirmDelete(type){
     S.goals=S.goals.filter(x=>!ids.has(x.id));
     S.savingMovements=(S.savingMovements||[]).filter(x=>!ids.has(x.goalId));
   }else if(type==='movements'){
-    (S.savingMovements||[]).filter(x=>ids.has(x.id)).forEach(x=>{
-      let g=S.goals.find(g=>g.id===x.goalId);
-      if(g)g.holdings[x.asset]=Math.max(0,(g.holdings[x.asset]||0)-x.quantity*x.sign);
+    const selectedMoves=(S.savingMovements||[]).filter(x=>ids.has(x.id)||ids.has(String(x.id)));
+    const affectedGoalIds=new Set(selectedMoves.map(x=>String(x.goalId)));
+    const deletedMoveIds=new Set(selectedMoves.map(x=>String(x.id)));
+    selectedMoves.forEach(x=>{
+      const g=S.goals.find(g=>String(g.id)===String(x.goalId));
+      if(g){
+        g.holdings=g.holdings||{};
+        g.holdings[x.asset]=Math.max(0,(Number(g.holdings[x.asset])||0)-(Number(x.quantity)||0)*(Number(x.sign)||0));
+        if(g.holdings[x.asset]<=1e-8)delete g.holdings[x.asset];
+      }
     });
-    S.savingMovements=(S.savingMovements||[]).filter(x=>!ids.has(x.id));
+    S.savingMovements=(S.savingMovements||[]).filter(x=>!(ids.has(x.id)||ids.has(String(x.id))));
+    affectedGoalIds.forEach(goalId=>{
+      const g=S.goals.find(g=>String(g.id)===goalId);
+      if(g)reconcileGoalAfterMovementDeletion(g,deletedMoveIds);
+    });
   }else if(type==='loans'){
     S.loans=(S.loans||[]).filter(x=>!ids.has(x.id));
   }
