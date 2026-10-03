@@ -333,6 +333,24 @@ form{display:flex;flex-direction:column;gap:11px}.row2{display:grid;grid-templat
 .home-list-filter{margin:8px 0 10px;display:flex;justify-content:flex-end}
 .home-payments-preview .list{max-height:none;overflow:visible}
 .loan-settlement-amount{font-weight:700;color:var(--primary);margin-top:4px}
+.loan-payment-history{display:flex;flex-direction:column;gap:5px;margin:8px 0 5px;min-width:0}
+.loan-payment-chip{display:flex;align-items:center;gap:7px;width:fit-content;max-width:100%;padding:5px 8px;border:1px solid;border-radius:10px;min-width:0}
+.loan-payment-in{background:#edf8f0;border-color:#c8e8d1;color:#237849}
+.loan-payment-out{background:#fff0ef;border-color:#f4ceca;color:#b43b35}
+.loan-payment-symbol{display:inline-flex;align-items:center;justify-content:center;flex:0 0 20px;width:20px;height:20px;border-radius:50%;font-weight:800;font-size:14px;background:currentColor;color:#fff;}
+.loan-payment-in .loan-payment-symbol{background:#2f8955;color:#fff}.loan-payment-out .loan-payment-symbol{background:#c24a42;color:#fff}
+.loan-payment-detail{display:flex;flex-wrap:wrap;align-items:baseline;gap:3px 8px;min-width:0;font-size:11px;overflow-wrap:anywhere}
+.loan-payment-detail b{font-size:11px;color:inherit}
+.loan-payment-detail small{font-size:10px;color:inherit;opacity:.85}
+.loan-balance-caption{font-size:9px;color:var(--muted);text-align:right;max-width:120px}
+.loan-close-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-bottom:12px}
+.loan-close-summary>div{min-width:0;padding:9px 7px;border:1px solid var(--border);border-radius:10px;background:var(--soft)}
+.loan-close-summary small,.loan-close-summary b{display:block;overflow-wrap:anywhere}
+.loan-close-summary small{font-size:10px;color:var(--muted);line-height:1.25;margin-bottom:4px}
+.loan-close-summary b{font-size:12px;line-height:1.25}
+.loan-close-preview{padding:8px 10px;border-radius:9px;background:#f0f5fb;color:#345b81;font-weight:700}
+@media(max-width:520px){.loan-payment-chip{padding:4px 6px}.loan-payment-detail{font-size:10px}.loan-payment-detail b{font-size:10px}.loan-payment-detail small{font-size:9px}.loan-close-summary{gap:5px}.loan-close-summary>div{padding:8px 5px}.loan-close-summary small{font-size:9px}.loan-close-summary b{font-size:11px}}
+
 @media(max-width:720px){.home-list-head-actions{width:100%;justify-content:flex-start}.home-list-head-actions .date-filter{width:100%}.home-list-filter{justify-content:flex-start}.home-list-head-actions .date-filter button,.home-list-filter .date-filter button{flex:1}}
 
 </style>
@@ -1440,7 +1458,8 @@ S.recurringTransactions=(S.recurringTransactions||[]).map(r=>({
   anchorDay:Number(r.anchorDay)||Number((r.startDate||date()).slice(-2)),
   active:r.active!==false && !r.paused && Number(r.remaining??r.months)>0
 }));
-S.loans=(S.loans||[]).map(l=>({...l,asset:l.asset||'TRY',status:l.status||'open',memberId:l.memberId||S.active,date:l.date||String(l.createdAt||date()).slice(0,10),closedAt:l.closedAt||null}));
+const LOAN_AMOUNT_EPSILON=0.005;
+S.loans=(S.loans||[]).map(normalizeLoanRecord);
 S.payments=(S.payments||[]).map(p=>({...p,recurring:!!p.recurring,interval:p.interval||'aylik',months:Math.max(1,Number(p.months)||1),remaining:Math.max(0,Number(p.remaining ?? (p.recurring?Number(p.months)||1:1)))}));
 const legacyPaymentsMigratedAtBoot=expandLegacyRecurringPayments();
 S.savingMovements=(S.savingMovements||[]).map(m=>({...m,date:m.date||date()}));
@@ -2559,7 +2578,8 @@ function addLoan(e){
     dueDate:byId('loanDueDate')?.value||'',
     memberId:byId('loanMember')?.value||S.active,
     description:(byId('loanDesc')?.value||'').trim(),
-    status:closedAt?'closed':'open',createdAt:date()
+    settlements:closedAt?[{id:String(uid()),amount:amount,date:closedAt,memberId:byId('loanMember')?.value||S.active,createdAt:new Date().toISOString()}]:[],
+    status:closedAt?'closed':'open',closedAmount:closedAt?amount:null,createdAt:date()
   });
   closeModal();
   save();
@@ -2585,42 +2605,104 @@ function loanDurationText(l){
   const extraDays = Math.max(0, Math.round((end - anchor) / 86400000));
   return `Kapatılma süresi: ${months} ay${extraDays ? ` ${extraDays} gün` : ''} (${totalDays} gün)`;
 }
+function normalizeLoanRecord(l){
+  const loan={...l,asset:l.asset||'TRY',status:l.status||'open',memberId:l.memberId||S.active,date:l.date||String(l.createdAt||date()).slice(0,10),closedAt:l.closedAt||null};
+  const original=Math.max(0,Number(loan.amount)||0);
+  let settlements=Array.isArray(loan.settlements)?loan.settlements.filter(x=>x&&Number(x.amount)>0).map(x=>({...x,id:String(x.id||uid()),amount:Math.max(0,Number(x.amount)||0),date:x.date||loan.closedAt||loan.date||date(),memberId:x.memberId||loan.memberId||S.active})):[];
+  // Migrate previous versions that stored a single settlement in closedAmount.
+  if(!settlements.length){
+    const legacy=loan.closedAmount!=null?Math.max(0,Number(loan.closedAmount)||0):(loan.status==='closed'?original:0);
+    if(legacy>0){
+      settlements=[{id:`legacy-${String(loan.id)}`,amount:Math.min(original,legacy),date:loan.closedAt||loan.date||date(),memberId:loan.memberId||S.active,legacy:true}];
+    }
+  }
+  loan.settlements=settlements;
+  const paid=settlements.reduce((sum,x)=>sum+(Number(x.amount)||0),0);
+  loan.closedAmount=paid;
+  const remaining=Math.max(0,original-paid);
+  loan.status=original>0&&remaining<=LOAN_AMOUNT_EPSILON?'closed':'open';
+  loan.closedAt=loan.status==='closed'?(loan.closedAt||settlements[settlements.length-1]?.date||loan.date):null;
+  return loan;
+}
+function loanSettledAmount(l){
+  if(Array.isArray(l?.settlements))return l.settlements.reduce((sum,x)=>sum+Math.max(0,Number(x.amount)||0),0);
+  if(l?.closedAmount!=null)return Math.max(0,Number(l.closedAmount)||0);
+  return l?.status==='closed'?Math.max(0,Number(l.amount)||0):0;
+}
+function loanRemainingAmount(l){return Math.max(0,(Number(l?.amount)||0)-loanSettledAmount(l));}
 function loanStatusText(l){
-  if(l.status==='closed')return 'Kapandı';
+  const remaining=loanRemainingAmount(l),settled=loanSettledAmount(l);
+  if(l.status==='closed'||remaining<=LOAN_AMOUNT_EPSILON)return 'Kapandı';
   if(l.dueDate&&days(l.dueDate)<0)return `Vadesi geçti · ${Math.abs(days(l.dueDate))} gün`;
+  if(settled>LOAN_AMOUNT_EPSILON)return `Kısmi kapama · Kalan ${fnum(remaining)} ${assetLabels[l.asset]||l.asset||'TL'}`;
   return 'Açık';
 }
 function loanRow(l){
-  const closed=l.status==='closed';
+  const closed=l.status==='closed'||loanRemainingAmount(l)<=LOAN_AMOUNT_EPSILON;
   const overdue=!closed&&l.dueDate&&days(l.dueDate)<0;
   const direction=l.direction==='given'?'Borç verdim':'Borç aldım';
   const assetName=assetLabels[l.asset]||l.asset||'TL';
+  const remaining=loanRemainingAmount(l),settled=loanSettledAmount(l);
   const dateDetails=`Verme/Alma: ${fd(l.date)}${l.createdAt?' · Kayıt: '+fd(l.createdAt):''}${l.dueDate?' · Vade: '+fd(l.dueDate):''}${closed&&l.closedAt?' · Kapama: '+fd(l.closedAt):''}`;
   const duration=closed?loanDurationText(l):'';
-  const closeAmount=closed?`<div class="sub loan-settlement-amount">${l.direction==='given'?'Tahsil edilen':'Geri ödenen'}: ${fnum(l.closedAmount??l.amount)} ${assetName}</div>`:'';
-  return `<div class="item loan-row ${deleteMode.loans?'selectable-item ':''}${overdue?'overdue-payment':''}" style="${overdue?'background:#fff1f2;border-color:#fecdd3;':''}">${deleteMode.loans?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.loans.has(l.id)?'checked':''} onchange="toggleDeleteSelection('loans','${l.id}')"><span></span></label>`:''}<div class="icon ${l.direction==='given'?'out':'in'}">${l.direction==='given'?'↗':'↙'}</div><div class="itemmain"><b>${esc(l.person)} · ${direction}</b><div class="sub">${dateDetails} · ${esc(member(l.memberId))} · ${assetName}</div>${l.description?`<div class="sub">${esc(l.description)}</div>`:''}${closeAmount}${duration?`<small class="sub loan-duration">${duration}</small>`:''}<small class="sub ${overdue?'late-amount':''}">${loanStatusText(l)}</small></div><div class="loan-row-side"><b class="amount">${fnum(l.amount)} ${assetName}</b>${!deleteMode.loans?`<button class="secondary" onclick="toggleLoanStatus('${l.id}')">${closed?'Yeniden Aç':'Borcu Kapat'}</button>`:''}</div></div>`;
+  const settlementRows=(l.settlements||[]).map(payment=>{
+    const isIncoming=l.direction==='given';
+    const label=isIncoming?'Tahsilat':'Geri ödeme';
+    const symbol=isIncoming?'+':'−';
+    const tone=isIncoming?'loan-payment-in':'loan-payment-out';
+    return `<div class="loan-payment-chip ${tone}"><span class="loan-payment-symbol">${symbol}</span><span class="loan-payment-detail"><b>${label}: ${fnum(payment.amount)} ${assetName}</b><small>${fd(payment.date)} · ${esc(member(payment.memberId||l.memberId))}</small></span></div>`;
+  }).join('');
+  const balanceCaption=closed?'İlk borç':settled>LOAN_AMOUNT_EPSILON?'Kalan borç':'Borç tutarı';
+  const actionLabel=closed?'Yeniden Aç':settled>LOAN_AMOUNT_EPSILON?'Kapama':'Borcu Kapat';
+  return `<div class="item loan-row ${deleteMode.loans?'selectable-item ':''}${overdue?'overdue-payment':''}" style="${overdue?'background:#fff1f2;border-color:#fecdd3;':''}">${deleteMode.loans?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.loans.has(l.id)?'checked':''} onchange="toggleDeleteSelection('loans','${l.id}')"><span></span></label>`:''}<div class="icon ${l.direction==='given'?'out':'in'}">${l.direction==='given'?'↗':'↙'}</div><div class="itemmain"><b>${esc(l.person)} · ${direction}</b><div class="sub">${dateDetails} · ${esc(member(l.memberId))} · ${assetName}</div>${l.description?`<div class="sub">${esc(l.description)}</div>`:''}${settlementRows?`<div class="loan-payment-history">${settlementRows}</div>`:''}${duration?`<small class="sub loan-duration">${duration}</small>`:''}<small class="sub ${overdue?'late-amount':''}">${loanStatusText(l)}</small></div><div class="loan-row-side"><b class="amount">${fnum(closed?l.amount:remaining)} ${assetName}</b><small class="loan-balance-caption">${balanceCaption}</small>${!deleteMode.loans?`<button class="secondary" onclick="toggleLoanStatus('${l.id}')">${actionLabel}</button>`:''}</div></div>`;
 }
 function openLoanCloseModal(id){
   const loan=(S.loans||[]).find(x=>x.id===id);
   if(!loan)return;
   const durationStart=loan.createdAt||loan.date||date();
   const amountLabel=loan.direction==='given'?'Tahsil ettiğiniz tutar':'Geri ödediğiniz tutar';
-  const amountHelp=loan.direction==='given'?'Bu borç için elinize geçen toplam tutarı yazın.':'Bu borcu kapatırken ödediğiniz toplam tutarı yazın.';
   const assetName=assetLabels[loan.asset||'TRY']||loan.asset||'TL';
-  showFormModal('Borç Kapat',`<form class="loan-form ${loan.direction==='given'?'loan-form-given':'loan-form-taken'}" onsubmit="confirmLoanClose(event,'${id}')"><div class="field"><label>Borç Verme / Alma Tarihi</label><input type="date" value="${esc(loan.date||date())}" readonly></div><div class="field"><label>Listeye Eklenme Tarihi (süre hesabı)</label><input type="date" value="${esc(durationStart)}" readonly></div><div class="field"><label>Borç Kapama Tarihi</label><input id="loanCloseDateConfirm" type="date" value="${date()}" min="${esc(durationStart)}" required></div><div class="field"><label for="loanClosedAmount">${amountLabel} (${esc(assetName)})</label><input id="loanClosedAmount" type="text" inputmode="decimal" autocomplete="off" data-money value="${moneyText(Number(loan.amount)||0)}" required><small class="sub">${amountHelp}</small></div><p class="sub">Kapatılma süresi, borcun listeye eklendiği tarihten seçtiğiniz kapama tarihine kadar hesaplanır.</p><button class="primary">Borcu Kapat</button></form>`);
+  const original=Math.max(0,Number(loan.amount)||0),settled=loanSettledAmount(loan),remaining=loanRemainingAmount(loan);
+  const lastPaymentDate=(loan.settlements||[]).map(x=>x.date||'').sort().slice(-1)[0]||durationStart;
+  const submitLabel=settled>LOAN_AMOUNT_EPSILON?'Kapama':'Borcu Kapat';
+  showFormModal(settled>LOAN_AMOUNT_EPSILON?'Borç Kapama':'Borcu Kapat',`<form class="loan-form ${loan.direction==='given'?'loan-form-given':'loan-form-taken'}" onsubmit="confirmLoanClose(event,'${id}')"><div class="loan-close-summary"><div><small>İlk borç</small><b>${fnum(original)} ${esc(assetName)}</b></div><div><small>${loan.direction==='given'?'Tahsil edilen':'Geri ödenen'}</small><b>${fnum(settled)} ${esc(assetName)}</b></div><div><small>Kalan borç</small><b>${fnum(remaining)} ${esc(assetName)}</b></div></div><div class="field"><label>Borç Verme / Alma Tarihi</label><input type="date" value="${esc(loan.date||date())}" readonly></div><div class="field"><label>Listeye Eklenme Tarihi (süre hesabı)</label><input type="date" value="${esc(durationStart)}" readonly></div><div class="field"><label>İşlem Tarihi</label><input id="loanCloseDateConfirm" type="date" value="${date()}" min="${esc(lastPaymentDate)}" required></div><div class="field"><label for="loanClosedAmount">${amountLabel} (${esc(assetName)})</label><input id="loanClosedAmount" type="text" inputmode="decimal" autocomplete="off" data-money value="${moneyText(remaining)}" oninput="updateLoanCloseAction('${id}')" required><small id="loanCloseAmountHelp" class="sub">En fazla kalan borç kadar ödeme/tahsilat girebilirsiniz.</small></div><p id="loanCloseBalancePreview" class="sub loan-close-preview">Bu işlemden sonra kalan: 0 ${esc(assetName)}</p><p class="sub">Tutar kalan borcun tamamına eşitse borç kapanır; daha azsa kısmi kapama olarak kaydedilir.</p><button id="loanCloseSubmitBtn" class="primary">${submitLabel}</button></form>`);
+  updateLoanCloseAction(id);
+}
+function updateLoanCloseAction(id){
+  const loan=(S.loans||[]).find(x=>x.id===id);
+  const input=byId('loanClosedAmount'),button=byId('loanCloseSubmitBtn'),help=byId('loanCloseAmountHelp'),preview=byId('loanCloseBalancePreview');
+  if(!loan||!input||!button)return;
+  const amount=parseMoney(input.value),remaining=loanRemainingAmount(loan),assetName=assetLabels[loan.asset||'TRY']||loan.asset||'TL';
+  const tooHigh=amount>remaining+LOAN_AMOUNT_EPSILON;
+  button.disabled=!(amount>0)||tooHigh;
+  button.textContent=tooHigh?'Tutar fazla':(amount>0&&amount>=remaining-LOAN_AMOUNT_EPSILON?'Borcu Kapat':'Kapama');
+  if(help)help.textContent=tooHigh?`Girdiğiniz tutar kalan ${fnum(remaining)} ${assetName} borçtan fazla olamaz.`:'En fazla kalan borç kadar ödeme/tahsilat girebilirsiniz.';
+  if(preview)preview.textContent=tooHigh?'Girilen tutar kalan borçtan yüksek.':`Bu işlemden sonra kalan: ${fnum(Math.max(0,remaining-amount))} ${assetName}`;
 }
 function confirmLoanClose(e,id){
   e.preventDefault();
   const loan=(S.loans||[]).find(x=>x.id===id);
   const closedAt=byId('loanCloseDateConfirm')?.value||'';
-  const closedAmount=parseMoney(byId('loanClosedAmount')?.value);
+  const enteredAmount=parseMoney(byId('loanClosedAmount')?.value);
   if(!loan||!closedAt)return;
-  if(!(closedAmount>0)){alert('Tahsil edilen veya geri ödenen tutar sıfırdan büyük olmalı.');return;}
+  const remaining=loanRemainingAmount(loan);
+  if(!(enteredAmount>0)){alert('Tahsil edilen veya geri ödenen tutar sıfırdan büyük olmalı.');return;}
+  if(enteredAmount>remaining+LOAN_AMOUNT_EPSILON){alert(`Bu tutar kalan ${fnum(remaining)} ${assetLabels[loan.asset]||loan.asset||'TL'} borçtan fazla olamaz.`);return;}
   const durationStart=loan.createdAt||loan.date||'';
-  if(closedAt < durationStart){alert('Kapama tarihi, borç kaydının listeye eklendiği tarihten önce olamaz.');return;}
-  loan.status='closed';
-  loan.closedAt=closedAt;
-  loan.closedAmount=closedAmount;
+  if(closedAt<durationStart){alert('Kapama tarihi, borç kaydının listeye eklendiği tarihten önce olamaz.');return;}
+  const lastPaymentDate=(loan.settlements||[]).map(x=>x.date||'').sort().slice(-1)[0]||durationStart;
+  if(closedAt<lastPaymentDate){alert('Ödeme/tahsilat tarihi önceki kapama tarihinden önce olamaz.');return;}
+  // Match the remaining balance when the input differs only by display rounding.
+  const paymentAmount=Math.abs(enteredAmount-remaining)<=LOAN_AMOUNT_EPSILON?remaining:enteredAmount;
+  loan.settlements=Array.isArray(loan.settlements)?loan.settlements:[];
+  loan.settlements.push({id:String(uid()),amount:paymentAmount,date:closedAt,memberId:S.active||loan.memberId,createdAt:new Date().toISOString(),type:loan.direction==='given'?'tahsilat':'geri_odeme'});
+  const totalSettled=loanSettledAmount(loan),remainingAfter=loanRemainingAmount(loan);
+  loan.closedAmount=totalSettled;
+  if(remainingAfter<=LOAN_AMOUNT_EPSILON){
+    loan.status='closed';loan.closedAt=closedAt;
+  }else{
+    loan.status='open';loan.closedAt=null;
+  }
   closeModal();
   save();
 }
@@ -2628,9 +2710,8 @@ function toggleLoanStatus(id){
   const loan=(S.loans||[]).find(x=>x.id===id);
   if(!loan)return;
   if(loan.status==='closed'){
-    loan.status='open';
-    loan.closedAt=null;
-    loan.closedAmount=null;
+    if(!confirm('Bu borcu yeniden açmak tüm tahsilat/geri ödeme kayıtlarını geri alır ve borcun tamamını yeniden açık yapar. Devam edilsin mi?'))return;
+    loan.status='open';loan.closedAt=null;loan.closedAmount=null;loan.settlements=[];
     save();
   }else openLoanCloseModal(id);
 }
@@ -2641,7 +2722,7 @@ function deleteLoan(id){
 }
 function loanTotal(direction){
   return (S.loans||[]).filter(l=>l.direction===direction&&l.status!=='closed')
-    .reduce((sum,l)=>sum+(Number(l.amount)||0)*(rates[l.asset]||1),0);
+    .reduce((sum,l)=>sum+loanRemainingAmount(l)*(rates[l.asset]||1),0);
 }
 function loansPanel(){
   S.loans=S.loans||[];
@@ -3034,7 +3115,7 @@ function applySharedState(data,preferredActive=null){
   S.transactions=Array.isArray(S.transactions)?S.transactions:[];
   S.recurringTransactions=(S.recurringTransactions||[]).map(r=>({...r,asset:r.asset||'TRY',months:Math.max(2,Number(r.months)||2),remaining:Math.max(0,Number(r.remaining??r.months)||0),generatedCount:Math.max(0,Number(r.generatedCount)||0),nextDate:r.nextDate||r.startDate||date(),anchorDay:Number(r.anchorDay)||Number((r.startDate||date()).slice(-2)),active:r.active!==false&&!r.paused&&Number(r.remaining??r.months)>0}));
   S.transactions=S.transactions.map(t=>({...t,asset:t.asset||'TRY'}));
-  S.loans=(S.loans||[]).map(l=>({...l,asset:l.asset||'TRY',status:l.status||'open',memberId:l.memberId||S.active,date:l.date||String(l.createdAt||date()).slice(0,10),closedAt:l.closedAt||null}));
+  S.loans=(S.loans||[]).map(normalizeLoanRecord);
   S.payments=(S.payments||[]).map(p=>({...p,recurring:!!p.recurring,interval:p.interval||'aylik',months:Math.max(1,Number(p.months)||1),remaining:Math.max(0,Number(p.remaining??(p.recurring?Number(p.months)||1:1)))}));
   const paymentPlansMigrated=expandLegacyRecurringPayments();
   S.savingMovements=(S.savingMovements||[]).map(m=>({...m,date:m.date||date()}));
