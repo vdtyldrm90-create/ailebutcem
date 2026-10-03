@@ -342,8 +342,7 @@ form{display:flex;flex-direction:column;gap:11px}.row2{display:grid;grid-templat
 .loan-payment-detail{display:flex;flex-wrap:wrap;align-items:baseline;gap:3px 8px;min-width:0;font-size:11px;overflow-wrap:anywhere}
 .loan-payment-detail b{font-size:11px;color:inherit}
 .loan-payment-detail small{font-size:10px;color:inherit;opacity:.85}
-.loan-payment-delete{flex:none;margin-left:4px;border:0;border-radius:6px;padding:4px 6px;background:#fff;color:#b93834;font-size:10px;font-weight:700;white-space:nowrap}
-.loan-payment-delete:hover{background:#fde9e7}
+.loan-payment-select{flex:none;display:flex;align-items:center;justify-content:center;margin-right:2px}
 .loan-balance-caption{font-size:9px;color:var(--muted);text-align:right;max-width:120px}
 .loan-close-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-bottom:12px}
 .loan-close-summary>div{min-width:0;padding:9px 7px;border:1px solid var(--border);border-radius:10px;background:var(--soft)}
@@ -1419,7 +1418,7 @@ let deleteMode={transactions:false,recurringTransactions:false,payments:false,go
 let dateFilters={transactions:'month',recurringTransactions:'all',payments:'month',movements:'all',home:'all'};
 let savingsFilter='active',loanFilter='open';
 
-let deleteSelected={transactions:new Set(),recurringTransactions:new Set(),payments:new Set(),goals:new Set(),movements:new Set(),loans:new Set()};
+let deleteSelected={transactions:new Set(),recurringTransactions:new Set(),payments:new Set(),goals:new Set(),movements:new Set(),loans:new Set(),loanSettlements:new Set()};
 
 S.rateData=S.rateData||{updated:rateUpdated,quotes:JSON.parse(JSON.stringify(rateQuotes))};
 if(S.rateData.quotes)Object.assign(rateQuotes,S.rateData.quotes);
@@ -2653,7 +2652,9 @@ function loanRow(l){
     const label=isIncoming?'Tahsilat':'Geri ödeme';
     const symbol=isIncoming?'+':'−';
     const tone=isIncoming?'loan-payment-in':'loan-payment-out';
-    return `<div class="loan-payment-chip ${tone}"><span class="loan-payment-symbol">${symbol}</span><span class="loan-payment-detail"><b>${label}: ${fnum(payment.amount)} ${assetName}</b><small>${fd(payment.date)} · ${esc(member(payment.memberId||l.memberId))}</small></span><button type="button" class="loan-payment-delete" title="Bu ödeme kaydını sil" aria-label="${label} kaydını sil" onclick="deleteLoanSettlement('${String(l.id).replace(/'/g, "\\'")}','${String(payment.id).replace(/'/g, "\\'")}')">Sil</button></div>`;
+    const paymentKey=loanSettlementSelectionKey(l.id,payment.id);
+    const paymentKeyAttr=paymentKey.replace(/'/g, "\\'");
+    return `<div class="loan-payment-chip ${tone} ${deleteMode.loans?'selectable-item':''}">${deleteMode.loans?`<label class="checkwrap loan-payment-select"><input type="checkbox" ${deleteSelected.loanSettlements.has(paymentKey)?'checked':''} onchange="toggleDeleteSelection('loanSettlements','${paymentKeyAttr}')"><span></span></label>`:''}<span class="loan-payment-symbol">${symbol}</span><span class="loan-payment-detail"><b>${label}: ${fnum(payment.amount)} ${assetName}</b><small>${fd(payment.date)} · ${esc(member(payment.memberId||l.memberId))}</small></span></div>`;
   }).join('');
   const balanceCaption=closed?'İlk borç':settled>LOAN_AMOUNT_EPSILON?'Kalan borç':'Borç tutarı';
   const actionLabel=closed?'Yeniden Aç':settled>LOAN_AMOUNT_EPSILON?'Kapama':'Borcu Kapat';
@@ -3692,23 +3693,37 @@ function delMember(id){if(S.members.length<=1)return;S.members=S.members.filter(
 function enterDeleteMode(type){
   deleteMode[type]=true;
   deleteSelected[type]=new Set();
+  if(type==='loans')deleteSelected.loanSettlements=new Set();
   render();
 }
 function cancelDeleteMode(type){
   deleteMode[type]=false;
   deleteSelected[type]=new Set();
+  if(type==='loans')deleteSelected.loanSettlements=new Set();
   render();
 }
+function loanSettlementSelectionKey(loanId,settlementId){return `${String(loanId)}::${String(settlementId)}`;}
 function toggleDeleteSelection(type,id){
-  if(deleteSelected[type].has(id)) deleteSelected[type].delete(id);
+  if(type==='loans'){
+    const loanId=String(id);
+    if(deleteSelected.loans.has(id)){deleteSelected.loans.delete(id)}
+    else{
+      deleteSelected.loans.add(id);
+      for(const key of Array.from(deleteSelected.loanSettlements||[]))if(key.startsWith(loanId+'::'))deleteSelected.loanSettlements.delete(key);
+    }
+  }else if(type==='loanSettlements'){
+    const key=String(id),loanId=key.split('::')[0];
+    if(deleteSelected.loanSettlements.has(key))deleteSelected.loanSettlements.delete(key);
+    else{deleteSelected.loanSettlements.add(key);deleteSelected.loans.delete(loanId)}
+  }else if(deleteSelected[type].has(id)) deleteSelected[type].delete(id);
   else deleteSelected[type].add(id);
   render();
 }
 function askDelete(type){
-  let count=deleteSelected[type].size;
+  let count=deleteSelected[type].size+(type==='loans'?(deleteSelected.loanSettlements?.size||0):0);
   if(!count)return;
   document.getElementById('modalTitle').textContent='Silme Onayı';
-  document.getElementById('modalBody').innerHTML=`<div class="confirmbox"><div class="confirmicon">!</div><h3>${count} kayıt silinecek</h3><p>Seçtiğiniz kayıtlar kalıcı olarak silinecek. Bu işlem geri alınamaz.</p><div class="confirmactions"><button class="secondary" onclick="closeModal()">Vazgeç</button><button class="dangerbtn" onclick="confirmDelete('${type}')">Evet, Sil</button></div></div>`;
+  document.getElementById('modalBody').innerHTML=`<div class="confirmbox"><div class="confirmicon">!</div><h3>${count} ${type==='loans'?'borç / ödeme kaydı':'kayıt'} silinecek</h3><p>Seçtiğiniz kayıtlar kalıcı olarak silinecek. Bu işlem geri alınamaz.</p><div class="confirmactions"><button class="secondary" onclick="closeModal()">Vazgeç</button><button class="dangerbtn" onclick="confirmDelete('${type}')">Evet, Sil</button></div></div>`;
   document.getElementById('modal').classList.add('show');
 }
 function confirmDelete(type){
@@ -3748,11 +3763,35 @@ function confirmDelete(type){
       if(g)reconcileGoalAfterMovementDeletion(g,deletedMoveIds);
     });
   }else if(type==='loans'){
-    S.loans=(S.loans||[]).filter(x=>!ids.has(x.id));
+    const selectedLoanIds=new Set(Array.from(ids).map(String));
+    S.loans=(S.loans||[]).filter(x=>!selectedLoanIds.has(String(x.id)));
+    const paymentDeletes=new Map();
+    for(const key of (deleteSelected.loanSettlements||new Set())){
+      const split=String(key).split('::');
+      if(split.length<2)continue;
+      const loanId=split.shift(),settlementId=split.join('::');
+      if(!paymentDeletes.has(loanId))paymentDeletes.set(loanId,new Set());
+      paymentDeletes.get(loanId).add(settlementId);
+    }
+    paymentDeletes.forEach((settlementIds,loanId)=>{
+      const loan=(S.loans||[]).find(x=>String(x.id)===String(loanId));
+      if(!loan)return;
+      loan.settlements=(Array.isArray(loan.settlements)?loan.settlements:[]).filter(x=>!settlementIds.has(String(x.id)));
+      const settled=loan.settlements.reduce((sum,x)=>sum+Math.max(0,Number(x.amount)||0),0);
+      const original=Math.max(0,Number(loan.amount)||0);
+      const remaining=Math.max(0,original-settled);
+      loan.closedAmount=settled;
+      loan.status=original>0&&remaining<=LOAN_AMOUNT_EPSILON?'closed':'open';
+      if(loan.status==='closed'){
+        const dates=loan.settlements.map(x=>x.date).filter(Boolean).sort();
+        loan.closedAt=dates.length?dates[dates.length-1]:(loan.date||null);
+      }else loan.closedAt=null;
+    });
   }
   closeModal();
   deleteMode[type]=false;
   deleteSelected[type]=new Set();
+  if(type==='loans')deleteSelected.loanSettlements=new Set();
   save();
 }
 
