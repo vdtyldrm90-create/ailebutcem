@@ -628,7 +628,7 @@ const LOCAL_DATA_EXISTED=!!localStorage.getItem(KEY);
 const SUPABASE_URL='https://lakbtousqphmqpzoyzcr.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_N1roEOU-xp89NrnV2X6KIg_RIHjtupY';
 const sb=(window.supabase&&window.supabase.createClient)?window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY):null;
-let cloud={initialized:false,session:null,user:null,member:null,family:null,roster:[],loading:false,busy:false,syncReady:false,channel:null,saveTimer:null,writeInFlight:false,writeAgain:false,lastCloudJson:'',pendingWriteJson:'',pendingRemoteState:null,message:'',messageType:'',inviteToken:'',inviteUrl:'',handledUserId:undefined,localPending:false};
+let cloud={initialized:false,session:null,user:null,member:null,family:null,roster:[],loading:false,busy:false,syncReady:false,channel:null,saveTimer:null,writeInFlight:false,writeAgain:false,lastCloudJson:'',pendingWriteJson:'',pendingRemoteState:null,message:'',messageType:'',inviteToken:'',inviteUrl:'',handledUserId:undefined,localPending:false,authView:'login'};
 let pendingInviteToken='';
 try{pendingInviteToken=(new URLSearchParams(window.location.search).get('invite')||'').trim()}catch(e){}
 let rates={TRY:1,USD:49.0170,EUR:55.5892,GOLD22:6191.826,GOLD24:6587.048,CEYREK:11170.053,YARIM:22340.107,TAM:44680.213};
@@ -875,7 +875,11 @@ function renderAuthGate(){
   document.body.classList.remove('auth-pending');
   document.body.classList.add('auth-required');
   const message=cloud.message?`<div class="auth-message ${esc(cloud.messageType||'')}">${esc(cloud.message)}</div>`:'';
-  gate.innerHTML=`<div class="auth-gate-wrap"><div class="auth-brand"><div class="auth-brand-mark">₺</div><div class="auth-brand-text"><b>Aile Bütçem</b><span>Aile bütçesi · Birikim · Ödemeler</span></div></div><section class="auth-card"><h1>Hesabına giriş yap</h1><p class="auth-intro">Aile bütçeni görüntülemek ve diğer aile bireyleriyle ortak kullanmak için giriş yap veya yeni bir hesap oluştur.</p>${message}<form onsubmit="cloudSignIn(event)"><div class="field"><label for="cloudEmail">E-posta adresi</label><input id="cloudEmail" name="email" type="email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" placeholder="ornek@eposta.com" style="text-transform:none" required></div><div class="field"><label for="cloudPassword">Şifre</label><input id="cloudPassword" name="password" type="password" autocomplete="current-password" minlength="6" placeholder="En az 6 karakter" required></div><button class="primary auth-submit" ${cloud.busy?'disabled':''}>${cloud.busy?'Lütfen bekleyin…':'Giriş Yap'}</button><button type="button" class="outline auth-secondary" onclick="cloudSignUp()" ${cloud.busy?'disabled':''}>Yeni Hesap Oluştur</button></form><p class="auth-footnote">E-posta ve şifren Supabase tarafından güvenli şekilde yönetilir. Hesap oluşturduğunda e-posta onayı istenebilir.</p></section></div>`;
+  const signup=cloud.authView==='signup';
+  const form=signup
+    ? `<h1>Yeni hesap oluştur</h1><p class="auth-intro">Aile Bütçem'i kullanmak için e-posta adresinle bir hesap oluştur.</p>${message}<form onsubmit="cloudSignUp(event)"><div class="field"><label for="signupEmail">E-posta adresi</label><input id="signupEmail" name="email" type="email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" placeholder="ornek@eposta.com" style="text-transform:none" required></div><div class="field"><label for="signupPassword">Şifre</label><input id="signupPassword" name="password" type="password" autocomplete="new-password" minlength="6" placeholder="En az 6 karakter" required></div><div class="field"><label for="signupPasswordConfirm">Şifreyi tekrar gir</label><input id="signupPasswordConfirm" name="passwordConfirm" type="password" autocomplete="new-password" minlength="6" placeholder="Şifreni tekrar yaz" required></div><button class="primary auth-submit" ${cloud.busy?'disabled':''}>${cloud.busy?'Lütfen bekleyin…':'Hesap Oluştur'}</button><button type="button" class="outline auth-secondary" onclick="showLoginScreen()" ${cloud.busy?'disabled':''}>Giriş ekranına dön</button></form><p class="auth-footnote">Kayıttan sonra e-posta onayı istenebilir. Gelen onay bağlantısını açıp giriş yapabilirsin.</p>`
+    : `<h1>Hesabına giriş yap</h1><p class="auth-intro">Aile bütçeni görüntülemek ve diğer aile bireyleriyle ortak kullanmak için giriş yap.</p>${message}<form onsubmit="cloudSignIn(event)"><div class="field"><label for="cloudEmail">E-posta adresi</label><input id="cloudEmail" name="email" type="email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" placeholder="ornek@eposta.com" style="text-transform:none" required></div><div class="field"><label for="cloudPassword">Şifre</label><input id="cloudPassword" name="password" type="password" autocomplete="current-password" minlength="6" placeholder="En az 6 karakter" required></div><button class="primary auth-submit" ${cloud.busy?'disabled':''}>${cloud.busy?'Lütfen bekleyin…':'Giriş Yap'}</button><button type="button" class="outline auth-secondary" onclick="showSignUpScreen()" ${cloud.busy?'disabled':''}>Yeni Hesap Oluştur</button></form><p class="auth-footnote">E-posta adresin ve şifren Supabase tarafından güvenli şekilde yönetilir.</p>`;
+  gate.innerHTML=`<div class="auth-gate-wrap"><div class="auth-brand"><div class="auth-brand-mark">₺</div><div class="auth-brand-text"><b>Aile Bütçem</b><span>Aile bütçesi · Birikim · Ödemeler</span></div></div><section class="auth-card">${form}</section></div>`;
 }
 function render(){
   renderAuthGate();
@@ -1622,6 +1626,7 @@ async function handleCloudSession(session){
   cloud.handledUserId=newId;
   cloud.loading=!!newId;cloud.message='';cloud.messageType='';
   if(!newId){
+    cloud.authView='login';
     const hadCloudFamily=!!cloud.member;
     teardownCloudChannel();cloud.member=null;cloud.family=null;cloud.roster=[];cloud.syncReady=false;cloud.inviteToken='';cloud.inviteUrl='';
     if(hadCloudFamily){S=localOnlyState(uid(),'Yerel profil');persistLocalOnly();}
@@ -1650,17 +1655,31 @@ async function cloudSignIn(e){
   setCloudMessage('Giriş başarılı. Aile bağlantısı kontrol ediliyor.','success');
   await handleCloudSession(data.session);
 }
-async function cloudSignUp(){
-  const email=(byId('cloudEmail')?.value||'').trim().toLowerCase(),password=byId('cloudPassword')?.value||'';
-  if(!email||!password){setCloudMessage('Hesap oluşturmak için e-posta ve şifre gir.','error');render();return}
+function showSignUpScreen(){
+  cloud.authView='signup';
+  setCloudMessage('');
+  render();
+}
+function showLoginScreen(){
+  cloud.authView='login';
+  setCloudMessage('');
+  render();
+}
+async function cloudSignUp(e){
+  if(e)e.preventDefault();
+  const email=(byId('signupEmail')?.value||'').trim().toLowerCase();
+  const password=byId('signupPassword')?.value||'';
+  const confirmPassword=byId('signupPasswordConfirm')?.value||'';
+  if(!email||!password||!confirmPassword){setCloudMessage('E-posta adresi ve tüm şifre alanlarını doldur.','error');render();return}
   if(password.length<6){setCloudMessage('Şifre en az 6 karakter olmalı.','error');render();return}
+  if(password!==confirmPassword){setCloudMessage('Şifreler eşleşmiyor. Lütfen tekrar kontrol et.','error');render();return}
   cloud.busy=true;setCloudMessage('Hesap oluşturuluyor…');render();
   const redirect=window.location.origin+window.location.pathname+(pendingInviteToken?'?invite='+encodeURIComponent(pendingInviteToken):'');
   const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo:redirect}});
   cloud.busy=false;
   if(error){setCloudMessage(cloudErrorText(error),'error');render();return}
   if(data.session){setCloudMessage('Hesap oluşturuldu.','success');await handleCloudSession(data.session)}
-  else{setCloudMessage('Hesap oluşturuldu. E-postana gönderilen onay bağlantısını aç, sonra bu sayfada giriş yap.','success');render()}
+  else{setCloudMessage('Hesap oluşturuldu. E-postana gönderilen onay bağlantısını aç. Ardından giriş ekranına dönüp giriş yap.','success');render()}
 }
 async function cloudSignOut(){
   if(!sb)return;
