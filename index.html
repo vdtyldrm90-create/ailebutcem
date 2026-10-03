@@ -2904,7 +2904,16 @@ function goalDetailPage(id){
   const moves=(S.savingMovements||[]).filter(m=>String(m.goalId)===String(g.id)).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))||String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
   const additions=moves.filter(m=>Number(m.sign)>0),withdrawals=moves.filter(m=>Number(m.sign)<=0),lotState=acquisitionLotState();
   const holdingSymbols={TRY:'₺',USD:'$',EUR:'€',GOLD22:'🟡',GOLD24:'🟡',CEYREK:'🪙',YARIM:'🪙',TAM:'🪙'};
-  const holdRows=Object.entries(g.holdings||{}).filter(([a,q])=>Number(q)>1e-8&&assetLabels[a]).map(([a,q])=>`<span class="goal-holding-chip" data-asset="${esc(a)}"><span class="goal-holding-symbol" aria-hidden="true">${holdingSymbols[a]||'•'}</span><span>${esc(assetLabels[a]||a)}</span><b>${fnum(q)}</b></span>`).join('');
+  // Hareket geçmişi olan hedeflerde mevcut varlıkları, eski g.holdings önbelleği yerine
+  // ekleme/çıkarma hareketlerinin net toplamından göster. Böylece silinmiş/eski hareketler
+  // nedeniyle açılır pencerede 1.000 TL gibi artık geçerli olmayan bakiyeler görünmez.
+  const goalMovements=(S.savingMovements||[]).filter(m=>String(m.goalId)===String(g.id));
+  const detailHoldings={};
+  if(goalMovements.length){
+    goalMovements.forEach(m=>{const a=m.asset||'TRY';detailHoldings[a]=(Number(detailHoldings[a])||0)+(Number(m.quantity)||0)*(Number(m.sign)||1)});
+    Object.keys(detailHoldings).forEach(a=>{if(detailHoldings[a]<=1e-8)delete detailHoldings[a]});
+  }else Object.assign(detailHoldings,g.holdings||{});
+  const holdRows=Object.entries(detailHoldings).filter(([a,q])=>Number(q)>1e-8&&assetLabels[a]).map(([a,q])=>`<span class="goal-holding-chip" data-asset="${esc(a)}"><span class="goal-holding-symbol" aria-hidden="true">${holdingSymbols[a]||'•'}</span><span>${esc(assetLabels[a]||a)}</span><b>${fnum(q)}</b></span>`).join('');
   return `<div class="stack savings-detail-page">
     <div class="record-detail-header"><button class="record-detail-back" onclick="closeSavingsDetail()">‹ Birikim Hedefleri</button><div class="record-detail-actions">${!completed?`<button type="button" class="primary" onclick="event.stopPropagation();openSavingMoveModal('${g.id}',1)">+ Birikim Ekle</button><button type="button" class="outline" onclick="event.stopPropagation();openSavingMoveModal('${g.id}',-1)">− Birikim Çıkar</button>`:''}</div></div>
     <section class="panel goal-detail-hero"><div class="goal-detail-top"><div class="goalname"><div class="pig" aria-label="Birikim">¤</div><div><h2 style="margin:0;font-size:19px">${esc(g.name)}</h2><div class="sub">${esc(member(g.memberId))}</div></div></div><span class="${completed?'goal-completed-badge':'goal-active-badge'}">${completed?'Tamamlandı':'Devam Ediyor'}</span></div>
