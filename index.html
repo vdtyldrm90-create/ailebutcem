@@ -759,6 +759,7 @@ body.auth-pending .app,body.auth-required .app{display:none!important}
 .auth-access-card .cloud-grid{grid-template-columns:1fr 1fr}
 .auth-access-card .cloud-panel>.cloud-note{display:block}
 @media(max-width:700px){.auth-gate{align-items:flex-start;padding:18px 12px;overflow-y:auto}.auth-card{padding:19px}.auth-access-wrap{width:100%}.auth-access-card .cloud-grid{grid-template-columns:1fr}.auth-guide-actions{flex-direction:column}.auth-guide-actions button{width:100%}}
+.install-nudge-content>p{margin:0;color:var(--fg);font-size:14px;line-height:1.55}.install-nudge-benefits{display:grid;gap:8px;padding:12px;border-radius:12px;background:var(--soft);color:var(--primary2);font-size:12px;font-weight:650}.install-nudge-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.install-nudge-actions button{min-height:42px}.install-nudge-content>small{color:var(--muted);font-size:10px;line-height:1.45}@media(max-width:420px){.install-nudge-actions{grid-template-columns:1fr}.install-nudge-content>p{font-size:13px}}
 </style>
 
 </head>
@@ -784,9 +785,12 @@ let pendingInviteToken='';
 let pendingInviteFamilyName='';
 let deferredInstallPrompt=null;
 let pwaInstallCompleted=!!(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||!!navigator.standalone;
+const PWA_INSTALL_NUDGE_KEY='aile-butcem-install-nudge-until-v1';
+let pwaInstallNudgeTimer=null;
+let pwaInstallNudgeShownThisPage=false;
 try{const initialInviteParams=new URLSearchParams(window.location.search);pendingInviteToken=(initialInviteParams.get('invite')||'').trim();pendingInviteFamilyName=(initialInviteParams.get('family')||'').trim();if(pendingInviteToken)cloud.authView='signup'}catch(e){}
-window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();deferredInstallPrompt=event;});
-window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;pwaInstallCompleted=true;setCloudMessage('Aile Bütçem cihazına yüklendi.','success');});
+window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();deferredInstallPrompt=event;scheduleStartupInstallNudge(1400);});
+window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;pwaInstallCompleted=true;hideStartupInstallNudge();setCloudMessage('Aile Bütçem cihazına yüklendi.','success');});
 let rates={TRY:1,USD:49.0170,EUR:55.5892,GOLD22:6191.826,GOLD24:6587.048,CEYREK:11170.053,YARIM:22340.107,TAM:44680.213};
 let rateUpdated='30 Eylül 2026';
 let rateQuotes={
@@ -2098,6 +2102,53 @@ function showLoginScreen(){
 function showGuideScreen(){
   cloud.authView='guide';setCloudMessage('');render();
 }
+function isIOSForPwaInstall(){
+  const ua=navigator.userAgent||'';
+  return /iPad|iPhone|iPod/i.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+}
+function scheduleStartupInstallNudge(delay=1800){
+  if(pwaInstallNudgeTimer||pwaInstallNudgeShownThisPage)return;
+  pwaInstallNudgeTimer=setTimeout(()=>{
+    pwaInstallNudgeTimer=null;
+    showStartupInstallNudge();
+  },delay);
+}
+function showStartupInstallNudge(){
+  const installed=pwaInstallCompleted||(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||!!navigator.standalone;
+  if(installed||pwaInstallNudgeShownThisPage)return;
+  const snoozeUntil=Number(localStorage.getItem(PWA_INSTALL_NUDGE_KEY)||0);
+  if(Date.now()<snoozeUntil)return;
+  // Show the invitation in browsers with native PWA install support, and on mobile browsers with a manual home-screen flow.
+  const ua=navigator.userAgent||'';
+  const chromiumBrowser=/Chrome\//i.test(ua)||/Chromium\//i.test(ua)||/Edg\//i.test(ua);
+  const mobileBrowser=/Android/i.test(ua)||isIOSForPwaInstall();
+  if(!deferredInstallPrompt&&!chromiumBrowser&&!mobileBrowser)return;
+  const modal=byId('modal');
+  if(!modal||modal.classList.contains('show'))return;
+  const title=byId('modalTitle'),body=byId('modalBody');
+  if(!title||!body)return;
+  title.textContent='Aile Bütçem’i ana ekrana ekle';
+  body.innerHTML=`<div class="stack install-nudge-content"><p>Aile Bütçem’i telefonunda veya bilgisayarında uygulama gibi açmak ister misin?</p><div class="install-nudge-benefits"><span>✓ Ana ekranda kendi simgesi</span><span>✓ Adres çubuğu olmadan uygulama görünümü</span><span>✓ Tek dokunuşla hızlı erişim</span></div><div class="install-nudge-actions"><button type="button" class="primary" onclick="installFromStartupNudge()">Ana ekrana ekle</button><button type="button" class="outline" onclick="dismissStartupInstallNudge()">Şimdi değil</button></div><small>Kurulum onayı cihazında gösterilir. İstediğin zaman üstteki indirme simgesinden tekrar deneyebilirsin.</small></div>`;
+  modal.classList.add('show');
+  pwaInstallNudgeShownThisPage=true;
+}
+function hideStartupInstallNudge(){
+  const modal=byId('modal');
+  const title=byId('modalTitle');
+  if(modal&&modal.classList.contains('show')&&title&&title.textContent==='Aile Bütçem’i ana ekrana ekle')closeModal();
+}
+function dismissStartupInstallNudge(){
+  // Do not keep asking every time the user opens the app; snooze this invitation for seven days.
+  localStorage.setItem(PWA_INSTALL_NUDGE_KEY,String(Date.now()+7*24*60*60*1000));
+  hideStartupInstallNudge();
+}
+async function installFromStartupNudge(){
+  hideStartupInstallNudge();
+  // The install prompt is opened from this direct user action, as required by browsers.
+  await installPwa();
+}
+window.addEventListener('load',()=>scheduleStartupInstallNudge(1800),{once:true});
+
 function installPwaHelp(){
   const title=byId('modalTitle'),body=byId('modalBody'),modal=byId('modal');if(!title||!body||!modal)return;
   const ua=navigator.userAgent||'';const ios=/iPad|iPhone|iPod/i.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);const edge=/Edg\//i.test(ua);const chrome=/Chrome\//i.test(ua)&&!edge;
