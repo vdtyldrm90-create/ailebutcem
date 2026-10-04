@@ -3049,8 +3049,16 @@ function goalDetailPage(id){
   const goalMovements=(S.savingMovements||[]).filter(m=>String(m.goalId)===String(g.id));
   const detailHoldings={};
   goalMovements.forEach(m=>{const a=m.asset||'TRY';detailHoldings[a]=(Number(detailHoldings[a])||0)+(Number(m.quantity)||0)*(Number(m.sign)||1)});
-  Object.keys(detailHoldings).forEach(a=>{if(detailHoldings[a]<=1e-8)delete detailHoldings[a]});
-  const holdRows=Object.entries(detailHoldings).filter(([a,q])=>Number(q)>1e-8&&assetLabels[a]).map(([a,q])=>`<span class="goal-holding-chip" data-asset="${esc(a)}"><span class="goal-holding-symbol" aria-hidden="true">${holdingSymbols[a]||'•'}</span><span>${esc(assetLabels[a]||a)}</span><b>${fnum(q)}</b></span>`).join('');
+  // Bir varlık sadece çıkarma hareketiyle de hedefte görünmeli: hareket geçmişinde
+  // kullanılan her varlığın simgesini koru. Net miktar pozitifse mevcut miktarı,
+  // sadece çıkarma varsa da çıkarılan miktarı eksi olarak göster.
+  const movementAssets=new Set(goalMovements.map(m=>m.asset||'TRY'));
+  const holdRows=[...movementAssets].filter(a=>assetLabels[a]).map(a=>{
+    const q=Number(detailHoldings[a])||0;
+    const onlyWithdraw=q<=0 && goalMovements.some(m=>(m.asset||'TRY')===a && Number(m.sign)<=0);
+    const displayQty=onlyWithdraw ? -goalMovements.filter(m=>(m.asset||'TRY')===a && Number(m.sign)<=0).reduce((n,m)=>n+(Number(m.quantity)||0),0) : q;
+    return `<span class="goal-holding-chip" data-asset="${esc(a)}"><span class="goal-holding-symbol" aria-hidden="true">${holdingSymbols[a]||'•'}</span><span>${esc(assetLabels[a]||a)}</span><b>${displayQty<0?'−':''}${fnum(Math.abs(displayQty))}</b></span>`;
+  }).join('');
   return `<div class="stack savings-detail-page">
     <div class="record-detail-header"><button class="record-detail-back" onclick="closeSavingsDetail()">‹ Birikim Hedefleri</button></div>
     <section class="panel goal-detail-hero"><div class="goal-detail-top"><div class="goalname"><div class="pig" aria-label="Birikim">¤</div><div><h2 style="margin:0;font-size:19px">${esc(g.name)}</h2><div class="sub">${esc(member(g.memberId))}</div></div></div><span class="${completed?'goal-completed-badge':'goal-active-badge'}">${completed?'Tamamlandı':'Devam Ediyor'}</span></div>
