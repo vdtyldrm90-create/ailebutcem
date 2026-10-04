@@ -1176,8 +1176,12 @@ body.cloud-cache-loading #main button,body.cloud-cache-loading #main input,body.
   .home-transactions-preview .panelhead h2{font-size:13px}
 }
 /* Rates are shown in a modal; soft green for buy and soft red for sell. */
-.rate-open-panel .panelhead{margin-bottom:0;align-items:center;gap:10px}
+ .rate-open-panel .panelhead{margin-bottom:0;align-items:center;gap:10px}
 .rate-open-panel .panelhead p{font-size:10px}
+.rate-open-panel .rate-view-btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;flex:0 0 auto;min-height:32px;padding:7px 10px;border:1px solid #cfdad7;border-radius:11px;background:#f7faf9;color:#45625c;font-size:10px;font-weight:700;box-shadow:0 1px 2px rgba(20,40,35,.05);white-space:nowrap}
+.rate-open-panel .rate-view-btn:active{transform:scale(.98);background:#eef5f2}
+.rate-open-panel .rate-view-btn .rate-btn-icon{font-size:12px;line-height:1}
+@media(max-width:430px){.rate-open-panel .panelhead{gap:8px}.rate-open-panel .panelhead>div:first-child{min-width:0}.rate-open-panel .rate-view-btn{min-height:30px;padding:6px 9px;font-size:9.5px}}
 .rates-modal-content .rategrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
 .rates-modal-content .rate{background:linear-gradient(145deg,#fff 0%,#f7faf9 100%);border:1px solid #e3ebe7}
 .rates-modal-content .rate-pair-row{border:1px solid transparent;border-radius:7px;margin-top:5px;padding:5px 7px}
@@ -2633,7 +2637,7 @@ function ratesMarkup(){
 }
 function openRatesModal(){showFormModal('Güncel Kurlar',ratesMarkup());}
 function ratesPanel(){
-  return `<section class="panel rate-open-panel"><div class="panelhead"><div><h2>Güncel Kurlar</h2><p>${esc(rateUpdated)} · Otomatik veri</p></div><button class="secondary" type="button" onclick="openRatesModal()">Kurları Gör</button></div></section>`;
+  return `<section class="panel rate-open-panel"><div class="panelhead"><div><h2>Güncel Kurlar</h2><p>${esc(rateUpdated)} · Otomatik veri</p></div><button class="rate-view-btn" type="button" onclick="openRatesModal()"><span class="rate-btn-icon">↗</span><span>Kurları Gör</span></button></div></section>`;
 }
 function days(d){return Math.ceil((new Date(d+'T12:00:00')-new Date(new Date().toDateString()))/86400000)}
 function due(p){let d=days(p.dueDate);return p.status==='odendi'?'<span class="badge ok">Ödendi</span>':d<0?'<span class="badge late">Gecikti</span>':d<=3?'<span class="badge warn">Yaklaşıyor</span>':`<span class="badge">${d} gün</span>`}
