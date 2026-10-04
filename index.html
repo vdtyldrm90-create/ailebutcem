@@ -404,6 +404,12 @@ form{display:flex;flex-direction:column;gap:11px}.row2{display:grid;grid-templat
 .modal-record-actions{display:flex;justify-content:flex-end;align-items:center;gap:5px;margin:8px 0 0;flex-wrap:wrap}
 .icon-action-btn{width:34px;height:32px;min-width:34px;padding:0!important;display:inline-flex;align-items:center;justify-content:center;border-radius:9px;font-size:15px;line-height:1}
 .add-plan-icon{font-size:20px;font-weight:700}
+
+.recurring-extension-actions{display:grid;grid-template-columns:1.25fr 1fr;gap:8px;margin-top:12px}
+.recurring-extension-actions .extension-add-btn,.recurring-extension-actions .extension-cancel-btn{min-height:42px;border-radius:12px;font-weight:800}
+.recurring-extension-actions .extension-add-btn{box-shadow:0 5px 14px rgba(24,119,78,.12)}
+.recurring-extension-actions .extension-cancel-btn{background:#f7f8fa;border-color:#e4e7ec;color:#475467}
+@media(max-width:420px){.recurring-extension-actions{grid-template-columns:1.15fr 1fr}.recurring-extension-actions .extension-add-btn,.recurring-extension-actions .extension-cancel-btn{min-height:40px}}
 @media(max-width:520px){.modal-record-actions{position:sticky;top:0;z-index:3;background:var(--card,#fff);padding:4px 0}.icon-action-btn{width:32px;height:30px;min-width:32px}}
 
 /* Ay sayısı alanlarında sayı sağa hizalı; imleç her zaman sayının sağında görünür. */
@@ -2720,7 +2726,7 @@ function openRecurringExtensionModal(type,id){
   showFormModal(title,`<div class="record-detail-modal recurring-extension-modal">
     <div class="field"><label>${label}</label><input id="recurringExtendMonths" type="number" min="1" max="600" step="1" value="" inputmode="numeric" autocomplete="off"></div>
     <div class="sub" style="margin:4px 0 12px">En fazla 600 ay ekleyebilirsiniz.</div>
-    <div class="form-actions"><button type="button" class="secondary" onclick="${back}">Vazgeç</button><button type="button" class="primary" onclick="${submit}">Ayları Ekle</button></div>
+    <div class="form-actions recurring-extension-actions"><button type="button" class="primary extension-add-btn" onclick="${submit}">Ekle</button><button type="button" class="secondary extension-cancel-btn" onclick="${back}">İptal</button></div>
   </div>`);
 }
 function extendRecurringTransactionPlan(id){
