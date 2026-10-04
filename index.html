@@ -1638,7 +1638,51 @@ S.savingMovements=(S.savingMovements||[]).map(m=>({...m,date:m.date||date()}));
   g.holdings={};
   Object.entries(net).forEach(([a,q])=>{if(Number(q)>1e-8)g.holdings[a]=Number(q)});
 });
-if(legacyPaymentsMigratedAtBoot)try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
+function migrateHistoricalRecords(){
+  let changed=false;
+  // Eski düzenli gelir/gider planlarının ilerlemesini, gerçekten oluşturulmuş
+  // geçmiş işlem kayıtlarından yeniden hesapla. Planın kendisi silinmez.
+  S.recurringTransactions=(S.recurringTransactions||[]).map(r=>{
+    const total=Math.max(2,Number(r.months)||2);
+    const occurrences=(S.transactions||[]).filter(t=>String(t.recurringId||'')===String(r.id));
+    const generated=Math.min(total,occurrences.length);
+    const remaining=Math.max(0,total-generated);
+    const latest=occurrences.slice().sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))).pop();
+    const nextDate=remaining>0
+      ? (r.nextDate|| (latest?.date?monthlyNextDate(latest.date,Number(r.anchorDay)||Number(String(r.startDate||r.date||date()).slice(-2))):null) || r.startDate || r.date || date())
+      : (r.nextDate||r.startDate||r.date||date());
+    const active=remaining>0;
+    if(Number(r.generatedCount)!==generated || Number(r.remaining)!==remaining || r.active!==active || r.nextDate!==nextDate){changed=true;}
+    return {...r,months:total,generatedCount:generated,remaining,nextDate,active};
+  });
+
+  // Eski birikim hareketlerinin eksik alanlarını yeni hareket sistemiyle uyumlu hale getir.
+  S.savingMovements=(S.savingMovements||[]).map(m=>{
+    const asset=m.asset||m.currency||'TRY';
+    const quantity=Math.max(0,Number(m.quantity??m.amount)||0);
+    const sign=Number(m.sign)===-1?-1:1;
+    const dateValue=m.date||m.createdAt?.slice?.(0,10)||date();
+    if(m.asset!==asset||Number(m.quantity)!==quantity||Number(m.sign)!==sign||m.date!==dateValue)changed=true;
+    return {...m,asset,quantity,sign,date:dateValue};
+  });
+
+  // Hedef bakiyesi geçmiş hareketlerin netinden yeniden oluşturulur.
+  (S.goals||[]).forEach(g=>{
+    const moves=(S.savingMovements||[]).filter(m=>String(m.goalId)===String(g.id));
+    const net={};
+    moves.forEach(m=>{
+      const a=m.asset||'TRY';
+      net[a]=(Number(net[a])||0)+(Number(m.quantity)||0)*(Number(m.sign)||1);
+    });
+    const holdings={};
+    Object.entries(net).forEach(([a,q])=>{if(Number(q)>1e-8)holdings[a]=Number(q)});
+    const old=JSON.stringify(g.holdings||{}), next=JSON.stringify(holdings);
+    if(old!==next){g.holdings=holdings;changed=true;}
+  });
+  return changed;
+}
+const historicalRecordsMigratedAtBoot=migrateHistoricalRecords();
+if(legacyPaymentsMigratedAtBoot||historicalRecordsMigratedAtBoot)try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
 
 function date(n=0){let d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)}
 function uid(){return crypto.randomUUID?crypto.randomUUID():Date.now()+Math.random()}
