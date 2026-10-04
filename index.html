@@ -1559,6 +1559,7 @@ let savingsDetailView=null;
 
 let deleteSelected={transactions:new Set(),recurringTransactions:new Set(),payments:new Set(),recurringPayments:new Set(),goals:new Set(),movements:new Set(),loans:new Set(),loanSettlements:new Set()};
 let modalDeleteSelected={recurringTransactions:new Set(),recurringPayments:new Set()};
+let modalDeleteMode={recurringTransactions:false,recurringPayments:false};
 
 S.rateData=S.rateData||{updated:rateUpdated,quotes:JSON.parse(JSON.stringify(rateQuotes))};
 if(S.rateData.quotes)Object.assign(rateQuotes,S.rateData.quotes);
@@ -2472,7 +2473,7 @@ function openRecurringPlanModal(id){
   const occurrenceRows=(S.transactions||[]).filter(t=>String(t.recurringId||'')===String(r.id)).sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))).map((t,i)=>{
     const selected=modalDeleteSelected.recurringTransactions.has(String(t.id));
     return `<div class="item ${selected?'selectable-item':''}" style="padding:7px 8px;margin-bottom:4px">
-      <label class="checkwrap" onclick="event.stopPropagation()"><input type="checkbox" ${selected?'checked':''} onchange="toggleModalDeleteSelection('recurringTransactions','${t.id}','${r.id}')"><span></span></label>
+      ${modalDeleteMode.recurringTransactions?`<label class="checkwrap" onclick="event.stopPropagation()"><input type="checkbox" ${selected?'checked':''} onchange="toggleModalDeleteSelection('recurringTransactions','${t.id}','${r.id}')"><span></span></label>`:''}
       <div class="icon ${r.type==='gelir'?'in':'out'}">${r.type==='gelir'?'↑':'↓'}</div>
       <div class="itemmain"><b>${i+1}. ay</b><div class="sub">${fd(t.date)} · ${r.type==='gelir'?'Gelir':'Gider'} · ${esc(member(t.memberId))}</div></div>
       <div class="amount ${r.type==='gelir'?'in':'out'}">${r.type==='gelir'?'+':'−'}${fnum(t.amount)} ${assetLabels[t.asset]||'TL'}</div>
@@ -2484,10 +2485,10 @@ function openRecurringPlanModal(id){
     <div class="field"><label>Açıklama</label><input value="${esc(r.description||r.category||'Düzenli işlem')}" disabled></div>
     <div class="field"><label>Başlangıç</label><input value="${fd(start)}" disabled></div>
     <div class="field"><label>İşlem Listesi</label>
-      <div class="modal-delete-bar"><span class="delete-count">${selectedCount?`${selectedCount} kayıt seçildi`:'Silmek için kayıtları seç'}</span>${selectedCount?`<button type="button" class="secondary" onclick="clearModalDeleteSelection('recurringTransactions','${r.id}')">İptal</button><button type="button" class="dangerbtn" onclick="deleteSelectedRecurringOccurrences('recurringTransactions','${r.id}')">Seçili Sil (${selectedCount})</button>`:`<span class="sub">☑ seçim kutularını kullan</span>`}</div>
+      <div class="modal-delete-bar">${modalDeleteMode.recurringTransactions?`<span class="delete-count">${selectedCount?`${selectedCount} kayıt seçildi`:'Kayıt seçin'}</span><button type="button" class="secondary" onclick="clearModalDeleteSelection('recurringTransactions','${r.id}')">İptal</button><button type="button" class="dangerbtn" onclick="deleteSelectedRecurringOccurrences('recurringTransactions','${r.id}')" ${selectedCount?'':'disabled'}>Seçili Sil (${selectedCount})</button>`:`<span class="delete-count">İşlem listesi</span><button type="button" class="secondary" onclick="enterModalDeleteMode('recurringTransactions','${r.id}')">Sil</button>`}</div>
       <div class="list" style="max-height:300px;overflow:auto">${occurrenceRows||'<div class="detail-empty-note">Henüz oluşturulmuş aylık kayıt yok.</div>'}</div>
     </div>
-    <div class="modal-actions"><button type="button" class="secondary" onclick="closeModal();modalDeleteSelected.recurringTransactions.clear()">Kapat</button></div>
+    <div class="modal-actions"><button type="button" class="secondary" onclick="closeModal();modalDeleteSelected.recurringTransactions.clear();modalDeleteMode.recurringTransactions=false">Kapat</button></div>
   </div>`);
 }
 
@@ -2762,7 +2763,7 @@ function openRecurringPaymentModal(groupId){
   const rowsHtml=rows.map(p=>{
     const selected=modalDeleteSelected.recurringPayments.has(String(p.id));
     return `<div class="item ${isOverdue(p)?'overdue-payment':''}" style="padding:7px 8px;margin-bottom:4px">
-      <label class="checkwrap" onclick="event.stopPropagation()"><input type="checkbox" ${selected?'checked':''} onchange="toggleModalDeleteSelection('recurringPayments','${p.id}','${groupId}')"><span></span></label>
+      ${modalDeleteMode.recurringPayments?`<label class="checkwrap" onclick="event.stopPropagation()"><input type="checkbox" ${selected?'checked':''} onchange="toggleModalDeleteSelection('recurringPayments','${p.id}','${groupId}')"><span></span></label>`:''}
       <div class="icon ${p.status==='odendi'?'in':'out'}">${p.status==='odendi'?'✓':'◷'}</div>
       <div class="itemmain"><b>${Number(p.recurringIndex)||1}. ay</b><div class="sub">${fd(p.dueDate)} · ${p.status==='odendi'?'Ödendi':'Bekliyor'}${isOverdue(p)?' · Gecikti':''}</div></div>
       <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:flex-end"><div class="amount out">${fnum(p.amount)} ${assetLabels[p.asset||'TRY']||'TL'}</div></div>
@@ -2773,11 +2774,16 @@ function openRecurringPaymentModal(groupId){
     <div class="record-detail-summary"><div><small>Ödeme</small><b>${esc(first.title)}</b></div><div><small>Tutar</small><b>${fnum(first.amount)} ${assetLabels[first.asset||'TRY']||'TL'}</b></div><div><small>Süre</small><b>${total} ay</b></div><div><small>Durum</small><b><span class="badge regular-status-badge ${status==='Bekliyor'?'pending':status==='Devam Ediyor'?'running':'done'}">${status}</span></b></div></div>
     <div class="field"><label>İlerleme</label><div class="sub">${paid} / ${total} ay ödendi · ${remaining} ay bekliyor</div></div>
     <div class="field"><label>Ödeme Listesi</label>
-      <div class="modal-delete-bar"><span class="delete-count">${selectedCount?`${selectedCount} kayıt seçildi`:'Silmek için kayıtları seç'}</span>${selectedCount?`<button type="button" class="secondary" onclick="clearModalDeleteSelection('recurringPayments','${groupId}')">İptal</button><button type="button" class="dangerbtn" onclick="deleteSelectedRecurringOccurrences('recurringPayments','${groupId}')">Seçili Sil (${selectedCount})</button>`:`<span class="sub">☑ seçim kutularını kullan</span>`}</div>
+      <div class="modal-delete-bar">${modalDeleteMode.recurringPayments?`<span class="delete-count">${selectedCount?`${selectedCount} kayıt seçildi`:'Kayıt seçin'}</span><button type="button" class="secondary" onclick="clearModalDeleteSelection('recurringPayments','${groupId}')">İptal</button><button type="button" class="dangerbtn" onclick="deleteSelectedRecurringOccurrences('recurringPayments','${groupId}')" ${selectedCount?'':'disabled'}>Seçili Sil (${selectedCount})</button>`:`<span class="delete-count">Ödeme listesi</span><button type="button" class="secondary" onclick="enterModalDeleteMode('recurringPayments','${groupId}')">Sil</button>`}</div>
       <div class="list" style="max-height:300px;overflow:auto">${rowsHtml}</div>
     </div>
-    <div class="modal-actions"><button type="button" class="secondary" onclick="closeModal();modalDeleteSelected.recurringPayments.clear()">Kapat</button></div>
+    <div class="modal-actions"><button type="button" class="secondary" onclick="closeModal();modalDeleteSelected.recurringPayments.clear();modalDeleteMode.recurringPayments=false">Kapat</button></div>
   </div>`);
+}
+function enterModalDeleteMode(type,groupId){
+  modalDeleteMode[type]=true;
+  modalDeleteSelected[type].clear();
+  if(type==='recurringTransactions')openRecurringPlanModal(groupId);else openRecurringPaymentModal(groupId);
 }
 function toggleModalDeleteSelection(type,id,groupId){
   const set=modalDeleteSelected[type]||new Set();
@@ -2786,7 +2792,7 @@ function toggleModalDeleteSelection(type,id,groupId){
   modalDeleteSelected[type]=set;
   if(type==='recurringTransactions')openRecurringPlanModal(groupId);else openRecurringPaymentModal(groupId);
 }
-function clearModalDeleteSelection(type,groupId){modalDeleteSelected[type].clear();if(type==='recurringTransactions')openRecurringPlanModal(groupId);else openRecurringPaymentModal(groupId)}
+function clearModalDeleteSelection(type,groupId){modalDeleteSelected[type].clear();modalDeleteMode[type]=false;if(type==='recurringTransactions')openRecurringPlanModal(groupId);else openRecurringPaymentModal(groupId)}
 function deleteSelectedRecurringOccurrences(type,groupId){
   const ids=new Set(Array.from(modalDeleteSelected[type]||[]).map(String));if(!ids.size)return;
   if(!confirm(`${ids.size} seçili kayıt silinsin mi?`))return;
@@ -2801,7 +2807,7 @@ function deleteSelectedRecurringOccurrences(type,groupId){
     S.transactions=(S.transactions||[]).filter(t=>!removedTransactionIds.has(String(t.id))&&!selected.has(String(t.paymentId||'')));
     S.payments=(S.payments||[]).filter(p=>!selected.has(String(p.id)));
   }
-  modalDeleteSelected[type].clear();save();closeModal();
+  modalDeleteSelected[type].clear();modalDeleteMode[type]=false;save();closeModal();
 }
 
 function payments(){
