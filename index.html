@@ -1390,6 +1390,27 @@ body.cloud-cache-loading #main button,body.cloud-cache-loading #main input,body.
 .regular-plan-card .goalhead{margin-bottom:9px}.regular-plan-card .goal-detail-open-hint{margin-top:8px}.regular-plan-card .progress{margin:7px 0}.regular-plan-card .amount{font-size:14px}
 .record-detail-modal{display:grid;gap:10px}.record-detail-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .modal-delete-bar{display:flex;align-items:center;justify-content:flex-end;gap:5px;flex-wrap:wrap;margin:0 0 2px}.modal-delete-bar .secondary,.modal-delete-bar .dangerbtn{padding:5px 8px;font-size:10px;line-height:1.1}.modal-delete-bar .delete-count{font-size:10px;color:var(--muted);margin-right:auto}.regular-status-badge{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap}.regular-status-badge.pending{background:#f8edc8;color:#8a6b18;border:1px solid #ead9a5}.regular-status-badge.running{background:#e4f4e9;color:#32865a;border:1px solid #b8ddc4}.regular-status-badge.done{background:#edf1f3;color:#4e5e64;border:1px solid #d9e0e3}.record-detail-summary>div{padding:9px;border:1px solid var(--line);border-radius:12px;background:#fafcfc}.record-detail-summary small{display:block;color:var(--muted);font-size:10px}.record-detail-summary b{display:block;margin-top:2px;font-size:13px}.modal-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:4px}.modal-actions button{flex:1;min-width:100px}
+/* Düzenli plan detay pencereleri: mobilde kompakt ve taşmasız */
+.recurring-detail-summary .detail-amount-box{position:relative;display:flex;align-items:center;justify-content:space-between;gap:7px}
+.recurring-detail-summary .detail-amount-main{min-width:0}
+.recurring-detail-summary .detail-amount-main b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.detail-edit-btn{display:inline-flex;align-items:center;justify-content:center;gap:4px;flex:0 0 auto;border:1px solid var(--line);background:var(--soft);color:var(--text);border-radius:9px;padding:5px 7px;font-size:10px;font-weight:700;line-height:1;cursor:pointer;box-shadow:0 1px 2px #0000000d}
+.detail-edit-btn:active{transform:scale(.97)}
+.recurring-detail-modal{gap:7px;max-height:calc(90vh - 70px);overflow:hidden}
+.recurring-detail-modal .field{margin:0}
+.recurring-detail-modal .field>label{margin-bottom:4px;font-size:10px}
+.recurring-detail-modal .modal-delete-bar{margin-bottom:4px}
+.recurring-detail-list{max-height:min(250px,34vh);overflow:auto;padding-right:2px;-webkit-overflow-scrolling:touch}
+.recurring-detail-list .item{min-height:38px}
+@media(max-width:700px){
+ .recurring-detail-modal{gap:6px;max-height:calc(84svh - 54px)}
+ .recurring-detail-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+ .recurring-detail-summary>div{padding:7px;border-radius:10px}
+ .recurring-detail-summary small{font-size:9px}
+ .recurring-detail-summary b{font-size:12px}
+ .recurring-detail-list{max-height:31svh}
+ .detail-edit-btn{padding:5px 6px;font-size:9px}
+}
 @media(max-width:420px){.regular-plan-card{padding:10px}.regular-plan-card .goalname b{font-size:12px}.record-detail-summary{gap:6px}.record-detail-summary>div{padding:8px}}
 </style>
 <style>.recurring-savings-panel{margin-top:10px}.recurring-savings-panel .panelhead{align-items:center;gap:10px}.recurring-savings-panel .panelhead .primary{flex:0 0 auto}</style>
@@ -2763,14 +2784,13 @@ function openRecurringPlanModal(id){
     </div>`;
   }).join('');
   const selectedCount=modalDeleteSelected.recurringTransactions.size;
-  showFormModal('Düzenli Gelir / Gider',`<div class="record-detail-modal">
-    <div class="record-detail-summary"><div><small>Tür</small><b class="${r.type==='gelir'?'regular-type-label':'regular-type-label'}">${r.type==='gelir'?'Gelir':'Gider'}</b></div><div><small>Tutar</small><b>${fnum(r.amount)} ${assetLabels[r.asset]||'TL'}</b></div><div><small>Süre</small><b>${total} ay</b></div><div><small>Durum</small><b><span class="badge regular-status-badge ${status==='Bekliyor'?'pending':status==='Devam Ediyor'?'running':'done'}">${status}</span></b></div></div>
-    <div class="form-actions"><button type="button" class="secondary" onclick="openRecurringAmountEditModal('transaction','${r.id}')">Tutarı Düzenle</button></div>
+  showFormModal('Düzenli Gelir / Gider',`<div class="record-detail-modal recurring-detail-modal">
+    <div class="record-detail-summary recurring-detail-summary"><div><small>Tür</small><b class="regular-type-label">${r.type==='gelir'?'Gelir':'Gider'}</b></div><div class="detail-amount-box"><div class="detail-amount-main"><small>Tutar</small><b>${fnum(r.amount)} ${assetLabels[r.asset]||'TL'}</b></div><button type="button" class="detail-edit-btn" title="Tutarı düzenle" aria-label="Tutarı düzenle" onclick="event.stopPropagation();openRecurringAmountEditModal('transaction','${r.id}')">✎ Düzenle</button></div><div><small>Süre</small><b>${total} ay</b></div><div><small>Durum</small><b><span class="badge regular-status-badge ${status==='Bekliyor'?'pending':status==='Devam Ediyor'?'running':'done'}">${status}</span></b></div></div>
     <div class="field"><label>Açıklama</label><input value="${esc(r.description||r.category||'Düzenli işlem')}" disabled></div>
     <div class="field"><label>Başlangıç</label><input value="${fd(start)}" disabled></div>
     <div class="field"><label>İşlem Listesi</label>
       <div class="modal-delete-bar">${modalDeleteMode.recurringTransactions?`<span class="delete-count">${selectedCount?`${selectedCount} kayıt seçildi`:'Kayıt seçin'}</span><button type="button" class="secondary" onclick="clearModalDeleteSelection('recurringTransactions','${r.id}')">İptal</button><button type="button" class="dangerbtn" onclick="deleteSelectedRecurringOccurrences('recurringTransactions','${r.id}')" ${selectedCount?'':'disabled'}>Seçili Sil (${selectedCount})</button>`:`<span class="delete-count">İşlem listesi</span><button type="button" class="secondary" onclick="enterModalDeleteMode('recurringTransactions','${r.id}')">Sil</button><button type="button" class="secondary icon-action-btn add-plan-icon" title="Süreye ay ekle" aria-label="Süreye ay ekle" onclick="openRecurringExtensionModal('transaction','${r.id}')">＋</button>`}</div>
-      <div class="list" style="max-height:300px;overflow:auto">${occurrenceRows||'<div class="detail-empty-note">Henüz oluşturulmuş aylık kayıt yok.</div>'}</div>
+      <div class="list recurring-detail-list">${occurrenceRows||'<div class="detail-empty-note">Henüz oluşturulmuş aylık kayıt yok.</div>'}</div>
     </div>
   </div>`);
 }
@@ -3088,13 +3108,12 @@ function openRecurringPaymentModal(groupId){
     </div>`;
   }).join('');
   const selectedCount=modalDeleteSelected.recurringPayments.size;
-  showFormModal('Düzenli Ödeme',`<div class="record-detail-modal">
-    <div class="record-detail-summary"><div><small>Ödeme</small><b>${esc(first.title)}</b></div><div><small>Tutar</small><b>${fnum(first.amount)} ${assetLabels[first.asset||'TRY']||'TL'}</b></div><div><small>Süre</small><b>${total} ay</b></div><div><small>Durum</small><b><span class="badge regular-status-badge ${status==='Bekliyor'?'pending':'running'}">${status}</span></b></div></div>
-    <div class="form-actions"><button type="button" class="secondary" onclick="openRecurringAmountEditModal('payment','${groupId}')">Tutarı Düzenle</button></div>
+  showFormModal('Düzenli Ödeme',`<div class="record-detail-modal recurring-detail-modal">
+    <div class="record-detail-summary recurring-detail-summary"><div><small>Ödeme</small><b>${esc(first.title)}</b></div><div class="detail-amount-box"><div class="detail-amount-main"><small>Tutar</small><b>${fnum(first.amount)} ${assetLabels[first.asset||'TRY']||'TL'}</b></div><button type="button" class="detail-edit-btn" title="Tutarı düzenle" aria-label="Tutarı düzenle" onclick="event.stopPropagation();openRecurringAmountEditModal('payment','${groupId}')">✎ Düzenle</button></div><div><small>Süre</small><b>${total} ay</b></div><div><small>Durum</small><b><span class="badge regular-status-badge ${status==='Bekliyor'?'pending':'running'}">${status}</span></b></div></div>
     <div class="field"><label>İlerleme</label><div class="sub">${paid} / ${total} ay ödendi · ${remaining} ay bekliyor</div></div>
     <div class="field"><label>Ödeme Listesi</label>
       <div class="modal-delete-bar">${modalDeleteMode.recurringPayments?`<span class="delete-count">${selectedCount?`${selectedCount} kayıt seçildi`:'Kayıt seçin'}</span><button type="button" class="secondary" onclick="clearModalDeleteSelection('recurringPayments','${groupId}')">İptal</button><button type="button" class="dangerbtn" onclick="deleteSelectedRecurringOccurrences('recurringPayments','${groupId}')" ${selectedCount?'':'disabled'}>Seçili Sil (${selectedCount})</button>`:`<span class="delete-count">Ödeme listesi</span><button type="button" class="secondary" onclick="enterModalDeleteMode('recurringPayments','${groupId}')">Sil</button><button type="button" class="secondary icon-action-btn add-plan-icon" title="Süreye ay ekle" aria-label="Süreye ay ekle" onclick="openRecurringExtensionModal('payment','${groupId}')">＋</button>`}</div>
-      <div class="list" style="max-height:300px;overflow:auto">${rowsHtml}</div>
+      <div class="list recurring-detail-list">${rowsHtml}</div>
     </div>
   </div>`);
 }
