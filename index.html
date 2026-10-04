@@ -383,6 +383,11 @@ form{display:flex;flex-direction:column;gap:11px}.row2{display:grid;grid-templat
 .regular-tx-header-actions,.regular-pay-header-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
 .compact-action{width:34px!important;height:34px!important;min-width:34px!important;padding:0!important;border-radius:10px!important;font-size:16px!important;display:inline-flex!important;align-items:center;justify-content:center;}
 .delete-selection-mode{overflow-anchor:none;}
+
+.modal-record-actions{display:flex;justify-content:flex-end;align-items:center;gap:5px;margin:8px 0 0;flex-wrap:wrap}
+.icon-action-btn{width:34px;height:32px;min-width:34px;padding:0!important;display:inline-flex;align-items:center;justify-content:center;border-radius:9px;font-size:15px;line-height:1}
+.add-plan-icon{font-size:20px;font-weight:700}
+@media(max-width:520px){.modal-record-actions{position:sticky;top:0;z-index:3;background:var(--card,#fff);padding:4px 0}.icon-action-btn{width:32px;height:30px;min-width:32px}}
 </style>
 </style>
 
@@ -2576,28 +2581,32 @@ function extendRecurringTransactionPlan(id){
   if(!r)return;
   const extra=Math.floor(Number(prompt('Bu düzenli işlem kaç ay uzatılsın?', '1'))||0);
   if(extra<1)return;
-  const maxExtra=600;
-  const add=Math.min(extra,maxExtra);
-  const oldTotal=Math.max(1,Number(r.months)||1);
+  const add=Math.min(extra,600);
+  const oldTotal=Math.max(1,Number(r.months)||Number(r.totalMonths)||1);
   const start=r.startDate||r.date||date();
-  const anchor=Number(r.anchorDay)||Number(start.slice(-2))||1;
-  const existing=(S.transactions||[]).filter(t=>String(t.recurringId||'')===String(r.id));
-  const lastDate=existing.map(t=>t.date).filter(Boolean).sort().pop()||start;
+  const anchor=Number(r.anchorDay)||Number(String(start).slice(-2))||1;
+  const existing=(S.transactions||[]).filter(t=>String(t.recurringId||'')===String(r.id)).sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+  const lastDate=existing.map(t=>t.date).filter(Boolean).pop()||r.lastGeneratedDate||start;
   let occurrenceDate=monthlyNextDate(lastDate,anchor);
+  const newTotal=oldTotal+add;
   S.transactions=S.transactions||[];
   for(let i=1;i<=add;i++){
     const index=oldTotal+i;
     const occurrenceId=`${r.id}-occ-${index}`;
-    if(!(S.transactions||[]).some(t=>String(t.id)===occurrenceId)){
-      S.transactions.push({id:occurrenceId,recurringId:r.id,recurringOccurrenceId:occurrenceId,scheduledRecurring:true,scheduleMonthIndex:index,scheduleTotalMonths:oldTotal+add,type:r.type,amount:r.amount,asset:r.asset,category:r.category,date:occurrenceDate,description:r.description,memberId:r.memberId});
+    if(!S.transactions.some(t=>String(t.id)===occurrenceId)){
+      S.transactions.push({id:occurrenceId,recurringId:r.id,recurringOccurrenceId:occurrenceId,scheduledRecurring:true,scheduleMonthIndex:index,scheduleTotalMonths:newTotal,type:r.type,amount:r.amount,asset:r.asset||'TRY',category:r.category,date:occurrenceDate,description:r.description,memberId:r.memberId});
     }
     occurrenceDate=monthlyNextDate(occurrenceDate,anchor);
   }
-  r.months=oldTotal+add;
-  r.generatedCount=(S.transactions||[]).filter(t=>String(t.recurringId||'')===String(r.id)).length;
-  r.remaining=Math.max(0,r.months-r.generatedCount);
+  S.transactions.filter(t=>String(t.recurringId||'')===String(r.id)).forEach(t=>{t.scheduleTotalMonths=newTotal});
+  r.months=newTotal;
+  r.totalMonths=newTotal;
+  r.generatedCount=S.transactions.filter(t=>String(t.recurringId||'')===String(r.id)).length;
+  r.remaining=Math.max(0,newTotal-r.generatedCount);
   r.nextDate=occurrenceDate;
-  r.lastGeneratedDate=(S.transactions||[]).filter(t=>String(t.recurringId||'')===String(r.id)).map(t=>t.date).filter(Boolean).sort().pop()||r.lastGeneratedDate||null;
+  r.lastGeneratedDate=S.transactions.filter(t=>String(t.recurringId||'')===String(r.id)).map(t=>t.date).filter(Boolean).sort().pop()||r.lastGeneratedDate||null;
+  r.active=r.remaining>0;
+  r.paused=false;
   save();
   openRecurringPlanModal(r.id);
 }
@@ -2618,6 +2627,7 @@ function openRecurringPlanModal(id){
   }).join('');
   const selectedCount=modalDeleteSelected.recurringTransactions.size;
   showFormModal('Düzenli Gelir / Gider',`<div class="record-detail-modal">
+    <div class="record-detail-actions modal-record-actions">${modalDeleteMode.recurringTransactions?`<button type="button" class="secondary icon-action-btn" title="Silme modundan çık" aria-label="Silme modundan çık" onclick="clearModalDeleteSelection('recurringTransactions','${r.id}')">↩</button>`:`<button type="button" class="secondary icon-action-btn" title="Sil" aria-label="Sil" onclick="enterModalDeleteMode('recurringTransactions','${r.id}')">🗑</button>`}<button type="button" class="secondary icon-action-btn add-plan-icon" title="Süreye ay ekle" aria-label="Süreye ay ekle" onclick="extendRecurringTransactionPlan('${r.id}')">＋</button><button type="button" class="secondary icon-action-btn" title="Kapat" aria-label="Kapat" onclick="closeModal();modalDeleteSelected.recurringTransactions.clear();modalDeleteMode.recurringTransactions=false">×</button></div>
     <div class="record-detail-summary"><div><small>Tür</small><b>${r.type==='gelir'?'Gelir':'Gider'}</b></div><div><small>Tutar</small><b>${fnum(r.amount)} ${assetLabels[r.asset]||'TL'}</b></div><div><small>Süre</small><b>${total} ay</b></div><div><small>Durum</small><b><span class="badge regular-status-badge ${status==='Bekliyor'?'pending':status==='Devam Ediyor'?'running':'done'}">${status}</span></b></div></div>
     <div class="field"><label>Açıklama</label><input value="${esc(r.description||r.category||'Düzenli işlem')}" disabled></div>
     <div class="field"><label>Başlangıç</label><input value="${fd(start)}" disabled></div>
@@ -2625,7 +2635,6 @@ function openRecurringPlanModal(id){
       <div class="modal-delete-bar">${modalDeleteMode.recurringTransactions?`<span class="delete-count">${selectedCount?`${selectedCount} kayıt seçildi`:'Kayıt seçin'}</span><button type="button" class="secondary" onclick="clearModalDeleteSelection('recurringTransactions','${r.id}')">İptal</button><button type="button" class="dangerbtn" onclick="deleteSelectedRecurringOccurrences('recurringTransactions','${r.id}')" ${selectedCount?'':'disabled'}>Seçili Sil (${selectedCount})</button>`:`<span class="delete-count">İşlem listesi</span><button type="button" class="secondary" onclick="enterModalDeleteMode('recurringTransactions','${r.id}')">Sil</button>`}</div>
       <div class="list" style="max-height:300px;overflow:auto">${occurrenceRows||'<div class="detail-empty-note">Henüz oluşturulmuş aylık kayıt yok.</div>'}</div>
     </div>
-    <div class="modal-actions"><button type="button" class="secondary" onclick="closeModal();modalDeleteSelected.recurringTransactions.clear();modalDeleteMode.recurringTransactions=false">Kapat</button><button type="button" class="primary" onclick="extendRecurringTransactionPlan('${r.id}')">+ Ekle</button></div>
   </div>`);
 }
 
@@ -2899,15 +2908,24 @@ function extendRecurringPaymentPlan(groupId){
   if(extra<1)return;
   const add=Math.min(extra,600);
   const first=rows[0];
-  const oldTotal=rows.length;
+  const oldTotal=Math.max(rows.reduce((m,p)=>Math.max(m,Number(p.recurringIndex)||1),0),Number(first.recurringTotal)||Number(first.months)||rows.length,1);
+  const newTotal=oldTotal+add;
   const anchor=Number(first.anchorDay)||Number(String(first.dueDate||date()).slice(-2))||1;
-  let dueDate=monthlyNextDate(rows[rows.length-1].dueDate||first.dueDate||date(),anchor);
+  const lastRow=rows.slice().sort((a,b)=>String(a.dueDate||'').localeCompare(String(b.dueDate||''))).pop()||first;
+  let dueDate=monthlyNextDate(lastRow.dueDate||first.dueDate||date(),anchor);
   for(let i=1;i<=add;i++){
     const index=oldTotal+i;
-    S.payments.push({id:`${groupId}-installment-${index}`,title:first.title,category:first.category,amount:first.amount,asset:first.asset||'TRY',dueDate,status:'bekliyor',memberId:first.memberId,recurring:true,recurringGroupId:String(groupId),installment:true,recurringIndex:index,recurringTotal:oldTotal+add,interval:'aylik',months:oldTotal+add,remaining:oldTotal+add-index,anchorDay:anchor});
+    const id=`${groupId}-installment-${index}`;
+    if(!(S.payments||[]).some(p=>String(p.id)===id)){
+      S.payments.push({id,title:first.title,category:first.category,amount:first.amount,asset:first.asset||'TRY',dueDate,status:'bekliyor',memberId:first.memberId,recurring:true,recurringGroupId:String(groupId),installment:true,recurringIndex:index,recurringTotal:newTotal,interval:'aylik',months:newTotal,remaining:newTotal-index,anchorDay:anchor});
+    }
     dueDate=monthlyNextDate(dueDate,anchor);
   }
-  S.payments.filter(p=>String(p.recurringGroupId||p.id)===String(groupId)).forEach(p=>{p.recurringTotal=oldTotal+add;p.months=oldTotal+add;p.remaining=Math.max(0,oldTotal+add-(Number(p.recurringIndex)||1));});
+  S.payments.filter(p=>String(p.recurringGroupId||p.id)===String(groupId)).forEach(p=>{
+    p.recurring=true;p.installment=true;p.recurringTotal=newTotal;p.months=newTotal;
+    p.remaining=Math.max(0,newTotal-(Number(p.recurringIndex)||1));
+    p.anchorDay=Number(p.anchorDay)||anchor;
+  });
   save();
   openRecurringPaymentModal(groupId);
 }
@@ -2928,13 +2946,13 @@ function openRecurringPaymentModal(groupId){
   }).join('');
   const selectedCount=modalDeleteSelected.recurringPayments.size;
   showFormModal('Düzenli Ödeme',`<div class="record-detail-modal">
+    <div class="record-detail-actions modal-record-actions">${modalDeleteMode.recurringPayments?`<button type="button" class="secondary icon-action-btn" title="Silme modundan çık" aria-label="Silme modundan çık" onclick="clearModalDeleteSelection('recurringPayments','${groupId}')">↩</button>`:`<button type="button" class="secondary icon-action-btn" title="Sil" aria-label="Sil" onclick="enterModalDeleteMode('recurringPayments','${groupId}')">🗑</button>`}<button type="button" class="secondary icon-action-btn add-plan-icon" title="Süreye ay ekle" aria-label="Süreye ay ekle" onclick="extendRecurringPaymentPlan('${groupId}')">＋</button><button type="button" class="secondary icon-action-btn" title="Kapat" aria-label="Kapat" onclick="closeModal();modalDeleteSelected.recurringPayments.clear();modalDeleteMode.recurringPayments=false">×</button></div>
     <div class="record-detail-summary"><div><small>Ödeme</small><b>${esc(first.title)}</b></div><div><small>Tutar</small><b>${fnum(first.amount)} ${assetLabels[first.asset||'TRY']||'TL'}</b></div><div><small>Süre</small><b>${total} ay</b></div><div><small>Durum</small><b><span class="badge regular-status-badge ${status==='Bekliyor'?'pending':status==='Devam Ediyor'?'running':'done'}">${status}</span></b></div></div>
     <div class="field"><label>İlerleme</label><div class="sub">${paid} / ${total} ay ödendi · ${remaining} ay bekliyor</div></div>
     <div class="field"><label>Ödeme Listesi</label>
       <div class="modal-delete-bar">${modalDeleteMode.recurringPayments?`<span class="delete-count">${selectedCount?`${selectedCount} kayıt seçildi`:'Kayıt seçin'}</span><button type="button" class="secondary" onclick="clearModalDeleteSelection('recurringPayments','${groupId}')">İptal</button><button type="button" class="dangerbtn" onclick="deleteSelectedRecurringOccurrences('recurringPayments','${groupId}')" ${selectedCount?'':'disabled'}>Seçili Sil (${selectedCount})</button>`:`<span class="delete-count">Ödeme listesi</span><button type="button" class="secondary" onclick="enterModalDeleteMode('recurringPayments','${groupId}')">Sil</button>`}</div>
       <div class="list" style="max-height:300px;overflow:auto">${rowsHtml}</div>
     </div>
-    <div class="modal-actions"><button type="button" class="secondary" onclick="closeModal();modalDeleteSelected.recurringPayments.clear();modalDeleteMode.recurringPayments=false">Kapat</button><button type="button" class="primary" onclick="extendRecurringPaymentPlan('${groupId}')">+ Ekle</button></div>
   </div>`);
 }
 function enterModalDeleteMode(type,groupId){
