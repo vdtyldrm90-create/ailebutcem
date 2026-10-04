@@ -126,6 +126,56 @@ form{display:flex;flex-direction:column;gap:11px}.row2{display:grid;grid-templat
   .profile{max-width:94px}
 }
 
+/* Ana Sayfa - modern mobil kur kartları */
+.home-rates-panel{overflow:hidden;background:linear-gradient(145deg,#ffffff 0%,#f6fbf9 100%);}
+.home-rates-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:11px;}
+.home-rates-title{display:flex;align-items:center;gap:8px;min-width:0;}
+.home-rates-title h2{margin:0;font-size:16px;color:#142b61;}
+.home-rates-title-icon{width:27px;height:27px;display:grid;place-items:center;border-radius:9px;background:#edf5ff;flex:none;}
+.home-rates-title-icon svg{width:18px;height:18px;}
+.home-rates-head p{margin:3px 0 0 35px;color:var(--muted);font-size:9px;white-space:nowrap;}
+.home-rates-all{border:0;background:transparent;color:#1759d1;font-weight:800;font-size:10px;white-space:nowrap;padding:5px 2px;cursor:pointer;}
+.home-rates-all span{font-size:17px;vertical-align:-1px;margin-left:2px;}
+.home-rate-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;}
+.home-rate-card{min-width:0;border:1px solid #e2eaf0;border-radius:16px;padding:10px 9px 9px;text-align:left;background:#fff;box-shadow:0 5px 14px rgba(30,60,80,.055);cursor:pointer;color:inherit;}
+.home-rate-card:active{transform:scale(.985);}
+.home-rate-usd{background:linear-gradient(145deg,#f9fffb,#fff);border-color:#d8eee1;}
+.home-rate-eur{background:linear-gradient(145deg,#f8fbff,#fff);border-color:#dbe7fb;}
+.home-rate-gold{background:linear-gradient(145deg,#fffdf4,#fff);border-color:#f2e5bb;}
+.home-rate-top{display:flex;align-items:center;justify-content:space-between;gap:5px;}
+.home-rate-icon{width:42px;height:42px;display:grid;place-items:center;border-radius:13px;flex:none;}
+.home-rate-icon svg{width:40px;height:40px;display:block;}
+.home-rate-arrow{font-size:20px;line-height:1;color:#718096;}
+.home-rate-name{margin-top:8px;color:#142b61;font-size:11px;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.home-rate-value{margin-top:3px;color:#102d70;font-size:17px;font-weight:900;line-height:1.15;letter-spacing:-.3px;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.home-rate-unit{font-size:9px;color:var(--muted);margin-top:1px;}
+.home-rate-pairs{display:flex;flex-direction:column;gap:2px;margin-top:8px;padding-top:6px;border-top:1px solid rgba(100,116,139,.12);font-size:8px;color:var(--muted);}
+.home-rate-pairs span{display:flex;justify-content:space-between;gap:3px;white-space:nowrap;}
+.home-rate-pairs b{font-size:8.5px;color:#30445d;font-variant-numeric:tabular-nums;}
+@media(max-width:430px){
+ .home-rates-panel{padding:11px;}
+ .home-rates-head{margin-bottom:9px;}
+ .home-rates-title h2{font-size:15px;}
+ .home-rates-head p{font-size:8px;margin-left:34px;}
+ .home-rates-all{font-size:9px;}
+ .home-rate-grid{gap:6px;}
+ .home-rate-card{padding:8px 7px 8px;border-radius:14px;}
+ .home-rate-icon{width:35px;height:35px;}
+ .home-rate-icon svg{width:34px;height:34px;}
+ .home-rate-name{font-size:10px;margin-top:6px;}
+ .home-rate-value{font-size:14px;}
+ .home-rate-unit{font-size:8px;}
+ .home-rate-pairs{margin-top:6px;padding-top:5px;font-size:7px;}
+ .home-rate-pairs b{font-size:7.5px;}
+}
+@media(max-width:360px){
+ .home-rate-card{padding:7px 6px;}
+ .home-rate-icon{width:31px;height:31px;}
+ .home-rate-icon svg{width:30px;height:30px;}
+ .home-rate-value{font-size:13px;}
+ .home-rate-pairs{font-size:6.5px;}
+ .home-rate-pairs b{font-size:7px;}
+}
 /* MOBİL ALT MENÜ */
 @media (max-width: 800px) {
   body {
@@ -2716,8 +2766,19 @@ function ratesMarkup(){
   return `<div class="rates-modal-content"><div class="rates-modal-meta"><span class="rates-live-dot"></span><span id="rateUpdatedText">${esc(rateUpdated)} · Otomatik veri</span></div><div class="rategrid live-rates">${rateCard('Dolar / TL','USD')}${rateCard('Euro / TL','EUR')}${rateCard('22 Ayar Altın','GOLD22','TL/gr')}${rateCard('24 Ayar Altın','GOLD24','TL/gr')}${rateCard('Çeyrek Altın','CEYREK','hesaplanan')}${rateCard('Yarım Altın','YARIM','hesaplanan')}${rateCard('Tam Altın','TAM','hesaplanan')}</div><details class="rate-note-details"><summary>Kur açıklaması</summary><p class="sub rate-note">Alış: kurumun sizden alırken ödediği referans fiyat, yaklaşık bozdurma değeridir. Satış: aynı varlığı yeniden almak için ödeyeceğiniz referans fiyattır. TCMB verisi yoksa döviz için orta kura yaklaşık %0,5 referans makası uygulanır. Altında spot fiyata yaklaşık makas eklenir; gerçek kuyumcu fiyatları farklı olabilir. Çeyrek, yarım ve tam altın değerleri yaklaşık hesaplanır.</p></details></div>`;
 }
 function openRatesModal(){showFormModal('Güncel Kurlar',ratesMarkup());}
+function homeRateIcon(kind){
+  const common='viewBox="0 0 48 48" aria-hidden="true"';
+  if(kind==='USD') return `<svg ${common}><circle cx="24" cy="24" r="20" fill="#18a765"/><circle cx="24" cy="24" r="15" fill="#24c77b" opacity=".28"/><path d="M27.5 13.5c-1.2-1-2.8-1.5-4.6-1.5-3.5 0-5.9 1.8-5.9 4.4 0 2.5 1.8 3.8 5.6 4.8 3.1.8 4.3 1.5 4.3 3.1 0 1.5-1.4 2.5-3.8 2.5-2 0-3.9-.8-5.2-2.1l-2.1 2.8c1.6 1.6 4 2.6 6.7 2.9v3.1h3v-3.1c4-.6 6.2-2.7 6.2-5.9 0-3.3-2.1-4.7-6.1-5.8-2.9-.8-3.8-1.3-3.8-2.3 0-.9.9-1.7 2.6-1.7 1.6 0 3.1.6 4.2 1.6l2-2.8Z" fill="#fff"/></svg>`;
+  if(kind==='EUR') return `<svg ${common}><circle cx="24" cy="24" r="20" fill="#2563eb"/><circle cx="24" cy="24" r="15" fill="#60a5fa" opacity=".3"/><path d="M31 17.2c-1.6-1.5-3.7-2.3-6-2.3-4.8 0-8.1 3.6-8.1 9.1s3.3 9.1 8.1 9.1c2.4 0 4.5-.8 6.1-2.3l-2.3-2.6c-1 .9-2.1 1.4-3.5 1.4-2.2 0-3.8-1.5-4.2-4h6.7v-2.5h-6.7c.4-2.5 2-4 4.2-4 1.4 0 2.5.5 3.5 1.4L31 17.2Z" fill="#fff"/></svg>`;
+  return `<svg ${common}><circle cx="24" cy="24" r="20" fill="#f5b51b"/><circle cx="24" cy="24" r="15" fill="#ffd85a" opacity=".35"/><path d="m14 20 5-7h10l5 7-5 3-2.2-4.2L24 23l-2.8-4.2L19 23l-5-3Zm3 5h14l3 7H14l3-7Z" fill="#fff" opacity=".95"/><path d="M19 28h10" stroke="#e39a00" stroke-width="2" stroke-linecap="round" opacity=".8"/></svg>`;
+}
 function ratesPanel(){
-  return `<section class="panel rate-open-panel"><div class="panelhead"><div><h2>Güncel Kurlar</h2><p>${esc(rateUpdated)} · Otomatik veri</p></div><button class="rate-view-btn" type="button" onclick="openRatesModal()"><span class="rate-btn-icon">↗</span><span>Kurları Gör</span></button></div></section>`;
+  const homeRate=(label,asset,kind,unit='TL')=>{
+    const sell=Number(currentPurchaseRate(asset))||Number(rates[asset])||0;
+    const buy=Number(currentExitRate(asset))||sell;
+    return `<button class="home-rate-card home-rate-${kind.toLowerCase()}" type="button" onclick="openRatesModal()"><div class="home-rate-top"><span class="home-rate-icon">${homeRateIcon(kind)}</span><span class="home-rate-arrow">›</span></div><div class="home-rate-name">${label}</div><div class="home-rate-value">₺${fnum(sell)}</div><div class="home-rate-unit">${unit}</div><div class="home-rate-pairs"><span>Alış <b>₺${fnum(buy)}</b></span><span>Satış <b>₺${fnum(sell)}</b></span></div></button>`;
+  };
+  return `<section class="panel home-rates-panel"><div class="home-rates-head"><div><div class="home-rates-title"><span class="home-rates-title-icon">${catSvg('chart','#2563eb')}</span><h2>Güncel Kurlar</h2></div><p>${esc(rateUpdated)} · Otomatik veri</p></div><button class="home-rates-all" type="button" onclick="openRatesModal()">Tüm Kurlar <span>›</span></button></div><div class="home-rate-grid">${homeRate('Dolar','USD','USD')}${homeRate('Euro','EUR','EUR')}${homeRate('Gram Altın','GOLD24','GOLD','TL/gr')}</div></section>`;
 }
 function days(d){return Math.ceil((new Date(d+'T12:00:00')-new Date(new Date().toDateString()))/86400000)}
 function due(p){let d=days(p.dueDate);return p.status==='odendi'?'<span class="badge ok">Ödendi</span>':d<0?'<span class="badge late">Gecikti</span>':d<=3?'<span class="badge warn">Yaklaşıyor</span>':`<span class="badge">${d} gün</span>`}
