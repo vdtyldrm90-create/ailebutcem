@@ -1365,7 +1365,8 @@ body.cloud-cache-loading #main button,body.cloud-cache-loading #main input,body.
 .movement-sign-badge.removed{color:#c83232;border-color:#e06464;background:rgba(220,53,53,.07)}
 .movement-history-table .movement-select-col{width:28px;text-align:center}
 .movement-history-table .movement-select-col input{width:16px;height:16px}
-@media(max-width:520px){.movement-history-table th,.movement-history-table td{padding:5px 3px;font-size:9px}.movement-history-table th{font-size:8px}.movement-history-table .movement-select-col input{width:14px;height:14px}.goal-holdings-line{gap:0;padding-top:8px}.goal-holding-chip{padding:4px 6px;font-size:9px}}
+@media(max-width:520px){.movement-history-table th,.movement-history-table td{padding:5px 3px;font-size:9px}.movement-history-table th{font-size:8px}.movement-history-table .movement-select-col input{width:14px;height:14px}.goal-holdings-line{gap:0;padding-top:8px}.goal-holding-chip.added{color:#237849!important;background:#e8f6ed!important;border-color:#c8e7d3!important}.goal-holding-chip.removed{color:#b93834!important;background:#fff0ee!important;border-color:#f4ceca!important}.goal-holding-symbol.added{color:#237849!important}.goal-holding-symbol.removed{color:#b93834!important}
+.goal-holding-chip{padding:4px 6px;font-size:9px}}
 
 .detail-history-group{margin-top:12px;padding-top:11px;border-top:1px solid var(--border)}
 .detail-history-group h3{display:flex;align-items:center;gap:8px;margin:0 0 8px;font-size:13px}
@@ -3053,11 +3054,11 @@ function goalDetailPage(id){
   // kullanılan her varlığın simgesini koru. Net miktar pozitifse mevcut miktarı,
   // sadece çıkarma varsa da çıkarılan miktarı eksi olarak göster.
   const movementAssets=new Set(goalMovements.map(m=>m.asset||'TRY'));
-  const holdRows=[...movementAssets].filter(a=>assetLabels[a]).map(a=>{
-    const q=Number(detailHoldings[a])||0;
-    const onlyWithdraw=q<=0 && goalMovements.some(m=>(m.asset||'TRY')===a && Number(m.sign)<=0);
-    const displayQty=onlyWithdraw ? -goalMovements.filter(m=>(m.asset||'TRY')===a && Number(m.sign)<=0).reduce((n,m)=>n+(Number(m.quantity)||0),0) : q;
-    return `<span class="goal-holding-chip" data-asset="${esc(a)}"><span class="goal-holding-symbol" aria-hidden="true">${holdingSymbols[a]||'•'}</span><span>${esc(assetLabels[a]||a)}</span><b>${displayQty<0?'−':''}${fnum(Math.abs(displayQty))}</b></span>`;
+  const holdRows=goalMovements.slice().sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))||String(a.createdAt||'').localeCompare(String(b.createdAt||''))).map(m=>{
+    const a=m.asset||'TRY', added=Number(m.sign)>0, qty=Math.max(0,Number(m.quantity)||0);
+    const cls=added?'added':'removed';
+    const sign=added?'＋':'−';
+    return `<span class="goal-holding-chip ${cls}" data-asset="${esc(a)}" title="${added?'Birikim eklendi':'Birikim çıkarıldı'} · ${fd(m.date)}"><span class="goal-holding-symbol ${cls}" aria-hidden="true">${sign}</span><span>${holdingSymbols[a]||'•'} ${esc(assetLabels[a]||a)}</span><b>${fnum(qty)}</b></span>`;
   }).join('');
   return `<div class="stack savings-detail-page">
     <div class="record-detail-header"><button class="record-detail-back" onclick="closeSavingsDetail()">‹ Birikim Hedefleri</button></div>
