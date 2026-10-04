@@ -887,22 +887,20 @@ body.auth-pending .app,body.auth-required .app{display:none!important}
 
 
 <style>
-/* Hafif, sekmeye özel vurgu renkleri */
+/* Alt menü: görseldeki renkli daire + çizim stili */
 .desktop-nav .navbtn{display:inline-flex;align-items:center;gap:7px;transition:background .16s ease,color .16s ease}
 .desktop-nav .navicon{font-size:16px;line-height:1;font-weight:800}
-.bottom button .ni{transition:color .16s ease}
-.bottom button.navtab-ozet .ni,.desktop-nav .navtab-ozet .navicon{color:#4b83bd}
-.bottom button.navtab-islemler .ni,.desktop-nav .navtab-islemler .navicon{color:#278252}
-.bottom button.navtab-odemeler .ni,.desktop-nav .navtab-odemeler .navicon{color:#b7791f}
-.bottom button.navtab-birikim .ni,.desktop-nav .navtab-birikim .navicon{color:#795bb5}
-.bottom button.navtab-raporlar .ni,.desktop-nav .navtab-raporlar .navicon{color:#25818a}
-.desktop-nav .navbtn.navtab-ozet.active,.bottom button.navtab-ozet.active{background:#e9f2fb!important;color:#356ea9!important}
-.desktop-nav .navbtn.navtab-islemler.active,.bottom button.navtab-islemler.active{background:#e7f5ec!important;color:#237849!important}
-.desktop-nav .navbtn.navtab-odemeler.active,.bottom button.navtab-odemeler.active{background:#fff3df!important;color:#9a6719!important}
-.desktop-nav .navbtn.navtab-birikim.active,.bottom button.navtab-birikim.active{background:#f0ebfa!important;color:#6d50aa!important}
-.desktop-nav .navbtn.navtab-raporlar.active,.bottom button.navtab-raporlar.active{background:#e6f4f5!important;color:#207780!important}
+.bottom button .ni{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;transition:transform .16s ease,box-shadow .16s ease,background .16s ease;color:inherit!important}
+.bottom button .ni svg{width:21px;height:21px;display:block}
+.bottom button.navtab-ozet .ni{color:#1677e8!important;background:#e7f2ff}
+.bottom button.navtab-islemler .ni{color:#20a36a!important;background:#e6f7ef}
+.bottom button.navtab-odemeler .ni{color:#ef4d56!important;background:#ffe9eb}
+.bottom button.navtab-birikim .ni{color:#7b4dd2!important;background:#f0e8ff}
+.bottom button.navtab-raporlar .ni{color:#f59b12!important;background:#fff1d8}
+.bottom button.active .ni{transform:translateY(-1px) scale(1.05);box-shadow:0 3px 8px rgba(25,50,80,.12)}
+.bottom button.active{background:transparent!important;color:var(--fg)!important}
 .desktop-nav .navbtn.active .navicon{color:inherit}
-.bottom button.active .ni{color:inherit!important}
+@media(max-width:390px){.bottom button .ni{width:31px;height:31px}.bottom button .ni svg{width:19px;height:19px}}
 /* İşlem geçmişi filtresinde gelir yeşil, gider kırmızı */
 .tx-history-actions .segment button[onclick*="txFilter='gelir'"]{color:#278252!important}
 .tx-history-actions .segment button[onclick*="txFilter='gelir'"]:hover{background:#e7f5ec;color:#237849!important}
@@ -2050,7 +2048,13 @@ function moneyInAsset(n,asset){
   if(a==='TRY')return fmt(value);
   return `${value.toLocaleString('tr-TR',{minimumFractionDigits:0,maximumFractionDigits:3})} ${assetLabels[a]||a}`;
 }
-const tabs=[['ozet','Ana Sayfa','⌂'],['islemler','İşlemler','↕'],['odemeler','Ödemeler','◷'],['birikim','Birikim','◉'],['raporlar','Raporlar','▤']];
+const tabs=[
+  ['ozet','Ana Sayfa',`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.8 12 3l9 7.8v9.2a1 1 0 0 1-1 1h-5.2v-6.1H9.2V21H4a1 1 0 0 1-1-1z" fill="currentColor"/></svg>`],
+  ['islemler','İşlemler',`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h10l-2.2-2.2 1.4-1.4L21 6.2l-4.8 4.8-1.4-1.4L17 7H7v3l-4-4 4-4v3zm10 14H7l2.2 2.2-1.4 1.4L3 17.8 7.8 13l1.4 1.4L7 17h10v-3l4 4-4 4v-3z" fill="currentColor"/></svg>`],
+  ['odemeler','Planlı',`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2v3h10V2h2v3h1a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h1V2h2zm13 8H4v11h16V10zm-7 3h2v3h3v2h-5v-5z" fill="currentColor"/></svg>`],
+  ['birikim','Birikim',`<svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="7.5" ry="3" fill="currentColor"/><path d="M4.5 6v5c0 1.66 3.36 3 7.5 3s7.5-1.34 7.5-3V6c0 1.66-3.36 3-7.5 3S4.5 7.66 4.5 6zm0 5v5c0 1.66 3.36 3 7.5 3s7.5-1.34 7.5-3v-5c0 1.66-3.36 3-7.5 3s-7.5-1.34-7.5-3z" fill="currentColor"/></svg>`],
+  ['raporlar','Raporlar',`<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="12" width="3.5" height="8" rx="1" fill="currentColor"/><rect x="10.25" y="8" width="3.5" height="12" rx="1" fill="currentColor"/><rect x="16.5" y="4" width="3.5" height="16" rx="1" fill="currentColor"/></svg>`]
+];
 function notificationStorageKey(){return KEY+'-read-notifications-v1-'+String(cloud.user?.id||S.active||'local')}
 function getReadNotifications(){try{return JSON.parse(localStorage.getItem(notificationStorageKey())||'[]')}catch(e){return []}}
 function setReadNotifications(ids){try{localStorage.setItem(notificationStorageKey(),JSON.stringify(ids.slice(-100)))}catch(e){}}
