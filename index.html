@@ -1446,6 +1446,22 @@ body.cloud-cache-loading #main button,body.cloud-cache-loading #main input,body.
 
 </style>
 
+<style>
+/* Sabit uygulama başlığı ve daha rahat mobil kaydırma. */
+.app>header{position:sticky;top:0;z-index:1200;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 2px 12px rgba(25,45,38,.06)}
+#main,.regular-plan-list,.regular-plan-card,.list,.mobilelist{touch-action:pan-y;-webkit-overflow-scrolling:touch}
+.regular-plan-card{user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
+.regular-plan-card button,.regular-plan-card input,.regular-plan-card select,.modal button,.modal input,.modal select{touch-action:manipulation}
+.regular-tx-panel{border-top:3px solid #62a878;background:linear-gradient(180deg,#f5fbf7 0%,#fff 34%)}
+.regular-payments-panel{border-top:3px solid #d49a3a;background:linear-gradient(180deg,#fff9ed 0%,#fff 34%)}
+.regular-tx-panelhead h2{color:#2f7d50}.regular-payments-panel .regular-tx-panelhead h2{color:#9a6b17}
+.regular-tx-panel .regular-plan-card{border-color:#d7eadc;background:#fbfefc}.regular-payments-panel .regular-plan-card{border-color:#f0dfb9;background:#fffdf8}
+.regular-tx-panel .regular-plan-card .pig{background:#e5f5e9;color:#2f8755}.regular-payments-panel .regular-plan-card .pig{background:#fff0d1;color:#a36c16}
+.regular-payments-panel .regular-plan-card .goal-detail-open-hint{color:#9a6b17}
+.regular-plan-card .goalname .pig{display:flex;align-items:center;justify-content:center;width:31px;height:31px;min-width:31px;border-radius:10px;font-size:15px;font-weight:800}
+@media(max-width:600px){.app>header{position:sticky;top:0}.head{min-height:58px}.regular-plan-card{touch-action:pan-y}.regular-plan-list{touch-action:pan-y}}
+</style>
+
 <body class="auth-pending">
 <div id="authGate" class="auth-gate" aria-live="polite"></div>
 <div class="app">
@@ -2456,7 +2472,7 @@ function regularTransactionsPanel(){
       const selected=deleteSelected.recurringTransactions.has(r.id)||deleteSelected.recurringTransactions.has(String(r.id));
       return `<article class="panel regular-plan-card ${deleteMode.recurringTransactions?'selectable-item':''}" ${deleteMode.recurringTransactions?'':`onclick="openRecurringPlanModal('${r.id}')" role="button" tabindex="0"`}>
         ${deleteMode.recurringTransactions?`<label class="checkwrap" onclick="event.stopPropagation()"><input type="checkbox" ${selected?'checked':''} onchange="toggleDeleteSelection('recurringTransactions','${r.id}')"><span></span></label>`:''}
-        <div class="goalhead"><div class="goalname"><div class="pig" aria-hidden="true">↻</div><div><b>${esc(r.description||r.category||'Düzenli işlem')}</b><div class="sub">${r.type==='gelir'?'Düzenli gelir':'Düzenli gider'} · ${esc(r.category||'Diğer')} · ${esc(member(r.memberId))}</div></div></div><span class="badge regular-status-badge ${status==='Bekliyor'?'pending':status==='Devam Ediyor'?'running':'done'}">${status}</span></div>
+        <div class="goalhead"><div class="goalname"><div class="pig" aria-hidden="true">${r.type==='gelir'?'↑':'↓'}</div><div><b>${esc(r.description||r.category||'Düzenli işlem')}</b><div class="sub">${r.type==='gelir'?'Düzenli gelir':'Düzenli gider'} · ${esc(r.category||'Diğer')} · ${esc(member(r.memberId))}</div></div></div><span class="badge regular-status-badge ${status==='Bekliyor'?'pending':status==='Devam Ediyor'?'running':'done'}">${status}</span></div>
         <div style="display:flex;justify-content:space-between;gap:8px"><b class="amount ${r.type==='gelir'?'in':'out'}">${r.type==='gelir'?'+':'−'}${fnum(r.amount)} ${assetLabels[r.asset]||'TL'}</b><span class="sub">${done}/${total} ay</span></div>
         <div class="progress"><i style="width:${pct}%"></i></div>
         <div class="goalmeta"><span>Başlangıç: ${fd(start)}</span><span>${status==='Tamamlandı'?'Tamamlandı':`${Math.max(0,total-done)} ay planlandı`}</span></div>
@@ -2745,7 +2761,7 @@ function regularPaymentsPanel(){
       const late=rows.some(x=>isOverdue(x)); const gid=String(first.recurringGroupId||first.id); const selected=deleteSelected.recurringPayments.has(gid);
       return `<article class="panel regular-plan-card ${late?'overdue-payment':''} ${deleteMode.recurringPayments?'selectable-item':''}" ${deleteMode.recurringPayments?'':`onclick="openRecurringPaymentModal('${gid}')" role="button" tabindex="0"`}>
         ${deleteMode.recurringPayments?`<label class="checkwrap" onclick="event.stopPropagation()"><input type="checkbox" ${selected?'checked':''} onchange="toggleDeleteSelection('recurringPayments','${gid}')"><span></span></label>`:''}
-        <div class="goalhead"><div class="goalname"><div class="pig" aria-hidden="true">↻</div><div><b>${esc(first.title)}</b><div class="sub">${esc(first.category||'Diğer')} · ${esc(member(first.memberId))} · ${assetLabels[first.asset||'TRY']||'TL'}</div></div></div><span class="badge regular-status-badge ${status==='Bekliyor'?'pending':status==='Devam Ediyor'?'running':'done'}">${status}</span></div>
+        <div class="goalhead"><div class="goalname"><div class="pig" aria-hidden="true">▣</div><div><b>${esc(first.title)}</b><div class="sub">${esc(first.category||'Diğer')} · ${esc(member(first.memberId))} · ${assetLabels[first.asset||'TRY']||'TL'}</div></div></div><span class="badge regular-status-badge ${status==='Bekliyor'?'pending':status==='Devam Ediyor'?'running':'done'}">${status}</span></div>
         <div style="display:flex;justify-content:space-between;gap:8px"><b class="amount out">−${fnum(first.amount)} ${assetLabels[first.asset||'TRY']||'TL'}</b><span class="sub">${paid}/${total} ay</span></div>
         <div class="progress"><i style="width:${pct}%"></i></div>
         <div class="goalmeta"><span>Başlangıç: ${fd(first.dueDate||date())}</span><span>${remaining?`${remaining} ay bekliyor`:'Tamamlandı'}</span></div>
