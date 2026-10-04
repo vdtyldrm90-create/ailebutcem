@@ -24,7 +24,7 @@ main{max-width:1150px;margin:auto;padding:22px 16px 100px}.page{display:none}.pa
 .stack{display:flex;flex-direction:column;gap:18px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}.split{display:grid;grid-template-columns:360px 1fr;gap:18px;align-items:start}
 .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;box-shadow:var(--shadow)}.panelhead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:14px}.panelhead h2{font-size:15px;margin:0}.panelhead p{font-size:11px;color:var(--muted);margin:3px 0 0}
 .add-action-panel{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}.add-action-panel>div:first-child{min-width:0;flex:1}.add-action-panel h2{font-size:15px;margin:0}.add-action-panel p{font-size:11px;color:var(--muted);margin:4px 0 0;line-height:1.4}.add-action-panel .primary{flex:none;white-space:nowrap}.goal-modal-actions{display:flex;gap:8px;flex-wrap:wrap}.goal-modal-actions button{flex:1;min-width:110px}
-.stat{padding:17px}.stat small{color:var(--muted);font-size:12px}.stat .value{font-size:24px;font-weight:750;margin-top:7px}.stat.net{background:var(--primary);color:#fff;border-color:var(--primary)}.stat.net small{color:rgba(255,255,255,.82)}.income{color:var(--income)}.expense{color:var(--expense)}
+.stat{padding:17px}.stat small{color:var(--muted);font-size:12px}.stat .value{font-size:24px;font-weight:750;margin-top:7px}.stat.net{background:var(--primary);color:#fff;border-color:var(--primary)}.stat.net small{color:rgba(255,255,255,.82)}.stat.net.net-positive{background:#e7f5ec;color:#237849;border-color:#cbe7d4}.stat.net.net-positive small{color:#237849}.stat.net.net-negative{background:#fff0ee;color:#b93834;border-color:#f1cbc7}.stat.net.net-negative small{color:#b93834}.income{color:var(--income)}.expense{color:var(--expense)}
 .segment{display:flex;background:var(--soft);padding:3px;border-radius:10px;gap:2px}.segment button{border:0;background:transparent;padding:7px 10px;border-radius:8px;color:var(--muted);font-size:11px;font-weight:650}.segment button.active{background:white;color:var(--primary);box-shadow:0 1px 4px #0000000d}
 form{display:flex;flex-direction:column;gap:11px}.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field{display:flex;flex-direction:column;gap:5px}.field label{font-size:11px;color:var(--muted);font-weight:650}.field input,.field select{width:100%;border:1px solid var(--border);background:white;color:var(--fg);border-radius:10px;padding:9px 10px;outline:0}.field input:focus,.field select:focus{border-color:#8bb9af;box-shadow:0 0 0 3px #dfeeea}
 .primary{border:0;background:var(--primary);color:white;border-radius:10px;padding:10px 13px;font-weight:700}.primary:hover{background:var(--primary2)}.outline{border:1px solid var(--border);background:white;color:var(--fg);border-radius:10px;padding:8px 11px;font-weight:650}.ghost{border:0;background:transparent;color:var(--muted);padding:6px;border-radius:8px}.ghost:hover{background:var(--soft);color:var(--danger)}
@@ -1447,9 +1447,11 @@ body.cloud-cache-loading #main button,body.cloud-cache-loading #main input,body.
 </style>
 
 <style>
-/* Sabit uygulama başlığı ve daha rahat mobil kaydırma. */
-.app>header{position:sticky;top:0;z-index:1200;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 2px 12px rgba(25,45,38,.06)}
-#main,.regular-plan-list,.regular-plan-card,.list,.mobilelist{touch-action:pan-y;-webkit-overflow-scrolling:touch}
+/* Sabit uygulama başlığı ve kesintisiz mobil kaydırma. */
+.app>header{position:fixed;top:0;left:0;right:0;width:100%;z-index:1200;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 2px 12px rgba(25,45,38,.06)}
+.app{padding-top:78px}
+body,#main,#main *,.regular-plan-list,.regular-plan-card,.list,.mobilelist{touch-action:pan-y;-webkit-overflow-scrolling:touch}
+button,input,select,textarea,a{touch-action:manipulation}
 .regular-plan-card{user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
 .regular-plan-card button,.regular-plan-card input,.regular-plan-card select,.modal button,.modal input,.modal select{touch-action:manipulation}
 .regular-tx-panel{border-top:3px solid #62a878;background:linear-gradient(180deg,#f5fbf7 0%,#fff 34%)}
@@ -1459,7 +1461,7 @@ body.cloud-cache-loading #main button,body.cloud-cache-loading #main input,body.
 .regular-tx-panel .regular-plan-card .pig{background:#e5f5e9;color:#2f8755}.regular-payments-panel .regular-plan-card .pig{background:#fff0d1;color:#a36c16}
 .regular-payments-panel .regular-plan-card .goal-detail-open-hint{color:#9a6b17}
 .regular-plan-card .goalname .pig{display:flex;align-items:center;justify-content:center;width:31px;height:31px;min-width:31px;border-radius:10px;font-size:15px;font-weight:800}
-@media(max-width:600px){.app>header{position:sticky;top:0}.head{min-height:58px}.regular-plan-card{touch-action:pan-y}.regular-plan-list{touch-action:pan-y}}
+@media(max-width:800px){.app{padding-top:60px}.head{min-height:58px}.regular-plan-card{touch-action:pan-y}.regular-plan-list{touch-action:pan-y}}
 </style>
 
 <body class="auth-pending">
@@ -1569,7 +1571,7 @@ function rememberActiveTab(value){
 let S=JSON.parse(localStorage.getItem(KEY)||'null')||seed(),tab=readActiveTab(),txFilter='tumu',payFilter='tumu';
 let reportMode='monthly',reportYear=new Date().getFullYear(),reportMonth=new Date().getMonth(),reportIncomeCategory='*',reportExpenseCategory='*';
 let deleteMode={transactions:false,recurringTransactions:false,payments:false,recurringPayments:false,goals:false,movements:false,loans:false};
-let dateFilters={transactions:'month',recurringTransactions:'all',payments:'month',movements:'all',home:'all'};
+let dateFilters={transactions:'month',recurringTransactions:'all',payments:'month',movements:'all',home:'month'};
 let savingsFilter='active',loanFilter='open';
 let savingsDetailView=null;
 
@@ -2185,7 +2187,7 @@ function summary(kind='home'){
   let list=S.transactions.filter(t=>(kind!=='home'||t.date<=date())&&dateInRange(t.date,dateFilters[kind]||'month',window._filterDates?.[kind]?.start,window._filterDates?.[kind]?.end)),
       inc=list.filter(t=>t.type==='gelir').reduce((a,x)=>a+x.amount,0),
       out=list.filter(t=>t.type==='gider').reduce((a,x)=>a+x.amount,0);
-  return `<div class="grid3"><div class="panel stat income"><small>Toplam Gelir</small><div class="value">${fmt(inc)}</div></div><div class="panel stat expense"><small>Toplam Gider</small><div class="value">${fmt(out)}</div></div><div class="panel stat net"><small>Net Bütçe</small><div class="value">${fmt(inc-out)}</div></div></div>`;
+  const net=inc-out; const netClass=net<0?'net-negative':'net-positive'; return `<div class="grid3"><div class="panel stat income"><small>Toplam Gelir</small><div class="value">${fmt(inc)}</div></div><div class="panel stat expense"><small>Toplam Gider</small><div class="value">${fmt(out)}</div></div><div class="panel stat net ${netClass}"><small>Net Bütçe</small><div class="value">${fmt(net)}</div></div></div>`;
 }
 function home(){
   const today=date();
