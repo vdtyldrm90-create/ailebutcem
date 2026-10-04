@@ -1587,6 +1587,65 @@ button,input,select,textarea,a{touch-action:manipulation}
 @media(max-width:800px){.app{padding-top:60px}.head{min-height:58px}.regular-plan-card{touch-action:pan-y}.regular-plan-list{touch-action:pan-y}}
 
 .app-notice{padding:8px 2px 4px;text-align:center}.app-notice-icon{width:42px;height:42px;margin:0 auto 10px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;background:var(--soft,#f1f3f5)}.app-notice-text{font-size:15px;line-height:1.5;margin-bottom:14px}.app-notice .form-actions{justify-content:center}
+
+/* Alt menü — modern daireli ikon tasarımı */
+@media(max-width:800px){
+  .bottom{
+    left:8px!important;right:8px!important;bottom:7px!important;
+    min-height:72px!important;
+    padding:7px 5px calc(7px + env(safe-area-inset-bottom))!important;
+    border-radius:20px!important;
+    background:rgba(255,255,255,.97)!important;
+    box-shadow:0 10px 30px rgba(34,55,49,.14),0 2px 8px rgba(34,55,49,.06)!important;
+    gap:2px;
+  }
+  .bottom button{
+    min-height:58px!important;
+    padding:4px 1px!important;
+    border-radius:14px!important;
+    display:flex!important;flex-direction:column!important;
+    align-items:center!important;justify-content:center!important;
+    gap:3px!important;
+    font-size:9.5px!important;
+    line-height:1!important;
+    font-weight:700!important;
+    color:var(--muted)!important;
+    transition:transform .15s ease,background .15s ease,color .15s ease;
+  }
+  .bottom .ni{
+    width:34px!important;height:34px!important;
+    margin:0!important;
+    display:grid!important;place-items:center!important;
+    border-radius:50%!important;
+    font-size:21px!important;
+    line-height:1!important;
+    font-weight:800!important;
+    background:#edf2f1!important;color:#566560!important;
+  }
+  .bottom button.active{
+    background:transparent!important;
+    color:var(--primary)!important;
+    font-weight:800!important;
+  }
+  .bottom button.active .ni{
+    background:#dcecff!important;
+    color:#1674df!important;
+    box-shadow:0 0 0 3px #edf5ff;
+  }
+  .bottom button:nth-child(2) .ni{background:#e7f5ee;color:#229563}
+  .bottom button:nth-child(3) .ni{background:#fde9eb;color:#e4545c}
+  .bottom button:nth-child(4) .ni{background:#eee8fb;color:#7650c9}
+  .bottom button:nth-child(5) .ni{background:#fff1df;color:#e89419}
+  .bottom button.active:nth-child(2) .ni{background:#dff4ea;color:#229563;box-shadow:0 0 0 3px #effaf5}
+  .bottom button.active:nth-child(3) .ni{background:#ffe0e3;color:#dc4650;box-shadow:0 0 0 3px #fff1f2}
+  .bottom button.active:nth-child(4) .ni{background:#e7dcfb;color:#7045c3;box-shadow:0 0 0 3px #f4f0fd}
+  .bottom button.active:nth-child(5) .ni{background:#ffe8c8;color:#df8610;box-shadow:0 0 0 3px #fff6e9}
+}
+@media(max-width:390px){
+  .bottom{min-height:68px!important;padding:6px 4px calc(6px + env(safe-area-inset-bottom))!important}
+  .bottom button{min-height:54px!important;font-size:9px!important}
+  .bottom .ni{width:31px!important;height:31px!important;font-size:19px!important}
+}
 </style>
 
 <body class="auth-pending">
