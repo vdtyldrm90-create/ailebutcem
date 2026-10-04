@@ -378,6 +378,12 @@ form{display:flex;flex-direction:column;gap:11px}.row2{display:grid;grid-templat
   .overdue-alert-side>b{font-size:12px;min-width:0;overflow:hidden;text-overflow:ellipsis;}
   .overdue-pay-btn{padding:5px 9px!important;min-height:30px;flex:0 0 auto;}
 }
+
+<style>
+.regular-tx-header-actions,.regular-pay-header-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.compact-action{width:34px!important;height:34px!important;min-width:34px!important;padding:0!important;border-radius:10px!important;font-size:16px!important;display:inline-flex!important;align-items:center;justify-content:center;}
+.delete-selection-mode{overflow-anchor:none;}
+</style>
 </style>
 
 <style>
@@ -4275,6 +4281,20 @@ function openMember(){document.getElementById('modalTitle').textContent='Aile Bi
 function addMember(e){e.preventDefault();let n=(byId('newMember')?.value||'').trim();if(!n)return;S.members.push({id:uid(),name:n});closeModal();save()}
 function delMember(id){if(S.members.length<=1)return;S.members=S.members.filter(m=>m.id!==id);if(S.active===id)S.active=S.members[0].id;save()}
 
+
+function openRecurringExtendMenu(type){
+  const plans=type==='transaction'?(S.recurringTransactions||[]):(S.payments||[]).filter(p=>p.recurringGroupId);
+  const ids=[...new Set(plans.map(x=>type==='transaction'?x.id:x.recurringGroupId).filter(Boolean))];
+  if(!ids.length){setCloudMessage('Uzatılacak düzenli plan bulunamadı.','error');render();return;}
+  const options=ids.map(id=>{const p=type==='transaction'?plans.find(x=>x.id===id):plans.find(x=>String(x.recurringGroupId)===String(id));return `<option value="${esc(String(id))}">${esc(p?.title||p?.description||'Düzenli plan')}</option>`}).join('');
+  const label=type==='transaction'?'Düzenli gelir/gider':'Düzenli ödeme';
+  showFormModal(`${label} Süresini Uzat`, `<form onsubmit="submitRecurringExtension(event,'${type}')"><div class="field"><label>Plan</label><select id="extendPlanId" required>${options}</select></div><div class="field"><label>Eklenecek ay sayısı</label><input id="extendMonths" type="number" min="1" max="120" value="1" required></div><button class="primary">Ayları Ekle</button></form>`);
+}
+function submitRecurringExtension(e,type){e.preventDefault();const id=byId('extendPlanId')?.value;const months=Math.max(1,Math.floor(Number(byId('extendMonths')?.value)||0));if(!id||!months)return;
+  if(type==='transaction'){const p=(S.recurringTransactions||[]).find(x=>String(x.id)===String(id));if(window.extendRecurringTransaction&&p){window.extendRecurringTransaction(p,months)}else if(p){p.remaining=Number(p.remaining||0)+months;p.months=Number(p.months||0)+months;p.totalMonths=Number(p.totalMonths||p.months||0)+months;save();closeModal();render();}}
+  else{const group=String(id);const rows=(S.payments||[]).filter(x=>String(x.recurringGroupId||'')===group);if(window.extendRecurringPayment&&rows.length){window.extendRecurringPayment(rows,months)}else if(rows.length){const last=rows.slice().sort((a,b)=>(a.dueDate||'').localeCompare(b.dueDate||'' )).pop();for(let i=1;i<=months;i++){const d=new Date((last.dueDate||date())+'T12:00:00');d.setMonth(d.getMonth()+i);S.payments.push({...last,id:uid(),dueDate:d.toISOString().slice(0,10),status:'bekliyor'});}save();closeModal();render();}}
+}
+
 function enterDeleteMode(type){
   deleteMode[type]=true;
   deleteSelected[type]=new Set();
@@ -4289,6 +4309,7 @@ function cancelDeleteMode(type){
 }
 function loanSettlementSelectionKey(loanId,settlementId){return `${String(loanId)}::${String(settlementId)}`;}
 function toggleDeleteSelection(type,id){
+  const scrollY=window.scrollY;
   if(type==='loans'){
     const loanId=String(id);
     if(deleteSelected.loans.has(loanId)){deleteSelected.loans.delete(loanId)}
@@ -4303,6 +4324,7 @@ function toggleDeleteSelection(type,id){
   }else if(deleteSelected[type].has(id)) deleteSelected[type].delete(id);
   else deleteSelected[type].add(id);
   render();
+  requestAnimationFrame(()=>window.scrollTo(0,scrollY));
 }
 function askDelete(type){
   let count=deleteSelected[type].size+(type==='loans'?(deleteSelected.loanSettlements?.size||0):0);
