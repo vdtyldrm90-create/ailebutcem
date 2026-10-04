@@ -1529,12 +1529,12 @@ function rememberActiveTab(value){
 }
 let S=JSON.parse(localStorage.getItem(KEY)||'null')||seed(),tab=readActiveTab(),txFilter='tumu',payFilter='tumu';
 let reportMode='monthly',reportYear=new Date().getFullYear(),reportMonth=new Date().getMonth(),reportIncomeCategory='*',reportExpenseCategory='*';
-let deleteMode={transactions:false,recurringTransactions:false,payments:false,goals:false,movements:false,loans:false};
+let deleteMode={transactions:false,recurringTransactions:false,payments:false,recurringPayments:false,goals:false,movements:false,loans:false};
 let dateFilters={transactions:'month',recurringTransactions:'all',payments:'month',movements:'all',home:'all'};
 let savingsFilter='active',loanFilter='open';
 let savingsDetailView=null;
 
-let deleteSelected={transactions:new Set(),recurringTransactions:new Set(),payments:new Set(),goals:new Set(),movements:new Set(),loans:new Set(),loanSettlements:new Set()};
+let deleteSelected={transactions:new Set(),recurringTransactions:new Set(),payments:new Set(),recurringPayments:new Set(),goals:new Set(),movements:new Set(),loans:new Set(),loanSettlements:new Set()};
 
 S.rateData=S.rateData||{updated:rateUpdated,quotes:JSON.parse(JSON.stringify(rateQuotes))};
 if(S.rateData.quotes)Object.assign(rateQuotes,S.rateData.quotes);
@@ -2406,11 +2406,13 @@ function regularTransactionsPanel(){
   const allPlans=(S.recurringTransactions||[]).slice().sort((a,b)=>(b.createdAt||b.startDate||'').localeCompare(a.createdAt||a.startDate||''));
   const activeCount=allPlans.filter(x=>x.active&&Number(x.remaining||0)>0).length;
   return `<section class="panel regular-tx-panel">
-    <div class="panelhead regular-tx-panelhead"><div><h2>Düzenli Gelir / Gider</h2><p>${activeCount} aktif plan · ${allPlans.length} toplam kayıt</p></div></div>
+    <div class="panelhead regular-tx-panelhead"><div><h2>Düzenli Gelir / Gider</h2><p>${activeCount} devam eden · ${allPlans.length} toplam kayıt</p></div><div class="payment-list-controls">${deleteMode.recurringTransactions?`<button class="secondary" onclick="cancelDeleteMode('recurringTransactions')">İptal</button><button class="dangerbtn" onclick="askDelete('recurringTransactions')" ${deleteSelected.recurringTransactions.size?'':'disabled'}>Seçili Sil (${deleteSelected.recurringTransactions.size})</button>`:`<button class="secondary" onclick="enterDeleteMode('recurringTransactions')">Sil</button>`}</div></div>
     <div class="regular-plan-list">${allPlans.length?allPlans.map(r=>{
       const done=Math.max(0,Number(r.generatedCount)||0),total=Math.max(1,Number(r.months)||1),pct=Math.min(100,done/total*100);
-      const status=Number(r.remaining||0)<=0?'Tamamlandı':r.active?'Aktif':'Duraklatıldı';
-      return `<article class="panel regular-plan-card" onclick="openRecurringPlanModal('${r.id}')" role="button" tabindex="0">
+      const status=Number(r.remaining||0)<=0?'Tamamlandı':r.active?'Devam Ediyor':'Bekliyor';
+      const selected=deleteSelected.recurringTransactions.has(r.id)||deleteSelected.recurringTransactions.has(String(r.id));
+      return `<article class="panel regular-plan-card ${deleteMode.recurringTransactions?'selectable-item':''}" ${deleteMode.recurringTransactions?'':`onclick="openRecurringPlanModal('${r.id}')" role="button" tabindex="0"`}>
+        ${deleteMode.recurringTransactions?`<label class="checkwrap" onclick="event.stopPropagation()"><input type="checkbox" ${selected?'checked':''} onchange="toggleDeleteSelection('recurringTransactions','${r.id}')"><span></span></label>`:''}
         <div class="goalhead"><div class="goalname"><div class="pig" aria-hidden="true">↻</div><div><b>${esc(r.description||r.category||'Düzenli işlem')}</b><div class="sub">${r.type==='gelir'?'Düzenli gelir':'Düzenli gider'} · ${esc(r.category||'Diğer')} · ${esc(member(r.memberId))}</div></div></div><span class="${r.type==='gelir'?'goal-active-badge':'goal-completed-badge'}">${esc(status)}</span></div>
         <div style="display:flex;justify-content:space-between;gap:8px"><b class="amount ${r.type==='gelir'?'in':'out'}">${r.type==='gelir'?'+':'−'}${fnum(r.amount)} ${assetLabels[r.asset]||'TL'}</b><span class="sub">${done}/${total} ay</span></div>
         <div class="progress"><i style="width:${pct}%"></i></div>
@@ -2678,12 +2680,13 @@ function regularPaymentsPanel(){
   const plans=Object.values(groups).map(rows=>rows.sort((a,b)=>Number(a.recurringIndex||1)-Number(b.recurringIndex||1))).sort((a,b)=>(b[0].dueDate||'').localeCompare(a[0].dueDate||''));
   if(!plans.length)return '';
   return `<section class="panel regular-tx-panel regular-payments-panel">
-    <div class="panelhead regular-tx-panelhead"><div><h2>Düzenli Ödemeler</h2><p>${plans.length} düzenli ödeme planı</p></div></div>
+    <div class="panelhead regular-tx-panelhead"><div><h2>Düzenli Ödemeler</h2><p>${plans.length} düzenli ödeme planı</p></div><div class="payment-list-controls">${deleteMode.recurringPayments?`<button class="secondary" onclick="cancelDeleteMode('recurringPayments')">İptal</button><button class="dangerbtn" onclick="askDelete('recurringPayments')" ${deleteSelected.recurringPayments.size?'':'disabled'}>Seçili Sil (${deleteSelected.recurringPayments.size})</button>`:`<button class="secondary" onclick="enterDeleteMode('recurringPayments')">Sil</button>`}</div></div>
     <div class="regular-plan-list">${plans.map(rows=>{
       const first=rows[0], total=rows.length, paid=rows.filter(x=>x.status==='odendi').length, remaining=Math.max(0,total-paid), pct=Math.min(100,paid/Math.max(1,total)*100);
       const status=remaining<=0?'Tamamlandı':paid>0?'Devam Ediyor':'Bekliyor';
-      const late=rows.some(x=>isOverdue(x));
-      return `<article class="panel regular-plan-card ${late?'overdue-payment':''}" onclick="openRecurringPaymentModal('${esc(first.recurringGroupId||first.id)}')" role="button" tabindex="0">
+      const late=rows.some(x=>isOverdue(x)); const gid=String(first.recurringGroupId||first.id); const selected=deleteSelected.recurringPayments.has(gid);
+      return `<article class="panel regular-plan-card ${late?'overdue-payment':''} ${deleteMode.recurringPayments?'selectable-item':''}" ${deleteMode.recurringPayments?'':`onclick="openRecurringPaymentModal('${gid}')" role="button" tabindex="0"`}>
+        ${deleteMode.recurringPayments?`<label class="checkwrap" onclick="event.stopPropagation()"><input type="checkbox" ${selected?'checked':''} onchange="toggleDeleteSelection('recurringPayments','${gid}')"><span></span></label>`:''}
         <div class="goalhead"><div class="goalname"><div class="pig" aria-hidden="true">↻</div><div><b>${esc(first.title)}</b><div class="sub">${esc(first.category||'Diğer')} · ${esc(member(first.memberId))} · ${assetLabels[first.asset||'TRY']||'TL'}</div></div></div><span class="${remaining<=0?'goal-completed-badge':'goal-active-badge'}">${status}</span></div>
         <div style="display:flex;justify-content:space-between;gap:8px"><b class="amount out">−${fnum(first.amount)} ${assetLabels[first.asset||'TRY']||'TL'}</b><span class="sub">${paid}/${total} ay</span></div>
         <div class="progress"><i style="width:${pct}%"></i></div>
@@ -2701,7 +2704,7 @@ function openRecurringPaymentModal(groupId){
   const rowsHtml=rows.map(p=>`<div class="item ${isOverdue(p)?'overdue-payment':''}" style="padding:7px 8px;margin-bottom:4px">
     <div class="icon ${p.status==='odendi'?'in':'out'}">${p.status==='odendi'?'✓':'◷'}</div>
     <div class="itemmain"><b>${Number(p.recurringIndex)||1}. ay</b><div class="sub">${fd(p.dueDate)} · ${p.status==='odendi'?'Ödendi':'Bekliyor'}${isOverdue(p)?' · Gecikti':''}</div></div>
-    <div class="amount out">${fnum(p.amount)} ${assetLabels[p.asset||'TRY']||'TL'}</div>
+    <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:flex-end"><div class="amount out">${fnum(p.amount)} ${assetLabels[p.asset||'TRY']||'TL'}</div><button type="button" class="${p.status==='odendi'?'secondary':'primary'} pay-action" style="padding:5px 7px;font-size:10px" onclick="togglePay('${p.id}')">${p.status==='odendi'?'Geri Al':'Ödendi'}</button></div>
   </div>`).join('');
   showFormModal('Düzenli Ödeme',`<div class="record-detail-modal">
     <div class="record-detail-summary"><div><small>Ödeme</small><b>${esc(first.title)}</b></div><div><small>Tutar</small><b>${fnum(first.amount)} ${assetLabels[first.asset||'TRY']||'TL'}</b></div><div><small>Süre</small><b>${total} ay</b></div><div><small>Durum</small><b>${remaining<=0?'Tamamlandı':paid?'Devam Ediyor':'Bekliyor'}</b></div></div>
@@ -4062,6 +4065,11 @@ function confirmDelete(type){
     });
     S.transactions=S.transactions.filter(t=>!relatedPaymentIds.has(t.paymentId));
     S.payments=S.payments.filter(x=>!ids.has(x.id));
+  }else if(type==='recurringPayments'){
+    const groups=new Set(Array.from(ids).map(String));
+    const paymentIds=new Set((S.payments||[]).filter(p=>groups.has(String(p.recurringGroupId||p.id))).map(p=>String(p.id)));
+    S.transactions=S.transactions.filter(t=>!paymentIds.has(String(t.paymentId||'')));
+    S.payments=S.payments.filter(p=>!paymentIds.has(String(p.id)));
   }else if(type==='goals'){
     S.goals=S.goals.filter(x=>!ids.has(x.id));
     S.savingMovements=(S.savingMovements||[]).filter(x=>!ids.has(x.goalId));
