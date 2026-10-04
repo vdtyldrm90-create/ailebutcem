@@ -2576,10 +2576,22 @@ function regularTransactionsPanel(){
     }).join(''):empty()}</div>
   </section>`;
 }
+function openRecurringExtensionModal(type,id){
+  const isPayment=type==='payment';
+  const title=isPayment?'Düzenli Ödemeyi Uzat':'Düzenli Gelir / Gideri Uzat';
+  const label=isPayment?'Ödeme planına kaç ay eklensin?':'Plana kaç ay eklensin?';
+  const back=isPayment?`openRecurringPaymentModal('${id}')`:`openRecurringPlanModal('${id}')`;
+  const submit=isPayment?`extendRecurringPaymentPlan('${id}')`:`extendRecurringTransactionPlan('${id}')`;
+  showFormModal(title,`<div class="record-detail-modal recurring-extension-modal">
+    <div class="field"><label>${label}</label><input id="recurringExtendMonths" type="number" min="1" max="600" step="1" value="1" inputmode="numeric" autocomplete="off"></div>
+    <div class="sub" style="margin:4px 0 12px">En fazla 600 ay ekleyebilirsiniz.</div>
+    <div class="form-actions"><button type="button" class="secondary" onclick="${back}">Vazgeç</button><button type="button" class="primary" onclick="${submit}">Ayları Ekle</button></div>
+  </div>`);
+}
 function extendRecurringTransactionPlan(id){
   const r=(S.recurringTransactions||[]).find(x=>String(x.id)===String(id));
   if(!r)return;
-  const extra=Math.floor(Number(prompt('Bu düzenli işlem kaç ay uzatılsın?', '1'))||0);
+  const extra=Math.floor(Number(document.getElementById('recurringExtendMonths')?.value)||0);
   if(extra<1)return;
   const add=Math.min(extra,600);
   const oldTotal=Math.max(1,Number(r.months)||Number(r.totalMonths)||1);
@@ -2632,7 +2644,7 @@ function openRecurringPlanModal(id){
     <div class="field"><label>Açıklama</label><input value="${esc(r.description||r.category||'Düzenli işlem')}" disabled></div>
     <div class="field"><label>Başlangıç</label><input value="${fd(start)}" disabled></div>
     <div class="field"><label>İşlem Listesi</label>
-      <div class="modal-delete-bar">${modalDeleteMode.recurringTransactions?`<span class="delete-count">${selectedCount?`${selectedCount} kayıt seçildi`:'Kayıt seçin'}</span><button type="button" class="secondary" onclick="clearModalDeleteSelection('recurringTransactions','${r.id}')">İptal</button><button type="button" class="dangerbtn" onclick="deleteSelectedRecurringOccurrences('recurringTransactions','${r.id}')" ${selectedCount?'':'disabled'}>Seçili Sil (${selectedCount})</button>`:`<span class="delete-count">İşlem listesi</span><button type="button" class="secondary" onclick="enterModalDeleteMode('recurringTransactions','${r.id}')">Sil</button><button type="button" class="secondary icon-action-btn add-plan-icon" title="Süreye ay ekle" aria-label="Süreye ay ekle" onclick="extendRecurringTransactionPlan('${r.id}')">＋</button>`}</div>
+      <div class="modal-delete-bar">${modalDeleteMode.recurringTransactions?`<span class="delete-count">${selectedCount?`${selectedCount} kayıt seçildi`:'Kayıt seçin'}</span><button type="button" class="secondary" onclick="clearModalDeleteSelection('recurringTransactions','${r.id}')">İptal</button><button type="button" class="dangerbtn" onclick="deleteSelectedRecurringOccurrences('recurringTransactions','${r.id}')" ${selectedCount?'':'disabled'}>Seçili Sil (${selectedCount})</button>`:`<span class="delete-count">İşlem listesi</span><button type="button" class="secondary" onclick="enterModalDeleteMode('recurringTransactions','${r.id}')">Sil</button><button type="button" class="secondary icon-action-btn add-plan-icon" title="Süreye ay ekle" aria-label="Süreye ay ekle" onclick="openRecurringExtensionModal('transaction','${r.id}')">＋</button>`}</div>
       <div class="list" style="max-height:300px;overflow:auto">${occurrenceRows||'<div class="detail-empty-note">Henüz oluşturulmuş aylık kayıt yok.</div>'}</div>
     </div>
   </div>`);
@@ -2904,7 +2916,7 @@ function regularPaymentsPanel(){
 function extendRecurringPaymentPlan(groupId){
   const rows=(S.payments||[]).filter(p=>String(p.recurringGroupId||p.id)===String(groupId)).sort((a,b)=>Number(a.recurringIndex||1)-Number(b.recurringIndex||1));
   if(!rows.length)return;
-  const extra=Math.floor(Number(prompt('Bu düzenli ödeme kaç ay uzatılsın?', '1'))||0);
+  const extra=Math.floor(Number(document.getElementById('recurringExtendMonths')?.value)||0);
   if(extra<1)return;
   const add=Math.min(extra,600);
   const first=rows[0];
@@ -2950,7 +2962,7 @@ function openRecurringPaymentModal(groupId){
     <div class="record-detail-summary"><div><small>Ödeme</small><b>${esc(first.title)}</b></div><div><small>Tutar</small><b>${fnum(first.amount)} ${assetLabels[first.asset||'TRY']||'TL'}</b></div><div><small>Süre</small><b>${total} ay</b></div><div><small>Durum</small><b><span class="badge regular-status-badge ${status==='Bekliyor'?'pending':status==='Devam Ediyor'?'running':'done'}">${status}</span></b></div></div>
     <div class="field"><label>İlerleme</label><div class="sub">${paid} / ${total} ay ödendi · ${remaining} ay bekliyor</div></div>
     <div class="field"><label>Ödeme Listesi</label>
-      <div class="modal-delete-bar">${modalDeleteMode.recurringPayments?`<span class="delete-count">${selectedCount?`${selectedCount} kayıt seçildi`:'Kayıt seçin'}</span><button type="button" class="secondary" onclick="clearModalDeleteSelection('recurringPayments','${groupId}')">İptal</button><button type="button" class="dangerbtn" onclick="deleteSelectedRecurringOccurrences('recurringPayments','${groupId}')" ${selectedCount?'':'disabled'}>Seçili Sil (${selectedCount})</button>`:`<span class="delete-count">Ödeme listesi</span><button type="button" class="secondary" onclick="enterModalDeleteMode('recurringPayments','${groupId}')">Sil</button><button type="button" class="secondary icon-action-btn add-plan-icon" title="Süreye ay ekle" aria-label="Süreye ay ekle" onclick="extendRecurringPaymentPlan('${groupId}')">＋</button>`}</div>
+      <div class="modal-delete-bar">${modalDeleteMode.recurringPayments?`<span class="delete-count">${selectedCount?`${selectedCount} kayıt seçildi`:'Kayıt seçin'}</span><button type="button" class="secondary" onclick="clearModalDeleteSelection('recurringPayments','${groupId}')">İptal</button><button type="button" class="dangerbtn" onclick="deleteSelectedRecurringOccurrences('recurringPayments','${groupId}')" ${selectedCount?'':'disabled'}>Seçili Sil (${selectedCount})</button>`:`<span class="delete-count">Ödeme listesi</span><button type="button" class="secondary" onclick="enterModalDeleteMode('recurringPayments','${groupId}')">Sil</button><button type="button" class="secondary icon-action-btn add-plan-icon" title="Süreye ay ekle" aria-label="Süreye ay ekle" onclick="openRecurringExtensionModal('payment','${groupId}')">＋</button>`}</div>
       <div class="list" style="max-height:300px;overflow:auto">${rowsHtml}</div>
     </div>
   </div>`);
