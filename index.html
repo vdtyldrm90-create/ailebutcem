@@ -355,6 +355,31 @@ form{display:flex;flex-direction:column;gap:11px}.row2{display:grid;grid-templat
 
 @media(max-width:720px){.home-list-head-actions{width:100%;justify-content:flex-start}.home-list-head-actions .date-filter{width:100%}.home-list-filter{justify-content:flex-start}.home-list-head-actions .date-filter button,.home-list-filter .date-filter button{flex:1}}
 
+
+/* Planlı Ödemeler - vadesi geçmiş hızlı ödeme alanı */
+.payments-overdue-alert{padding:12px 14px;}
+.payments-overdue-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.payments-overdue-head p{margin:4px 0 0;color:#7a3030;font-size:12px;}
+.payments-overdue-total{white-space:nowrap;color:#b42318;}
+.overdue-alert-list{display:grid;gap:7px;margin-top:10px;}
+.overdue-alert-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;background:rgba(255,255,255,.72);border:1px solid #f3c7c7;border-radius:12px;}
+.overdue-alert-main{min-width:0;flex:1;}
+.overdue-alert-title{display:flex;align-items:center;gap:7px;min-width:0;}
+.overdue-alert-title b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.overdue-alert-icon{display:inline-flex;align-items:center;justify-content:center;flex:0 0 22px;width:22px;height:22px;border-radius:50%;background:#b42318;color:#fff;font-size:12px;font-weight:800;}
+.overdue-alert-side{display:flex;align-items:center;justify-content:flex-end;gap:8px;white-space:nowrap;}
+.overdue-alert-side>b{color:#b42318;font-size:13px;}
+.overdue-pay-btn{padding:6px 11px!important;font-size:11px!important;min-height:32px;}
+@media(max-width:560px){
+  .payments-overdue-alert{padding:10px;}
+  .payments-overdue-head{gap:8px;}
+  .payments-overdue-head p{font-size:11px;}
+  .payments-overdue-total{font-size:12px;}
+  .overdue-alert-row{padding:8px;gap:7px;}
+  .overdue-alert-side{gap:6px;}
+  .overdue-alert-side>b{font-size:12px;}
+  .overdue-pay-btn{padding:5px 9px!important;min-height:30px;}
+}
 </style>
 
 <style>
@@ -2876,7 +2901,14 @@ function deleteSelectedRecurringOccurrences(type,groupId){
 function payments(){
   let rows=S.payments.filter(p=>(payFilter==='tumu'||p.status===payFilter)&&dateInRange(p.dueDate,dateFilters.payments,window._filterDates?.payments?.start,window._filterDates?.payments?.end)).sort((a,b)=>a.status===b.status?a.dueDate.localeCompare(b.dueDate):a.status==='bekliyor'?-1:1);
   const pending=S.payments.filter(p=>p.status==='bekliyor').reduce((a,x)=>a+x.amount,0);
-  return `<div class="stack">${title('Planlanan Ödemeler','Kredi, fatura ve kira gibi ödemelerin vadelerini takip edin.')}<div class="alert">${S.payments.some(p=>isOverdue(p))?`<strong style="color:#b42318">Vadesi geçmiş ${S.payments.filter(p=>isOverdue(p)).length} ödeme var.</strong>`:(S.payments.filter(p=>p.status==='bekliyor'&&days(p.dueDate)<=7).length?`Yaklaşan ödemelerinizi kontrol edin.`:'Yakın tarihte ödeme bulunmuyor.')}<p><strong style="color:#b42318">Vadesi geçmiş toplam: ${fmt(S.payments.filter(p=>isOverdue(p)).reduce((a,x)=>a+x.amount,0))}</strong></p></div><div class="split"><section class="panel add-action-panel"><div><h2>Yeni Planlı Ödeme</h2><p>Tek sefer veya her ay düzenli ödeme tanımlayın.</p></div><button class="primary" onclick="openPayModal()">+ Ödeme Ekle</button></section><section class="panel"><div class="panelhead"><div><h2>Planlanan Ödemeler</h2></div><div class="payment-list-controls"><div class="segment payment-status-filter">${[['tumu','Tümü'],['bekliyor','Bekliyor'],['odendi','Ödendi']].map(x=>`<button class="${payFilter===x[0]?'active':''}" onclick="payFilter='${x[0]}';render()">${x[1]}</button>`).join('')}</div>${deleteMode.payments?`<button class="secondary" onclick="cancelDeleteMode('payments')">İptal</button><button class="dangerbtn" onclick="askDelete('payments')" ${deleteSelected.payments.size?'':'disabled'}>Seçili Sil (${deleteSelected.payments.size})</button>`:`<button class="secondary" onclick="enterDeleteMode('payments')">Sil</button>`}</div></div>${dateFilterUI('payments')}<div class="list payments-list">${rows.map(p=>paymentRow(p,true)).join('')||empty()}</div><p class="sub" style="margin-top:12px">Düzenli ödemeler artık yukarıdaki “Düzenli Ödemeler” listesinde plan olarak gösterilir. Karta dokunarak hedef birikimi gibi ayrıntıları açabilirsiniz.</p></section></div>${regularPaymentsPanel()}</div>`;
+  const overduePayments=S.payments.filter(p=>isOverdue(p)).sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
+  const overdueTotal=overduePayments.reduce((a,x)=>a+(Number(x.amount)||0),0);
+  const overdueRows=overduePayments.map(p=>{
+    const lateDays=Math.abs(days(p.dueDate));
+    return `<div class="overdue-alert-row"><div class="overdue-alert-main"><div class="overdue-alert-title"><span class="overdue-alert-icon">!</span><b>${esc(p.title)}</b></div><div class="sub">Vade: ${fd(p.dueDate)} · ${lateDays} gün gecikti · ${esc(p.category)} · ${assetLabels[p.asset||'TRY']||'TL'}</div></div><div class="overdue-alert-side"><b>${fnum(p.amount)} ${assetLabels[p.asset||'TRY']||'TL'}</b><button class="primary overdue-pay-btn" type="button" onclick="togglePay('${p.id}')">Öde</button></div></div>`;
+  }).join('');
+  const overdueAlert=overduePayments.length?`<div class="alert danger payments-overdue-alert"><div class="payments-overdue-head"><div><strong>Vadesi geçmiş ${overduePayments.length} ödeme var.</strong><p>Bu ödemeleri aşağıdan doğrudan ödeyebilirsiniz.</p></div><strong class="payments-overdue-total">Toplam: ${fmt(overdueTotal)}</strong></div><div class="overdue-alert-list">${overdueRows}</div></div>`:`<div class="alert">${S.payments.filter(p=>p.status==='bekliyor'&&days(p.dueDate)<=7).length?`Yaklaşan ödemelerinizi kontrol edin.`:'Yakın tarihte ödeme bulunmuyor.'}</div>`;
+  return `<div class="stack">${title('Planlanan Ödemeler','Kredi, fatura ve kira gibi ödemelerin vadelerini takip edin.')} ${overdueAlert}<div class="split"><section class="panel add-action-panel"><div><h2>Yeni Planlı Ödeme</h2><p>Tek sefer veya her ay düzenli ödeme tanımlayın.</p></div><button class="primary" onclick="openPayModal()">+ Ödeme Ekle</button></section><section class="panel"><div class="panelhead"><div><h2>Planlanan Ödemeler</h2></div><div class="payment-list-controls"><div class="segment payment-status-filter">${[['tumu','Tümü'],['bekliyor','Bekliyor'],['odendi','Ödendi']].map(x=>`<button class="${payFilter===x[0]?'active':''}" onclick="payFilter='${x[0]}';render()">${x[1]}</button>`).join('')}</div>${deleteMode.payments?`<button class="secondary" onclick="cancelDeleteMode('payments')">İptal</button><button class="dangerbtn" onclick="askDelete('payments')" ${deleteSelected.payments.size?'':'disabled'}>Seçili Sil (${deleteSelected.payments.size})</button>`:`<button class="secondary" onclick="enterDeleteMode('payments')">Sil</button>`}</div></div>${dateFilterUI('payments')}<div class="list payments-list">${rows.map(p=>paymentRow(p,true)).join('')||empty()}</div><p class="sub" style="margin-top:12px">Düzenli ödemeler artık yukarıdaki “Düzenli Ödemeler” listesinde plan olarak gösterilir. Karta dokunarak hedef birikimi gibi ayrıntıları açabilirsiniz.</p></section></div>${regularPaymentsPanel()}</div>`;
 }
 function paymentForm(){return `<form class="payment-form" onsubmit="addPay(event)"><div class="field"><label>Ödeme Adı</label><input id="pTitle" placeholder="Elektrik, kira, kredi..." required></div><div class="row2"><div class="field"><label>Tutar / Miktar</label><input id="pAmount" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="0,00" required></div><div class="field"><label>Varlık / Kur Türü</label><select id="pAsset">${assetOptions}</select></div><div class="field"><label>Vade Tarihi</label><input id="pDate" type="date" value="${date()}" required></div><div class="field"><label>Kategori</label><select id="pCat"><option>Fatura</option><option>Kira</option><option>Kredi</option><option>Aidat</option><option>Eğitim</option><option>Diğer</option></select></div><div class="field"><label>Aile Bireyi</label><select id="pMember">${S.members.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select></div></div><div class="segment pay-recurring-toggle" style="margin:10px 0"><button type="button" id="oncePay" class="active" onclick="setPayRecurring(false)">Tek Sefer</button><button type="button" id="monthlyPay" onclick="setPayRecurring(true)">Her Ay Düzenli</button></div><input type="hidden" id="pRecurring" value="0"><div id="recurringOptions" class="field" style="display:none"><label>Kaç Ay Devam Edecek?</label><input id="pMonths" type="number" min="2" step="1" value="2" inputmode="numeric"><div class="sub">En az 2 ay seçilebilir. Örn. 12 = 12 ay boyunca.</div></div><button class="primary">Ödeme Ekle</button></form>`}
 function setPayRecurring(v){let r=byId('pRecurring'),o=byId('oncePay'),m=byId('monthlyPay'),box=byId('recurringOptions');if(r)r.value=v?'1':'0';if(o)o.classList.toggle('active',!v);if(m)m.classList.toggle('active',v);if(box)box.style.display=v?'block':'none'}
