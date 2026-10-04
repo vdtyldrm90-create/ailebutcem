@@ -1511,6 +1511,8 @@ button,input,select,textarea,a{touch-action:manipulation}
 .regular-payments-panel .regular-plan-card .goal-detail-open-hint{color:#9a6b17}
 .regular-plan-card .goalname .pig{display:flex;align-items:center;justify-content:center;width:31px;height:31px;min-width:31px;border-radius:10px;font-size:15px;font-weight:800}
 @media(max-width:800px){.app{padding-top:60px}.head{min-height:58px}.regular-plan-card{touch-action:pan-y}.regular-plan-list{touch-action:pan-y}}
+
+.app-notice{padding:8px 2px 4px;text-align:center}.app-notice-icon{width:42px;height:42px;margin:0 auto 10px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;background:var(--soft,#f1f3f5)}.app-notice-text{font-size:15px;line-height:1.5;margin-bottom:14px}.app-notice .form-actions{justify-content:center}
 </style>
 
 <body class="auth-pending">
@@ -2592,18 +2594,23 @@ function extendRecurringTransactionPlan(id){
   const r=(S.recurringTransactions||[]).find(x=>String(x.id)===String(id));
   if(!r)return;
   const extra=Math.floor(Number(document.getElementById('recurringExtendMonths')?.value)||0);
-  if(extra<1)return;
+  if(extra<1){appNotice('Eklenecek ay sayısı en az 1 olmalı.','Uyarı');return;}
   const add=Math.min(extra,600);
-  const oldTotal=Math.max(1,Number(r.months)||Number(r.totalMonths)||1);
   const start=r.startDate||r.date||date();
   const anchor=Number(r.anchorDay)||Number(String(start).slice(-2))||1;
   const existing=(S.transactions||[]).filter(t=>String(t.recurringId||'')===String(r.id)).sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
-  const lastDate=existing.map(t=>t.date).filter(Boolean).pop()||r.lastGeneratedDate||start;
-  let occurrenceDate=monthlyNextDate(lastDate,anchor);
-  const newTotal=oldTotal+add;
+  const oldTotal=Math.max(1,Number(r.months)||Number(r.totalMonths)||1);
+  // Planın devam noktası, kayıt sayısı değil mevcut en yüksek ay numarasıdır.
+  // Örn. 1-2. ay kaldıysa 3. aydan devam eder; 2. ay silinmiş olsa bile 3-4 diye atlamaz.
+  let baseIndex=existing.reduce((max,t)=>Math.max(max,Number(t.scheduleMonthIndex)||0),0);
+  if(!baseIndex)baseIndex=existing.length;
+  if(!baseIndex && Number(r.generatedCount)>0)baseIndex=Math.min(oldTotal,Number(r.generatedCount)||0);
+  const newTotal=baseIndex+add;
+  const lastDate=existing.map(t=>t.date).filter(Boolean).sort().pop()||r.lastGeneratedDate||start;
+  let occurrenceDate=baseIndex>0?monthlyNextDate(lastDate,anchor):start;
   S.transactions=S.transactions||[];
   for(let i=1;i<=add;i++){
-    const index=oldTotal+i;
+    const index=baseIndex+i;
     const occurrenceId=`${r.id}-occ-${index}`;
     if(!S.transactions.some(t=>String(t.id)===occurrenceId)){
       S.transactions.push({id:occurrenceId,recurringId:r.id,recurringOccurrenceId:occurrenceId,scheduledRecurring:true,scheduleMonthIndex:index,scheduleTotalMonths:newTotal,type:r.type,amount:r.amount,asset:r.asset||'TRY',category:r.category,date:occurrenceDate,description:r.description,memberId:r.memberId});
@@ -2622,6 +2629,7 @@ function extendRecurringTransactionPlan(id){
   save();
   openRecurringPlanModal(r.id);
 }
+
 
 function openRecurringPlanModal(id){
   const r=(S.recurringTransactions||[]).find(x=>String(x.id)===String(id));if(!r)return;
@@ -2650,6 +2658,9 @@ function openRecurringPlanModal(id){
   </div>`);
 }
 
+function appNotice(message,title='Bilgi'){
+  showFormModal(title,`<div class="app-notice"><div class="app-notice-icon">!</div><div class="app-notice-text">${esc(String(message||''))}</div><div class="form-actions"><button type="button" class="primary" onclick="closeModal()">Tamam</button></div></div>`);
+}
 function showFormModal(title,html){
   const modal=document.getElementById('modal');
   const titleEl=document.getElementById('modalTitle');
@@ -2682,7 +2693,7 @@ function recurringSavingsPanel(){
   }).join('')}</div>`;
 }
 function openRecurringSavingModal(){
-  if(!(S.goals||[]).length){alert('Önce bir birikim hedefi oluşturmalısın.');return;}
+  if(!(S.goals||[]).length){appNotice('Önce bir birikim hedefi oluşturmalısın.');return;}
   const memberOptions=S.members.map(m=>`<option value="${m.id}" ${m.id===S.active?'selected':''}>${esc(m.name)}</option>`).join('');
   showFormModal('Düzenli Birikim',`<form onsubmit="addRecurringSaving(event)">
     <div class="field"><label>Birikim Hedefi</label><select id="rsGoal" required>${S.goals.filter(g=>!goalIsCompleted(g)).map(g=>`<option value="${g.id}">${esc(g.name)} · ${assetLabels[g.targetAsset||'TRY']||'TL'}</option>`).join('')}</select></div>
@@ -2697,7 +2708,7 @@ function addRecurringSaving(e){
   const quantity=parseMoney(byId('rsQty')?.value),asset=byId('rsAsset')?.value||'TRY',startDate=byId('rsDate')?.value||date(),months=Math.max(2,Math.min(600,Math.floor(Number(byId('rsMonths')?.value)||12))),memberId=byId('rsMember')?.value||S.active;
   if(!goal||quantity<=0)return;
   let costRate=1;
-  if(asset!=='TRY'){costRate=parseRateNumber(byId('rsCost')?.value);if(!(costRate>0)){alert('Döviz veya altın için birim başına alış fiyatını TL olarak gir.');return;}}
+  if(asset!=='TRY'){costRate=parseRateNumber(byId('rsCost')?.value);if(!(costRate>0)){appNotice('Döviz veya altın için birim başına alış fiyatını TL olarak gir.');return;}}
   const id=String(uid()),anchorDay=Number(startDate.slice(-2))||1;let d=startDate;
   const plan={id,goalId,goalName:goal.name,asset,quantity,months,remaining:months,generatedCount:months,startDate,nextDate:monthlyNextDate(startDate,anchorDay),memberId,anchorDay,active:true,createdAt:new Date().toISOString()};
   S.savingMovements=S.savingMovements||[];
@@ -2917,16 +2928,18 @@ function extendRecurringPaymentPlan(groupId){
   const rows=(S.payments||[]).filter(p=>String(p.recurringGroupId||p.id)===String(groupId)).sort((a,b)=>Number(a.recurringIndex||1)-Number(b.recurringIndex||1));
   if(!rows.length)return;
   const extra=Math.floor(Number(document.getElementById('recurringExtendMonths')?.value)||0);
-  if(extra<1)return;
+  if(extra<1){appNotice('Eklenecek ay sayısı en az 1 olmalı.','Uyarı');return;}
   const add=Math.min(extra,600);
   const first=rows[0];
   const oldTotal=Math.max(rows.reduce((m,p)=>Math.max(m,Number(p.recurringIndex)||1),0),Number(first.recurringTotal)||Number(first.months)||rows.length,1);
-  const newTotal=oldTotal+add;
+  // Devam noktası mevcut en yüksek taksit numarasıdır. Son ay silindiyse yeni ay onun numarasını devam ettirir.
+  const baseIndex=rows.reduce((max,p)=>Math.max(max,Number(p.recurringIndex)||0),0)||rows.length;
+  const newTotal=baseIndex+add;
   const anchor=Number(first.anchorDay)||Number(String(first.dueDate||date()).slice(-2))||1;
   const lastRow=rows.slice().sort((a,b)=>String(a.dueDate||'').localeCompare(String(b.dueDate||''))).pop()||first;
-  let dueDate=monthlyNextDate(lastRow.dueDate||first.dueDate||date(),anchor);
+  let dueDate=baseIndex>0?monthlyNextDate(lastRow.dueDate||first.dueDate||date(),anchor):(first.dueDate||date());
   for(let i=1;i<=add;i++){
-    const index=oldTotal+i;
+    const index=baseIndex+i;
     const id=`${groupId}-installment-${index}`;
     if(!(S.payments||[]).some(p=>String(p.id)===id)){
       S.payments.push({id,title:first.title,category:first.category,amount:first.amount,asset:first.asset||'TRY',dueDate,status:'bekliyor',memberId:first.memberId,recurring:true,recurringGroupId:String(groupId),installment:true,recurringIndex:index,recurringTotal:newTotal,interval:'aylik',months:newTotal,remaining:newTotal-index,anchorDay:anchor});
@@ -2941,6 +2954,7 @@ function extendRecurringPaymentPlan(groupId){
   save();
   openRecurringPaymentModal(groupId);
 }
+
 
 function openRecurringPaymentModal(groupId){
   const rows=(S.payments||[]).filter(p=>String(p.recurringGroupId||p.id)===String(groupId)).sort((a,b)=>Number(a.recurringIndex||1)-Number(b.recurringIndex||1));
@@ -3067,7 +3081,7 @@ function addLoan(e){
   const borrowDate=byId('loanDate')?.value||date();
   const closedAt=byId('loanCloseDate')?.value||'';
   if(amount<=0||!person)return;
-  if(closedAt && closedAt < borrowDate){alert('Borç kapama tarihi, borç verme/alma tarihinden önce olamaz.');return;}
+  if(closedAt && closedAt < borrowDate){appNotice('Borç kapama tarihi, borç verme/alma tarihinden önce olamaz.');return;}
   S.loans=S.loans||[];
   S.loans.unshift({
     id:String(uid()),
@@ -3179,12 +3193,12 @@ function confirmLoanClose(e,id){
   const enteredAmount=parseMoney(byId('loanClosedAmount')?.value);
   if(!loan||!closedAt)return;
   const remaining=loanRemainingAmount(loan);
-  if(!(enteredAmount>0)){alert('Tahsil edilen veya geri ödenen tutar sıfırdan büyük olmalı.');return;}
-  if(enteredAmount>remaining+LOAN_AMOUNT_EPSILON){alert(`Bu tutar kalan ${fnum(remaining)} ${assetLabels[loan.asset]||loan.asset||'TL'} borçtan fazla olamaz.`);return;}
+  if(!(enteredAmount>0)){appNotice('Tahsil edilen veya geri ödenen tutar sıfırdan büyük olmalı.');return;}
+  if(enteredAmount>remaining+LOAN_AMOUNT_EPSILON){appNotice(`Bu tutar kalan ${fnum(remaining)} ${assetLabels[loan.asset]||loan.asset||'TL'} borçtan fazla olamaz.`);return;}
   const durationStart=loan.createdAt||loan.date||'';
-  if(closedAt<durationStart){alert('Kapama tarihi, borç kaydının listeye eklendiği tarihten önce olamaz.');return;}
+  if(closedAt<durationStart){appNotice('Kapama tarihi, borç kaydının listeye eklendiği tarihten önce olamaz.');return;}
   const lastPaymentDate=(loan.settlements||[]).map(x=>x.date||'').sort().slice(-1)[0]||durationStart;
-  if(closedAt<lastPaymentDate){alert('Ödeme/tahsilat tarihi önceki kapama tarihinden önce olamaz.');return;}
+  if(closedAt<lastPaymentDate){appNotice('Ödeme/tahsilat tarihi önceki kapama tarihinden önce olamaz.');return;}
   // Match the remaining balance when the input differs only by display rounding.
   const paymentAmount=Math.abs(enteredAmount-remaining)<=LOAN_AMOUNT_EPSILON?remaining:enteredAmount;
   loan.settlements=Array.isArray(loan.settlements)?loan.settlements:[];
@@ -3552,7 +3566,7 @@ function adjust(id,sign){
   let costRate=1;
   if(Number(sign)>0&&a!=='TRY'){
     costRate=parseRateNumber(costEl?.value);
-    if(!(costRate>0)){alert('Döviz veya altın birikimi için birim başına gerçek alış fiyatını TL olarak gir.');costEl?.focus();return;}
+    if(!(costRate>0)){appNotice('Döviz veya altın birikimi için birim başına gerçek alış fiyatını TL olarak gir.');costEl?.focus();return;}
   }
   let beforeTotal=goalValueInTarget(g),qty=sign>0?v:-v;
   g.holdings[a]=Math.max(0,(g.holdings[a]||0)+qty);
