@@ -1533,6 +1533,90 @@ body.cloud-cache-loading #main button,body.cloud-cache-loading #main input,body.
 .goal-move-btn.remove{color:#b34d46;border-color:#e2aaa5;background:#fff5f4}
 @media(max-width:420px){.goal-detail-move-actions{gap:5px}.goal-move-btn{padding:6px 8px;font-size:10px;min-height:29px}}
 </style>
+
+<style id="mobile-home-rates-optimization">
+/* Ana Sayfa + Birikim: küçük ekranlarda taşmayı önleyen kompakt finans kartları */
+.home-dashboard,.savings-page{min-width:0;overflow-x:hidden}
+.home-main-card,.home-total-card,.home-rate-card,.home-feature-panel,.home-recent-panel,.home-loan-mini{min-width:0}
+.home-main-card b,.home-total-card b,.home-rate-value{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums}
+.home-main-card>span,.home-main-card small,.home-total-card span,.home-total-card small,.home-rate-name,.home-rate-unit{overflow:hidden;text-overflow:ellipsis}
+.savings-rates-panel{margin-top:0}
+.savings-rates-panel .home-rate-card{cursor:pointer}
+@media(max-width:560px){
+  .home-four-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-bottom:10px}
+  .home-main-card{padding:8px 9px 8px;border-radius:14px;min-height:104px}
+  .home-card-icon{width:34px;height:34px;border-radius:10px;margin-bottom:5px}
+  .home-card-icon svg{width:27px;height:27px}
+  .home-main-card>span{font-size:8px;letter-spacing:.04em;margin-bottom:2px}
+  .home-main-card b{font-size:clamp(13px,4vw,16px);line-height:1.15;letter-spacing:-.03em}
+  .home-main-card small{font-size:8px}
+  .home-total-card{margin-bottom:10px;border-radius:15px}
+  .home-total-card>div{padding:9px 6px;gap:5px;align-items:flex-start}
+  .home-total-icon{width:28px;height:28px;border-radius:9px}
+  .home-total-icon svg{width:23px;height:23px}
+  .home-total-card span{font-size:7px;line-height:1.15;white-space:normal}
+  .home-total-card b{font-size:clamp(10px,3.1vw,13px);line-height:1.2}
+  .home-total-card small{font-size:7px;white-space:normal}
+  .home-rates-panel{padding:10px!important;border-radius:16px!important;margin-bottom:10px!important}
+  .home-rates-head{gap:6px;margin-bottom:7px}
+  .home-rates-title{gap:6px}
+  .home-rates-title-icon{width:25px;height:25px;border-radius:8px}
+  .home-rates-title-icon svg{width:16px;height:16px}
+  .home-rates-title h2{font-size:14px}
+  .home-rates-head p{font-size:7px;margin:2px 0 0 31px;max-width:150px;overflow:hidden;text-overflow:ellipsis}
+  .home-rates-all{font-size:8px;padding:4px 0}
+  .home-rates-all span{font-size:14px}
+  .home-rate-grid{gap:5px}
+  .home-rate-card{padding:7px 6px 7px;border-radius:12px}
+  .home-rate-top{gap:3px}
+  .home-rate-icon{width:30px;height:30px}
+  .home-rate-icon svg{width:28px;height:28px}
+  .home-rate-arrow{font-size:17px}
+  .home-rate-name{font-size:9px;margin-top:4px}
+  .home-rate-value{font-size:13px;margin-top:2px;letter-spacing:-.04em}
+  .home-rate-unit{font-size:7px}
+  .home-rate-pairs{margin-top:5px;padding-top:4px;gap:1px;font-size:6.5px}
+  .home-rate-pairs span{font-size:6.5px}
+  .home-rate-pairs b{font-size:7px}
+  .home-two-column{gap:8px}
+  .home-feature-panel{padding:10px!important;border-radius:14px!important}
+  .home-feature-head{gap:6px;padding-bottom:7px}
+  .home-feature-head h2{font-size:13px;line-height:1.2;overflow-wrap:anywhere}
+  .home-feature-head p{font-size:8px;line-height:1.25;overflow-wrap:anywhere}
+  .home-feature-head button{font-size:9px;flex:none}
+  .home-payment-row,.home-goal-row{gap:6px;padding:7px 1px}
+  .home-mini-icon{width:30px;height:30px;border-radius:9px}
+  .home-mini-icon svg{width:20px;height:20px}
+  .home-row-main b{font-size:10px}
+  .home-row-main span{font-size:8px}
+  .home-payment-row>strong,.home-goal-row>strong{font-size:8px;max-width:72px;overflow:hidden;text-overflow:ellipsis}
+  .home-row-arrow{font-size:17px}
+  .home-progress{max-width:90px;height:4px}
+}
+@media(max-width:380px){
+  main{padding-left:8px!important;padding-right:8px!important}
+  .home-four-grid{gap:6px}
+  .home-main-card{padding:7px 7px;min-height:96px}
+  .home-card-icon{width:30px;height:30px}
+  .home-card-icon svg{width:24px;height:24px}
+  .home-main-card b{font-size:12px}
+  .home-main-card>span{font-size:7px}
+  .home-total-card>div{padding:8px 4px;gap:4px}
+  .home-total-icon{width:25px;height:25px}
+  .home-total-icon svg{width:20px;height:20px}
+  .home-total-card span{font-size:6.5px}
+  .home-total-card b{font-size:9.5px}
+  .home-total-card small{font-size:6.5px}
+  .home-rate-grid{gap:4px}
+  .home-rate-card{padding:6px 5px}
+  .home-rate-icon{width:27px;height:27px}
+  .home-rate-icon svg{width:25px;height:25px}
+  .home-rate-value{font-size:11.5px}
+  .home-rate-name{font-size:8px}
+  .home-rate-pairs span,.home-rate-pairs{font-size:6px}
+  .home-rate-pairs b{font-size:6.5px}
+}
+</style>
 </head>
 <style id="savings-report-readable-contrast-v1">
 /* Birikim raporunda net kartlardan miras kalan beyaz etiketleri okunaklı koyu metne çevir. */
@@ -2839,12 +2923,12 @@ function homeRateIcon(kind){
   return `<svg ${common}><circle cx="24" cy="24" r="20" fill="#f5b51b"/><circle cx="24" cy="24" r="15" fill="#ffd85a" opacity=".35"/><path d="m14 20 5-7h10l5 7-5 3-2.2-4.2L24 23l-2.8-4.2L19 23l-5-3Zm3 5h14l3 7H14l3-7Z" fill="#fff" opacity=".95"/><path d="M19 28h10" stroke="#e39a00" stroke-width="2" stroke-linecap="round" opacity=".8"/></svg>`;
 }
 function ratesPanel(){
-  const homeRate=(label,asset,kind,unit='TL')=>{
+  const rateCard=(label,asset,kind,unit='TL')=>{
     const sell=Number(currentPurchaseRate(asset))||Number(rates[asset])||0;
     const buy=Number(currentExitRate(asset))||sell;
-    return `<button class="home-rate-card home-rate-${kind.toLowerCase()}" type="button" onclick="openRatesModal()"><div class="home-rate-top"><span class="home-rate-icon">${homeRateIcon(kind)}</span><span class="home-rate-arrow">›</span></div><div class="home-rate-name">${label}</div><div class="home-rate-value">₺${fnum(sell)}</div><div class="home-rate-unit">${unit}</div><div class="home-rate-pairs"><span>Alış <b>₺${fnum(buy)}</b></span><span>Satış <b>₺${fnum(sell)}</b></span></div></button>`;
+    return `<button class="home-rate-card savings-rate-card home-rate-${kind.toLowerCase()}" type="button" onclick="openRatesModal()"><div class="home-rate-top"><span class="home-rate-icon">${homeRateIcon(kind)}</span><span class="home-rate-arrow">›</span></div><div class="home-rate-name">${label}</div><div class="home-rate-value">₺${fnum(sell)}</div><div class="home-rate-unit">${unit}</div><div class="home-rate-pairs"><span>Alış <b>₺${fnum(buy)}</b></span><span>Satış <b>₺${fnum(sell)}</b></span></div></button>`;
   };
-  return `<section class="panel home-rates-panel"><div class="home-rates-head"><div><div class="home-rates-title"><span class="home-rates-title-icon">${catSvg('chart','#2563eb')}</span><h2>Güncel Kurlar</h2></div><p>${esc(rateUpdated)} · Otomatik veri</p></div><button class="home-rates-all" type="button" onclick="openRatesModal()">Tüm Kurlar <span>›</span></button></div><div class="home-rate-grid">${homeRate('Dolar','USD','USD')}${homeRate('Euro','EUR','EUR')}${homeRate('Gram Altın','GOLD24','GOLD','TL/gr')}</div></section>`;
+  return `<section class="panel home-rates-panel savings-rates-panel"><div class="home-rates-head"><div><div class="home-rates-title"><span class="home-rates-title-icon">${catSvg('chart','#2563eb')}</span><h2>Güncel Kurlar</h2></div><p>${esc(rateUpdated)} · Otomatik veri</p></div><button class="home-rates-all" type="button" onclick="openRatesModal()">Tüm Kurlar <span>›</span></button></div><div class="home-rate-grid">${rateCard('Dolar','USD','USD')}${rateCard('Euro','EUR','EUR')}${rateCard('Gram Altın','GOLD24','GOLD','TL/gr')}</div></section>`;
 }
 function days(d){return Math.ceil((new Date(d+'T12:00:00')-new Date(new Date().toDateString()))/86400000)}
 function due(p){let d=days(p.dueDate);return p.status==='odendi'?'<span class="badge ok">Ödendi</span>':d<0?'<span class="badge late">Gecikti</span>':d<=3?'<span class="badge warn">Yaklaşıyor</span>':`<span class="badge">${d} gün</span>`}
