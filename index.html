@@ -2894,9 +2894,10 @@ function toggleRecurringTx(id){
   save();
 }
 function deleteRecurringTx(id){
-  if(!confirm('Düzenli işlem planı silinsin mi? Önceden oluşturulan işlem kayıtları korunur.'))return;
-  S.recurringTransactions=(S.recurringTransactions||[]).filter(x=>x.id!==id);
-  save();
+  showAppConfirm('Silme Onayı','Düzenli işlem planı silinsin mi?',()=>{
+    S.recurringTransactions=(S.recurringTransactions||[]).filter(x=>x.id!==id);
+    save();
+  });
 }
 function regularPaymentsPanel(){
   const groups={};
@@ -2987,16 +2988,34 @@ function enterModalDeleteMode(type,groupId){
   if(type==='recurringTransactions')openRecurringPlanModal(groupId);else openRecurringPaymentModal(groupId);
 }
 function toggleModalDeleteSelection(type,id,groupId){
+  const pageScrollY=window.scrollY||window.pageYOffset||0;
+  const oldList=document.querySelector('.record-detail-modal .list');
+  const listScrollTop=oldList?oldList.scrollTop:0;
   const set=modalDeleteSelected[type]||new Set();
   const key=String(id);
   if(set.has(key))set.delete(key);else set.add(key);
   modalDeleteSelected[type]=set;
   if(type==='recurringTransactions')openRecurringPlanModal(groupId);else openRecurringPaymentModal(groupId);
+  requestAnimationFrame(()=>{
+    window.scrollTo(0,pageScrollY);
+    const newList=document.querySelector('.record-detail-modal .list');
+    if(newList)newList.scrollTop=listScrollTop;
+  });
 }
-function clearModalDeleteSelection(type,groupId){modalDeleteSelected[type].clear();modalDeleteMode[type]=false;if(type==='recurringTransactions')openRecurringPlanModal(groupId);else openRecurringPaymentModal(groupId)}
+function clearModalDeleteSelection(type,groupId){
+  const pageScrollY=window.scrollY||window.pageYOffset||0;
+  modalDeleteSelected[type].clear();modalDeleteMode[type]=false;
+  if(type==='recurringTransactions')openRecurringPlanModal(groupId);else openRecurringPaymentModal(groupId);
+  requestAnimationFrame(()=>window.scrollTo(0,pageScrollY));
+}
+function showAppConfirm(title,message,onConfirm){
+  showFormModal(title,`<div class="confirmbox"><div class="confirmicon">!</div><h3>${message}</h3><p>Bu işlem geri alınamaz.</p><div class="confirmactions"><button type="button" class="secondary" onclick="closeModal()">Vazgeç</button><button type="button" class="dangerbtn" id="appConfirmOk">Evet, Sil</button></div></div>`);
+  const btn=byId('appConfirmOk');
+  if(btn)btn.onclick=()=>{closeModal();onConfirm()};
+}
 function deleteSelectedRecurringOccurrences(type,groupId){
   const ids=new Set(Array.from(modalDeleteSelected[type]||[]).map(String));if(!ids.size)return;
-  if(!confirm(`${ids.size} seçili kayıt silinsin mi?`))return;
+  showAppConfirm('Silme Onayı',`${ids.size} seçili kayıt silinsin mi?`,()=>{
   if(type==='recurringTransactions'){
     S.transactions=(S.transactions||[]).filter(t=>!ids.has(String(t.id)));
     const r=(S.recurringTransactions||[]).find(x=>String(x.id)===String(groupId));
@@ -3009,6 +3028,7 @@ function deleteSelectedRecurringOccurrences(type,groupId){
     S.payments=(S.payments||[]).filter(p=>!selected.has(String(p.id)));
   }
   modalDeleteSelected[type].clear();modalDeleteMode[type]=false;save();closeModal();
+  });
 }
 
 function payments(){
