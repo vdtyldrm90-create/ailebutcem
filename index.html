@@ -1303,6 +1303,16 @@ body.cloud-cache-loading #main button,body.cloud-cache-loading #main input,body.
 @media(max-width:420px){.regular-plan-card{padding:10px}.regular-plan-card .goalname b{font-size:12px}.record-detail-summary{gap:6px}.record-detail-summary>div{padding:8px}}
 </style>
 <style>.recurring-savings-panel{margin-top:10px}.recurring-savings-panel .panelhead{align-items:center;gap:10px}.recurring-savings-panel .panelhead .primary{flex:0 0 auto}</style>
+
+<style>
+/* Birikim hedefi: ekle/çıkar işlemleri hedef kartına bağlı, küçük butonlar olarak gösterilir. */
+.goal-detail-move-actions{display:flex;justify-content:center;gap:7px;margin:10px -2px -2px;padding-top:9px;border-top:1px solid var(--border,#e7ece9)}
+.goal-move-btn{border:1px solid;border-radius:9px;padding:6px 10px;font-size:11px;font-weight:700;line-height:1.1;background:#fff;display:inline-flex;align-items:center;justify-content:center;gap:4px;cursor:pointer;min-height:30px}
+.goal-move-btn span{font-size:14px;line-height:1}
+.goal-move-btn.add{color:#26784b;border-color:#9ed1b2;background:#f1faf4}
+.goal-move-btn.remove{color:#b34d46;border-color:#e2aaa5;background:#fff5f4}
+@media(max-width:420px){.goal-detail-move-actions{gap:5px}.goal-move-btn{padding:6px 8px;font-size:10px;min-height:29px}}
+</style>
 </head>
 <style id="savings-report-readable-contrast-v1">
 /* Birikim raporunda net kartlardan miras kalan beyaz etiketleri okunaklı koyu metne çevir. */
@@ -3042,12 +3052,13 @@ function goalDetailPage(id){
   Object.keys(detailHoldings).forEach(a=>{if(detailHoldings[a]<=1e-8)delete detailHoldings[a]});
   const holdRows=Object.entries(detailHoldings).filter(([a,q])=>Number(q)>1e-8&&assetLabels[a]).map(([a,q])=>`<span class="goal-holding-chip" data-asset="${esc(a)}"><span class="goal-holding-symbol" aria-hidden="true">${holdingSymbols[a]||'•'}</span><span>${esc(assetLabels[a]||a)}</span><b>${fnum(q)}</b></span>`).join('');
   return `<div class="stack savings-detail-page">
-    <div class="record-detail-header"><button class="record-detail-back" onclick="closeSavingsDetail()">‹ Birikim Hedefleri</button><div class="record-detail-actions">${!completed?`<button type="button" class="primary" onclick="event.stopPropagation();openSavingMoveModal('${g.id}',1)">+ Birikim Ekle</button><button type="button" class="outline" onclick="event.stopPropagation();openSavingMoveModal('${g.id}',-1)">− Birikim Çıkar</button>`:''}</div></div>
+    <div class="record-detail-header"><button class="record-detail-back" onclick="closeSavingsDetail()">‹ Birikim Hedefleri</button></div>
     <section class="panel goal-detail-hero"><div class="goal-detail-top"><div class="goalname"><div class="pig" aria-label="Birikim">¤</div><div><h2 style="margin:0;font-size:19px">${esc(g.name)}</h2><div class="sub">${esc(member(g.memberId))}</div></div></div><span class="${completed?'goal-completed-badge':'goal-active-badge'}">${completed?'Tamamlandı':'Devam Ediyor'}</span></div>
       <div class="goal-detail-main-number"><b>${moneyInAsset(total,asset)}</b><span>%${Math.round(pct)}</span></div><div class="goal-detail-progress"><i style="width:${pct}%"></i></div><div class="goalmeta"><span>Hedef: ${moneyInAsset(target,asset)}</span><span>${completed?'Hedef tamamlandı':'Kalan: '+moneyInAsset(Math.max(0,target-total),asset)}</span></div>
       <div class="goal-detail-stat-grid"><div><small>Hedef Tutarı</small><b>${moneyInAsset(target,asset)}</b></div><div><small>Mevcut Birikim</small><b>${moneyInAsset(total,asset)}</b></div><div><small>Kalan Tutar</small><b>${moneyInAsset(Math.max(0,target-total),asset)}</b></div></div>
       <div class="goal-detail-meta"><span><small>Başlangıç</small><b>${g.startDate?fd(g.startDate):'—'}</b></span><span><small>Hedef Tarihi</small><b>${g.targetDate?fd(g.targetDate):'Belirtilmedi'}</b></span><span><small>Hedef Sahibi</small><b>${esc(member(g.memberId))}</b></span><span><small>Durum</small><b>${completed?'Tamamlandı':'Devam Ediyor'}</b></span>${completed?`<span><small>Tamamlanma Tarihi</small><b>${completion?fd(completion):'—'}</b></span>`:''}</div>${holdRows?`<div class="goal-holdings-line"><div class="goal-holding-chips">${holdRows}</div></div>`:''}
       ${completed?goalCompletionDetails(g):''}
+      ${!completed?`<div class="goal-detail-move-actions"><button type="button" class="goal-move-btn add" onclick="event.stopPropagation();openSavingMoveModal('${g.id}',1)"><span>＋</span> Birikim Ekle</button><button type="button" class="goal-move-btn remove" onclick="event.stopPropagation();openSavingMoveModal('${g.id}',-1)"><span>−</span> Birikim Çıkar</button></div>`:''}
     </section>
     <section class="panel detail-history-panel"><div class="panelhead"><div><h2>Birikim Hareket Geçmişi</h2><p>Her bölümde tek tablo, tüm hareketler satır satır gösterilir.</p></div>${savingsDetailDeleteActions('movements')}</div>
       <div class="detail-history-group"><h3><span class="goal-movement-chip-icon added">＋</span> Eklenen Birikimler <small>(${additions.length})</small></h3>${savingMovementTable(additions,lotState,true,completed)}</div>
