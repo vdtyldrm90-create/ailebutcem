@@ -4221,7 +4221,7 @@ function confirmDelete(type){
     S.transactions=S.transactions.filter(x=>!ids.has(x.id));
   }else if(type==='recurringTransactions'){
     // Düzenli gelir/gider planı silindiğinde, bu plana bağlı üstteki
-    // İşlemler listesindeki tüm oluşturulmuş kayıtları da birlikte kaldır.
+    // İşlemler listesindeki TÜM oluşturulmuş kayıtları da birlikte kaldır.
     const recurringIds=new Set(Array.from(ids).map(String));
     S.transactions=(S.transactions||[]).filter(t=>!recurringIds.has(String(t.recurringId||'')));
     S.recurringTransactions=(S.recurringTransactions||[]).filter(x=>!recurringIds.has(String(x.id)));
@@ -4236,10 +4236,22 @@ function confirmDelete(type){
     S.transactions=S.transactions.filter(t=>!relatedPaymentIds.has(t.paymentId));
     S.payments=S.payments.filter(x=>!ids.has(x.id));
   }else if(type==='recurringPayments'){
+    // Düzenli ödeme kartı toplu silindiğinde, karta ait bütün aylık
+    // Planlanan Ödemeler kayıtlarını ve bu ödemelerden oluşmuş İşlemler
+    // kayıtlarını birlikte kaldır.
     const groups=new Set(Array.from(ids).map(String));
-    const paymentIds=new Set((S.payments||[]).filter(p=>groups.has(String(p.recurringGroupId||p.id))).map(p=>String(p.id)));
-    S.transactions=S.transactions.filter(t=>!paymentIds.has(String(t.paymentId||'')));
-    S.payments=S.payments.filter(p=>!paymentIds.has(String(p.id)));
+    const relatedPayments=(S.payments||[]).filter(p=>{
+      const gid=String(p.recurringGroupId||p.id);
+      return groups.has(gid);
+    });
+    const paymentIds=new Set(relatedPayments.map(p=>String(p.id)));
+    const recurringGroupIds=new Set(relatedPayments.map(p=>String(p.recurringGroupId||p.id)));
+    S.transactions=(S.transactions||[]).filter(t=>{
+      const paymentId=String(t.paymentId||'');
+      const groupId=String(t.recurringGroupId||'');
+      return !paymentIds.has(paymentId)&&!recurringGroupIds.has(groupId);
+    });
+    S.payments=(S.payments||[]).filter(p=>!paymentIds.has(String(p.id)));
   }else if(type==='goals'){
     S.goals=S.goals.filter(x=>!ids.has(x.id));
     S.savingMovements=(S.savingMovements||[]).filter(x=>!ids.has(x.goalId));
