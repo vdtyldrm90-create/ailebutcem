@@ -466,7 +466,7 @@ form{display:flex;flex-direction:column;gap:11px}.row2{display:grid;grid-templat
 #recurringExtendMonths,#rsMonths,#txMonths,#pMonths{direction:ltr;text-align:left;caret-color:var(--primary)}
 
 /* Kategori seçimi - kompakt, renkli, ikonlu */
-.category-picker-overlay{position:fixed;inset:0;background:rgba(15,23,42,.38);backdrop-filter:blur(3px);display:flex;align-items:stretch;justify-content:center;z-index:1200;padding:0}
+.category-picker-overlay{position:fixed;inset:0;background:rgba(15,23,42,.38);backdrop-filter:blur(3px);display:flex;align-items:stretch;justify-content:center;z-index:22000;padding:0}
 .category-picker{width:min(620px,100%);height:100dvh;max-height:100dvh;overflow:hidden;background:var(--card,#fff);border:0;border-radius:0;box-shadow:0 0 35px rgba(15,23,42,.18);padding:14px 13px calc(92px + env(safe-area-inset-bottom));display:flex;flex-direction:column}
 .category-picker-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.category-picker-head h3{margin:0;font-size:17px}.category-picker-close{border:0;background:#f3f4f6;width:34px;height:34px;border-radius:11px;font-size:20px;line-height:1;cursor:pointer}
 .category-picker-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}.category-picker-tabs button{border:1px solid var(--border,#e5e7eb);background:#f8fafc;color:var(--fg);border-radius:11px;padding:9px;font-weight:800}.category-picker-tabs button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
@@ -1630,6 +1630,59 @@ body.cloud-cache-loading #main button,body.cloud-cache-loading #main input,body.
   .home-rate-pairs b{font-size:6.5px}
 }
 </style>
+<style id="home-savings-readability-fix">
+/* Ana Sayfa + Birikim okunabilirlik ve mobil yerleşim düzeltmeleri */
+.home-total-card{align-items:stretch;text-align:center}
+.home-total-card>div{justify-content:center;text-align:center;padding:15px 10px}
+.home-total-card>div>div{width:100%;min-width:0}
+.home-total-card span{font-size:11px;line-height:1.2;white-space:nowrap}
+.home-total-card b{font-size:20px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.home-total-card small{font-size:10px}
+.home-rate-card{text-align:center}
+.home-rate-top{justify-content:center}
+.home-rate-icon{margin:0 auto}
+.home-rate-name{font-size:14px;line-height:1.2;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-rate-value{font-size:24px;line-height:1.15;text-align:center}
+.home-rate-unit{text-align:center;font-size:10px}
+.home-rate-pairs{justify-content:center;text-align:center;gap:10px}
+.home-rate-pairs span{flex:1}
+.home-rate-pairs b{font-size:11px}
+.home-payment-row,.home-goal-row{padding:11px 4px;gap:10px}
+.home-mini-icon{width:42px;height:42px;border-radius:13px}
+.home-mini-icon svg{width:28px;height:28px}
+.home-row-main b{font-size:13px;line-height:1.25}
+.home-row-main span{font-size:10.5px;line-height:1.25}
+.home-payment-row>strong,.home-goal-row>strong{font-size:11px}
+@media(max-width:560px){
+  .home-total-card>div{padding:11px 5px}
+  .home-total-card span{font-size:9px}
+  .home-total-card b{font-size:clamp(12px,3.5vw,16px)}
+  .home-total-card small{font-size:8px}
+  .home-rate-card{padding:9px 6px}
+  .home-rate-icon{width:36px;height:36px}
+  .home-rate-icon svg{width:32px;height:32px}
+  .home-rate-name{font-size:10.5px}
+  .home-rate-value{font-size:15px}
+  .home-rate-unit{font-size:8px}
+  .home-rate-pairs{gap:4px;margin-top:6px;padding-top:5px}
+  .home-rate-pairs span{font-size:8px}
+  .home-rate-pairs b{font-size:9px}
+  .home-payment-row,.home-goal-row{padding:9px 1px;gap:8px}
+  .home-mini-icon{width:37px;height:37px;border-radius:11px}
+  .home-mini-icon svg{width:25px;height:25px}
+  .home-row-main b{font-size:12px}
+  .home-row-main span{font-size:9.5px}
+  .home-payment-row>strong,.home-goal-row>strong{font-size:10px;max-width:82px}
+}
+@media(max-width:380px){
+  .home-rate-name{font-size:9.5px}
+  .home-rate-value{font-size:13.5px}
+  .home-rate-pairs span{font-size:7px}
+  .home-rate-pairs b{font-size:8px}
+  .home-row-main b{font-size:11.5px}
+  .home-row-main span{font-size:9px}
+}
+</style>
 </head>
 <style id="savings-report-readable-contrast-v1">
 /* Birikim raporunda net kartlardan miras kalan beyaz etiketleri okunaklı koyu metne çevir. */
@@ -2679,7 +2732,7 @@ function home(){
   const income=homeList.filter(t=>t.type==='gelir').reduce((a,x)=>a+(Number(x.amount)||0),0);
   const expense=homeList.filter(t=>t.type==='gider').reduce((a,x)=>a+(Number(x.amount)||0),0);
   const net=income-expense;
-  const planned=(S.payments||[]).filter(p=>p.status==='bekliyor').reduce((a,p)=>a+(Number(p.amount)||0),0);
+  const planned=(S.payments||[]).filter(p=>p.status==='bekliyor'&&dateInRange(p.dueDate,dateFilters.home||'month',window._filterDates?.home?.start,window._filterDates?.home?.end)).reduce((a,p)=>a+(Number(p.amount)||0),0);
   const savings=(S.goals||[]).filter(g=>!goalIsCompleted(g)).reduce((a,g)=>a+(Number(goalValueInTarget(g))||0),0);
   const overdue=S.payments.filter(p=>p.status==='bekliyor'&&dayDiffToday(p.dueDate)>0).sort((a,b)=>(a.dueDate||'').localeCompare(b.dueDate||''));
   const upcoming=S.payments.filter(p=>p.status==='bekliyor'&&(-dayDiffToday(p.dueDate))>=0&&(-dayDiffToday(p.dueDate))<=7).sort((a,b)=>(a.dueDate||'').localeCompare(b.dueDate||''));
@@ -2701,9 +2754,9 @@ function home(){
       <article class="home-main-card saving"><div class="home-card-icon">${homeMetricIcon('saving')}</div><span>BİRİKİM</span><b>${fmt(savings)}</b><small>TL</small></article>
     </section>
     <section class="home-total-card">
-      <div><div class="home-total-icon">${homeMetricIcon('income')}</div><div><span>TOPLAM GELİR</span><b>${fmt(income)} TL</b></div></div>
-      <div><div class="home-total-icon">${homeMetricIcon('expense')}</div><div><span>TOPLAM GİDER</span><b>${fmt(expense)} TL</b></div></div>
-      <div class="${netClass}"><div class="home-total-icon">${homeMetricIcon('saving')}</div><div><span>NET BÜTÇE</span><b>${fmt(net)} TL</b><small>${net>0?'Pozitif bütçe':net<0?'Negatif bütçe':'Dengede'}</small></div></div>
+      <div><div><span>TOPLAM GELİR</span><b>${fmt(income)} TL</b></div></div>
+      <div><div><span>TOPLAM GİDER</span><b>${fmt(expense)} TL</b></div></div>
+      <div class="${netClass}"><div><span>NET BÜTÇE</span><b>${fmt(net)} TL</b><small>${net>0?'Pozitif bütçe':net<0?'Negatif bütçe':'Dengede'}</small></div></div>
     </section>
     ${overdueSection}
     ${ratesPanel()}
