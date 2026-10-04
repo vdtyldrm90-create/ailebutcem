@@ -4220,7 +4220,11 @@ function confirmDelete(type){
   if(type==='transactions'){
     S.transactions=S.transactions.filter(x=>!ids.has(x.id));
   }else if(type==='recurringTransactions'){
-    S.recurringTransactions=(S.recurringTransactions||[]).filter(x=>!ids.has(x.id));
+    // Düzenli gelir/gider planı silindiğinde, bu plana bağlı üstteki
+    // İşlemler listesindeki tüm oluşturulmuş kayıtları da birlikte kaldır.
+    const recurringIds=new Set(Array.from(ids).map(String));
+    S.transactions=(S.transactions||[]).filter(t=>!recurringIds.has(String(t.recurringId||'')));
+    S.recurringTransactions=(S.recurringTransactions||[]).filter(x=>!recurringIds.has(String(x.id)));
   }else if(type==='payments'){
     const selectedPayments=S.payments.filter(p=>ids.has(p.id));
     const relatedPaymentIds=new Set(ids);
