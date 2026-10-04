@@ -1140,9 +1140,23 @@ body.cloud-cache-loading #main button,body.cloud-cache-loading #main input,body.
 .rates-modal-content .rate-pair-row.rate-buy span,.rates-modal-content .rate-pair-row.rate-buy b{color:#237849}
 .rates-modal-content .rate-pair-row.rate-sell{background:#fff0ef;border-color:#f2d7d4}
 .rates-modal-content .rate-pair-row.rate-sell span,.rates-modal-content .rate-pair-row.rate-sell b{color:#b93834}
+.rates-modal-meta{display:flex;align-items:center;gap:7px;margin:-2px 0 10px;color:var(--muted);font-size:10px;line-height:1.3}
+.rates-live-dot{width:7px;height:7px;border-radius:50%;background:#43a56d;box-shadow:0 0 0 3px #43a56d18;flex:none}
+.rates-modal-content .rate{min-width:0;overflow:hidden}
+.rate-title{display:flex;align-items:center;justify-content:space-between;gap:6px;min-width:0}
+.rate-title b{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rate-title .rate-unit{flex:none;margin-top:0}
+.rates-modal-content .rate-pair-row{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.rates-modal-content .rate-pair-row strong{font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.rate-note-details{margin-top:10px;border-top:1px solid var(--border);padding-top:8px}
+.rate-note-details summary{cursor:pointer;font-size:10px;font-weight:750;color:var(--primary);list-style:none}
+.rate-note-details summary::-webkit-details-marker{display:none}
+.rate-note-details summary:after{content:'+';float:right;font-size:13px}
+.rate-note-details[open] summary:after{content:'−'}
+.rate-note-details .rate-note{margin:7px 0 0;line-height:1.45}
 .modalbox:has(.rates-modal-content){width:min(760px,100%)}
 @media(min-width:720px){.rates-modal-content .rategrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:440px){.rates-modal-content .rategrid{gap:6px}.rates-modal-content .rate{padding:8px}.rates-modal-content .rate-pair-row{padding:5px}.rates-modal-content .rate-pair-row b{font-size:11px}}
+@media(max-width:440px){.rates-modal-content .rategrid{gap:6px}.rates-modal-content .rate{padding:8px}.rates-modal-content .rate-pair-row{padding:5px 6px}.rates-modal-content .rate-pair-row b{font-size:11px}.rates-modal-content .rate-pair-row strong{font-size:11px}.rate-title b{font-size:10.5px}.modal:has(.rates-modal-content){padding:0}.modal:has(.rates-modal-content) .modalbox{max-height:88svh;padding:14px 12px calc(14px + env(safe-area-inset-bottom));border-radius:18px 18px 0 0}.modal:has(.rates-modal-content) .modalhead{margin-bottom:9px}.modal:has(.rates-modal-content) .modalhead b{font-size:15px}}
 /* Savings: total is alone, loan metrics sit below side-by-side. */
 .savings-overview-grid{display:block}
 .savings-total-card{margin-bottom:8px}
@@ -2479,8 +2493,8 @@ window.addEventListener('pageshow',()=>{
 window.addEventListener('pagehide',stopRateAutoRefresh);
 
 function ratesMarkup(){
-  const rateCard=(label,asset,unit='')=>`<div class="rate"><small>${label}</small><div class="rate-pair"><div class="rate-pair-row rate-buy"><span>Alış</span><b>₺${fnum(currentExitRate(asset))}</b></div><div class="rate-pair-row rate-sell"><span>Satış</span><b>₺${fnum(currentPurchaseRate(asset))}</b></div></div>${unit?`<span class="rate-unit">${unit}</span>`:''}</div>`;
-  return `<div class="rates-modal-content"><p class="sub" id="rateUpdatedText">${esc(rateUpdated)} · Otomatik veri</p><div class="rategrid live-rates">${rateCard('Dolar / TL','USD')}${rateCard('Euro / TL','EUR')}${rateCard('22 Ayar Altın','GOLD22','TL/gr')}${rateCard('24 Ayar Altın','GOLD24','TL/gr')}${rateCard('Çeyrek Altın','CEYREK','hesaplanan')}${rateCard('Yarım Altın','YARIM','hesaplanan')}${rateCard('Tam Altın','TAM','hesaplanan')}</div><p class="sub rate-note">Alış: kurumun sizden alırken ödediği referans fiyat, yani yaklaşık bozdurma değeridir. Satış: aynı varlığı yeniden almak için ödeyeceğiniz referans fiyattır. TCMB verisi yoksa döviz için orta kura yaklaşık %0,5 referans makası uygulanır. Altında spot fiyata yaklaşık makas eklenir; gerçek kuyumcu fiyatları farklı olabilir. Çeyrek, yarım ve tam altın değerleri yaklaşık hesaplanır.</p></div>`;
+  const rateCard=(label,asset,unit='')=>`<article class="rate"><div class="rate-title"><b>${label}</b>${unit?`<span class="rate-unit">${unit}</span>`:''}</div><div class="rate-pair"><div class="rate-pair-row rate-buy"><span>Alış</span><strong>₺${fnum(currentExitRate(asset))}</strong></div><div class="rate-pair-row rate-sell"><span>Satış</span><strong>₺${fnum(currentPurchaseRate(asset))}</strong></div></div></article>`;
+  return `<div class="rates-modal-content"><div class="rates-modal-meta"><span class="rates-live-dot"></span><span id="rateUpdatedText">${esc(rateUpdated)} · Otomatik veri</span></div><div class="rategrid live-rates">${rateCard('Dolar / TL','USD')}${rateCard('Euro / TL','EUR')}${rateCard('22 Ayar Altın','GOLD22','TL/gr')}${rateCard('24 Ayar Altın','GOLD24','TL/gr')}${rateCard('Çeyrek Altın','CEYREK','hesaplanan')}${rateCard('Yarım Altın','YARIM','hesaplanan')}${rateCard('Tam Altın','TAM','hesaplanan')}</div><details class="rate-note-details"><summary>Kur açıklaması</summary><p class="sub rate-note">Alış: kurumun sizden alırken ödediği referans fiyat, yaklaşık bozdurma değeridir. Satış: aynı varlığı yeniden almak için ödeyeceğiniz referans fiyattır. TCMB verisi yoksa döviz için orta kura yaklaşık %0,5 referans makası uygulanır. Altında spot fiyata yaklaşık makas eklenir; gerçek kuyumcu fiyatları farklı olabilir. Çeyrek, yarım ve tam altın değerleri yaklaşık hesaplanır.</p></details></div>`;
 }
 function openRatesModal(){showFormModal('Güncel Kurlar',ratesMarkup());}
 function ratesPanel(){
