@@ -1294,6 +1294,15 @@ body.cloud-cache-loading #main button,body.cloud-cache-loading #main input,body.
 }
 </style>
 
+
+<style>
+/* Düzenli gelir/gider listesi: hedef birikim kartlarıyla aynı sade, tıklanabilir yapı. */
+.regular-plan-list{display:grid;gap:9px}.regular-plan-card{padding:12px;cursor:pointer;transition:transform .15s ease,box-shadow .15s ease}.regular-plan-card:active{transform:scale(.99)}
+.regular-plan-card .goalhead{margin-bottom:9px}.regular-plan-card .goal-detail-open-hint{margin-top:8px}.regular-plan-card .progress{margin:7px 0}.regular-plan-card .amount{font-size:14px}
+.record-detail-modal{display:grid;gap:10px}.record-detail-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.record-detail-summary>div{padding:9px;border:1px solid var(--line);border-radius:12px;background:#fafcfc}.record-detail-summary small{display:block;color:var(--muted);font-size:10px}.record-detail-summary b{display:block;margin-top:2px;font-size:13px}.modal-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:4px}.modal-actions button{flex:1;min-width:100px}
+@media(max-width:420px){.regular-plan-card{padding:10px}.regular-plan-card .goalname b{font-size:12px}.record-detail-summary{gap:6px}.record-detail-summary>div{padding:8px}}
+</style>
+<style>.recurring-savings-panel{margin-top:10px}.recurring-savings-panel .panelhead{align-items:center;gap:10px}.recurring-savings-panel .panelhead .primary{flex:0 0 auto}</style>
 </head>
 <style id="savings-report-readable-contrast-v1">
 /* Birikim raporunda net kartlardan miras kalan beyaz etiketleri okunaklı koyu metne çevir. */
@@ -1557,6 +1566,7 @@ S.family.name=(S.family.name||'Ailem').trim()||'Ailem';
 S.family.inviteToken=S.family.inviteToken||uid();
 
 S.transactions=(S.transactions||[]).map(t=>({...t,asset:t.asset||'TRY'}));
+S.recurringSavings=Array.isArray(S.recurringSavings)?S.recurringSavings:[];
 S.recurringTransactions=(S.recurringTransactions||[]).map(r=>({
   ...r,
   asset:r.asset||'TRY',
@@ -2389,23 +2399,37 @@ function transactions(){
     : `<button class="secondary" onclick="enterDeleteMode('transactions')">Sil</button>`;
   return `<div class="stack">${title('Gelir ve Giderler','Tüm aile işlemlerini kaydedin ve filtreleyin.')}
     <section class="panel add-action-panel transactions-add-card"><div><h2>Yeni İşlem Ekle</h2><p>Tek seferlik işlem veya seçtiğiniz ay sayısı kadar ayrı tarihli gelir/gider kaydı oluşturun.</p></div><button class="primary" onclick="openTxModal()">+ İşlem Ekle</button></section>
-    <section class="panel tx-history-panel"><div class="panelhead tx-history-head"><div><h2>İşlem Geçmişi</h2></div><div class="tx-history-actions"><div class="segment">${[['tumu','Tümü'],['gelir','Gelir'],['gider','Gider']].map(x=>`<button class="${txFilter===x[0]?'active':''}" onclick="txFilter='${x[0]}';render()">${x[1]}</button>`).join('')}</div>${dateFilterUI('transactions')}${historyDeleteActions}</div></div>${dateFilters.transactions==='month'?'<p class="sub" style="margin:0 0 8px">Bu Ay filtresi açık. İleri tarihli düzenli kayıtları görmek için “Tarih Seç” ile başlangıç ve bitiş tarihini belirle.</p>':''}<div class="mobilelist list tx-history-list">${rows.map(txRow).join('')||empty()}</div><div class="tx-table-scroll"><table class="table"><thead><tr><th>Tarih</th><th>Açıklama</th><th>Kategori</th><th>Ekleyen</th><th>Tutar</th><th></th></tr></thead><tbody>${rows.map(t=>`<tr><td>${fd(t.date)}</td><td>${esc(t.description)}${t.recurringId?`<div class="sub">Düzenli · ${esc(txRecurringProgress(t))}</div>`:''}</td><td>${esc(t.category)}</td><td>${esc(member(t.memberId))}</td><td style="color:${t.type==='gelir'?'var(--income)':'var(--expense)'}">${t.type==='gelir'?'+':'−'}${fmt(t.amount)} ${assetLabels[t.asset]||'TL'}</td><td>${deleteMode.transactions?`<input type="checkbox" ${deleteSelected.transactions.has(t.id)?'checked':''} onchange="toggleDeleteSelection('transactions','${t.id}')">`:''}</td></tr>`).join('')}</tbody></table></div></section>
+    <section class="panel tx-history-panel"><div class="panelhead tx-history-head"><div><h2>İşlem Geçmişi</h2></div><div class="tx-history-actions"><div class="segment">${[['tumu','Tümü'],['gelir','Gelir'],['gider','Gider']].map(x=>`<button class="${txFilter===x[0]?'active':''}" onclick="txFilter='${x[0]}';render()">${x[1]}</button>`).join('')}</div>${dateFilterUI('transactions')}${historyDeleteActions}</div></div>${dateFilters.transactions==='month'?'<p class="sub" style="margin:0 0 8px">Bu Ay filtresi açık. İleri tarihli düzenli kayıtları görmek için “Tarih Seç” ile başlangıç ve bitiş tarihini belirle.</p>':''}<div class="mobilelist list tx-history-list">${rows.map(txRow).join('')||empty()}</div><div class="tx-table-scroll"><table class="table"><thead><tr><th>Tarih</th><th>Açıklama</th><th>Kategori</th><th>Ekleyen</th><th>Tutar</th><th></th></tr></thead><tbody>${rows.map(t=>`<tr><td>${fd(t.date)}</td><td>${esc(t.description)}${t.recurringId?`<div class="sub">Düzenli · ${esc(txRecurringProgress(t))}</div>`:''}</td><td>${esc(t.category)}</td><td>${esc(member(t.memberId))}</td><td style="color:${t.type==='gelir'?'var(--income)':'var(--expense)'}">${t.type==='gelir'?'+':'−'}${fmt(t.amount)} ${assetLabels[t.asset]||'TL'}</td><td>${deleteMode.transactions?`<input type="checkbox" ${deleteSelected.transactions.has(t.id)?'checked':''} onchange="toggleDeleteSelection('transactions','${t.id}')">`:''}</td></tr>`).join('')}</tbody></table></div></section>${regularTransactionsPanel()}
   </div>`;
 }
 function regularTransactionsPanel(){
-  const allPlans=(S.recurringTransactions||[]).slice();
-  const plans=allPlans.filter(r=>{
-    const relevantDate=(Number(r.remaining)>0?(r.nextDate||r.startDate):(r.lastGeneratedDate||r.startDate||r.createdAt))||date();
-    return dateInRange(relevantDate,dateFilters.recurringTransactions,window._filterDates?.recurringTransactions?.start,window._filterDates?.recurringTransactions?.end);
-  }).sort((a,b)=>(b.createdAt||b.startDate||'').localeCompare(a.createdAt||a.startDate||''));
-  const deleteActions=deleteMode.recurringTransactions
-    ? `<button class="secondary" onclick="cancelDeleteMode('recurringTransactions')">İptal</button><button class="dangerbtn" onclick="askDelete('recurringTransactions')" ${deleteSelected.recurringTransactions.size?'':'disabled'}>Seçili Sil (${deleteSelected.recurringTransactions.size})</button>`
-    : `<button class="secondary" onclick="enterDeleteMode('recurringTransactions')">Sil</button>`;
-  return `<section class="panel regular-tx-panel"><div class="panelhead regular-tx-panelhead"><div><h2>Düzenli Gelir / Gider</h2><p>${allPlans.filter(x=>x.active&&x.remaining>0).length} aktif plan · ${plans.length} kayıt gösteriliyor</p></div><div class="regular-tx-header-actions">${dateFilterUI('recurringTransactions')}<div class="regular-tx-delete-actions">${deleteActions}</div></div></div>${plans.length?`<div class="list regular-tx-list">${plans.map(r=>{
-    const status=r.remaining<=0?'Tamamlandı':r.active?'Aktif':'Duraklatıldı';
-    const next=r.remaining>0&&r.nextDate?` · Sıradaki: ${fd(r.nextDate)}`:'';
-    return `<div class="item regular-tx-row ${deleteMode.recurringTransactions?'selectable-item':''}">${deleteMode.recurringTransactions?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.recurringTransactions.has(r.id)?'checked':''} onchange="toggleDeleteSelection('recurringTransactions','${r.id}')"><span></span></label>`:''}<div class="icon ${r.type==='gelir'?'in':'out'}">↻</div><div class="itemmain"><b>${esc(r.description||r.category)}</b><div class="sub">${r.type==='gelir'?'Düzenli gelir':'Düzenli gider'} · ${esc(r.category)} · ${esc(member(r.memberId))} · ${r.generatedCount||0}/${r.months} işlendi${next}</div><small class="sub">${status} · ${Math.max(0,r.remaining||0)} ay kaldı</small></div><div class="regular-tx-actions"><b class="amount ${r.type==='gelir'?'in':'out'}">${fnum(r.amount)} ${assetLabels[r.asset]||'TL'}</b>${r.remaining>0&&!deleteMode.recurringTransactions?`<button class="secondary" onclick="toggleRecurringTx('${r.id}')">${r.active?'Duraklat':'Devam Et'}</button>`:''}</div></div>`;
-  }).join('')}</div>`:empty()}</section>`;
+  const allPlans=(S.recurringTransactions||[]).slice().sort((a,b)=>(b.createdAt||b.startDate||'').localeCompare(a.createdAt||a.startDate||''));
+  const activeCount=allPlans.filter(x=>x.active&&Number(x.remaining||0)>0).length;
+  return `<section class="panel regular-tx-panel">
+    <div class="panelhead regular-tx-panelhead"><div><h2>Düzenli Gelir / Gider</h2><p>${activeCount} aktif plan · ${allPlans.length} toplam kayıt</p></div></div>
+    <div class="regular-plan-list">${allPlans.length?allPlans.map(r=>{
+      const done=Math.max(0,Number(r.generatedCount)||0),total=Math.max(1,Number(r.months)||1),pct=Math.min(100,done/total*100);
+      const status=Number(r.remaining||0)<=0?'Tamamlandı':r.active?'Aktif':'Duraklatıldı';
+      return `<article class="panel regular-plan-card" onclick="openRecurringPlanModal('${r.id}')" role="button" tabindex="0">
+        <div class="goalhead"><div class="goalname"><div class="pig" aria-hidden="true">↻</div><div><b>${esc(r.description||r.category||'Düzenli işlem')}</b><div class="sub">${r.type==='gelir'?'Düzenli gelir':'Düzenli gider'} · ${esc(r.category||'Diğer')} · ${esc(member(r.memberId))}</div></div></div><span class="${r.type==='gelir'?'goal-active-badge':'goal-completed-badge'}">${esc(status)}</span></div>
+        <div style="display:flex;justify-content:space-between;gap:8px"><b class="amount ${r.type==='gelir'?'in':'out'}">${r.type==='gelir'?'+':'−'}${fnum(r.amount)} ${assetLabels[r.asset]||'TL'}</b><span class="sub">${done}/${total} ay</span></div>
+        <div class="progress"><i style="width:${pct}%"></i></div>
+        <div class="goalmeta"><span>Başlangıç: ${fd(r.startDate||r.date||date())}</span><span>${Number(r.remaining||0)>0?`${Number(r.remaining||0)} ay kaldı`:'Tamamlandı'}</span></div>
+        <div class="goal-detail-open-hint">Ayrıntıları ve düzeni açmak için dokunun <span>›</span></div>
+      </article>`;
+    }).join(''):empty()}</div>
+  </section>`;
+}
+function openRecurringPlanModal(id){
+  const r=(S.recurringTransactions||[]).find(x=>String(x.id)===String(id));if(!r)return;
+  const status=Number(r.remaining||0)<=0?'Tamamlandı':r.active?'Aktif':'Duraklatıldı';
+  showFormModal('Düzenli Gelir / Gider',`<div class="record-detail-modal">
+    <div class="record-detail-summary"><div><small>Tür</small><b>${r.type==='gelir'?'Gelir':'Gider'}</b></div><div><small>Tutar</small><b>${fnum(r.amount)} ${assetLabels[r.asset]||'TL'}</b></div><div><small>Süre</small><b>${r.months} ay</b></div><div><small>Durum</small><b>${status}</b></div></div>
+    <div class="field"><label>Açıklama</label><input value="${esc(r.description||r.category||'Düzenli işlem')}" disabled></div>
+    <div class="field"><label>Başlangıç</label><input value="${fd(r.startDate||r.date||'')}" disabled></div>
+    <div class="field"><label>İlerleme</label><div class="sub">${Math.max(0,Number(r.generatedCount)||0)} / ${Math.max(1,Number(r.months)||1)} ay oluşturuldu · ${Math.max(0,Number(r.remaining)||0)} ay kaldı</div></div>
+    <div class="modal-actions"><button type="button" class="secondary" onclick="closeModal()">Kapat</button>${Number(r.remaining||0)>0?`<button type="button" class="outline" onclick="closeModal();toggleRecurringTx('${r.id}')">${r.active?'Duraklat':'Devam Et'}</button>`:''}<button type="button" class="dangerbtn" onclick="closeModal();deleteRecurringTx('${r.id}')">Planı Sil</button></div>
+  </div>`);
 }
 
 function showFormModal(title,html){
@@ -2422,6 +2446,56 @@ function showFormModal(title,html){
 }
 function openTxModal(){showFormModal('Yeni İşlem',txForm());}
 function openPayModal(){showFormModal('Yeni Planlı Ödeme',paymentForm());}
+function recurringSavingsPanel(){
+  const plans=(S.recurringSavings||[]).slice().sort((a,b)=>(b.createdAt||b.startDate||'').localeCompare(a.createdAt||a.startDate||''));
+  if(!plans.length)return empty();
+  return `<div class="regular-plan-list">${plans.map(r=>{
+    const done=Math.max(0,Number(r.generatedCount)||0),total=Math.max(1,Number(r.months)||1),pct=Math.min(100,done/total*100);
+    const g=(S.goals||[]).find(x=>String(x.id)===String(r.goalId));
+    const status=Number(r.remaining||0)<=0?'Tamamlandı':r.active?'Aktif':'Duraklatıldı';
+    const asset=assetLabels[r.asset]||'TL';
+    return `<article class="panel regular-plan-card" onclick="openRecurringSavingDetail('${r.id}')" role="button" tabindex="0">
+      <div class="goalhead"><div class="goalname"><div class="pig" aria-hidden="true">↻</div><div><b>${esc(g?.name||r.goalName||'Birikim hedefi')}</b><div class="sub">Düzenli birikim · ${asset} · ${esc(member(r.memberId))}</div></div></div><span class="goal-active-badge">${esc(status)}</span></div>
+      <div style="display:flex;justify-content:space-between;gap:8px"><b class="amount in">+${fnum(r.quantity)} ${asset}</b><span class="sub">${done}/${total} ay</span></div>
+      <div class="progress"><i style="width:${pct}%"></i></div>
+      <div class="goalmeta"><span>Başlangıç: ${fd(r.startDate||date())}</span><span>${Number(r.remaining||0)>0?`${Number(r.remaining||0)} ay kaldı`:'Tamamlandı'}</span></div>
+      <div class="goal-detail-open-hint">Ayrıntıları açmak için dokunun <span>›</span></div>
+    </article>`;
+  }).join('')}</div>`;
+}
+function openRecurringSavingModal(){
+  if(!(S.goals||[]).length){alert('Önce bir birikim hedefi oluşturmalısın.');return;}
+  const memberOptions=S.members.map(m=>`<option value="${m.id}" ${m.id===S.active?'selected':''}>${esc(m.name)}</option>`).join('');
+  showFormModal('Düzenli Birikim',`<form onsubmit="addRecurringSaving(event)">
+    <div class="field"><label>Birikim Hedefi</label><select id="rsGoal" required>${S.goals.filter(g=>!goalIsCompleted(g)).map(g=>`<option value="${g.id}">${esc(g.name)} · ${assetLabels[g.targetAsset||'TRY']||'TL'}</option>`).join('')}</select></div>
+    <div class="row2"><div class="field"><label>Her Ay Miktar</label><input id="rsQty" type="text" inputmode="decimal" data-money placeholder="0,00" required></div><div class="field"><label>Varlık / Kur Türü</label><select id="rsAsset">${assetOptions}</select></div><div class="field"><label>Başlangıç</label><input id="rsDate" type="date" value="${date()}" required></div><div class="field"><label>Aile Bireyi</label><select id="rsMember">${memberOptions}</select></div></div>
+    <div class="field"><label>Kaç Ay Devam Edecek?</label><input id="rsMonths" type="number" min="2" max="600" value="12" inputmode="numeric" required></div>
+    <div class="field"><label>Birim Alış Fiyatı (TL) <span class="sub">Döviz/altın için</span></label><input id="rsCost" type="text" inputmode="decimal" data-money placeholder="0,00"><div class="sub">TL birikiminde gerekmez.</div></div>
+    <button class="primary">Düzenli Birikimi Oluştur</button></form>`);
+}
+function addRecurringSaving(e){
+  e.preventDefault();
+  const goalId=byId('rsGoal')?.value,goal=(S.goals||[]).find(g=>String(g.id)===String(goalId));
+  const quantity=parseMoney(byId('rsQty')?.value),asset=byId('rsAsset')?.value||'TRY',startDate=byId('rsDate')?.value||date(),months=Math.max(2,Math.min(600,Math.floor(Number(byId('rsMonths')?.value)||12))),memberId=byId('rsMember')?.value||S.active;
+  if(!goal||quantity<=0)return;
+  let costRate=1;
+  if(asset!=='TRY'){costRate=parseRateNumber(byId('rsCost')?.value);if(!(costRate>0)){alert('Döviz veya altın için birim başına alış fiyatını TL olarak gir.');return;}}
+  const id=String(uid()),anchorDay=Number(startDate.slice(-2))||1;let d=startDate;
+  const plan={id,goalId,goalName:goal.name,asset,quantity,months,remaining:months,generatedCount:months,startDate,nextDate:monthlyNextDate(startDate,anchorDay),memberId,anchorDay,active:true,createdAt:new Date().toISOString()};
+  S.savingMovements=S.savingMovements||[];
+  for(let i=0;i<months;i++){
+    const movementId=`${id}-occ-${i}`;
+    S.savingMovements.unshift({id:movementId,goalId,goalName:goal.name,asset,quantity,sign:1,date:d,rate:currentPurchaseRate(asset),costRate:asset==='TRY'?1:costRate,memberId,createdAt:new Date().toISOString(),recurringId:id,recurringOccurrenceId:movementId,scheduledRecurring:true,scheduleMonthIndex:i+1,scheduleTotalMonths:months});
+    goal.holdings[asset]=Math.max(0,(Number(goal.holdings[asset])||0)+quantity);
+    d=monthlyNextDate(d,anchorDay);
+  }
+  S.recurringSavings=S.recurringSavings||[];S.recurringSavings.unshift(plan);closeModal();save();
+}
+function openRecurringSavingDetail(id){
+  const r=(S.recurringSavings||[]).find(x=>String(x.id)===String(id));if(!r)return;const g=(S.goals||[]).find(x=>String(x.id)===String(r.goalId));
+  showFormModal('Düzenli Birikim',`<div class="record-detail-modal"><div class="record-detail-summary"><div><small>Hedef</small><b>${esc(g?.name||r.goalName||'—')}</b></div><div><small>Miktar</small><b>+${fnum(r.quantity)} ${assetLabels[r.asset]||'TL'}</b></div><div><small>Süre</small><b>${r.months} ay</b></div><div><small>Durum</small><b>${r.active&&r.remaining>0?'Aktif':r.remaining>0?'Duraklatıldı':'Tamamlandı'}</b></div></div><div class="field"><label>İlerleme</label><div class="sub">${r.generatedCount||0} / ${r.months} ay oluşturuldu · ${Math.max(0,r.remaining||0)} ay kaldı</div></div><div class="modal-actions"><button type="button" class="secondary" onclick="closeModal()">Kapat</button><button type="button" class="dangerbtn" onclick="closeModal();deleteRecurringSaving('${r.id}')">Planı Sil</button></div></div>`);
+}
+function deleteRecurringSaving(id){if(!confirm('Düzenli birikim planı silinsin mi? Oluşturulmuş birikim hareketleri korunur.'))return;S.recurringSavings=(S.recurringSavings||[]).filter(x=>String(x.id)!==String(id));save();} 
 function openGoalModal(){showFormModal('Yeni Birikim Hedefi',goalForm());}
 function openLoanModal(){showFormModal('Elden Borç Kaydı',loanForm());}
 function openSavingMoveModal(id,sign){
@@ -2498,6 +2572,7 @@ function addTx(e){
     const anchorDay=Number(startDate.slice(-2))||1;
     let occurrenceDate=startDate;
     S.transactions=S.transactions||[];
+    const plan={id:scheduleId,type,amount,asset,category,date:startDate,startDate,description,memberId,months,remaining:months,generatedCount:months,nextDate:monthlyNextDate(startDate,anchorDay),lastGeneratedDate:null,anchorDay,active:true,paused:false,createdAt:new Date().toISOString()};
     for(let i=0;i<months;i++){
       const occurrenceId=`${scheduleId}-occ-${i}`;
       S.transactions.unshift({
@@ -2505,8 +2580,11 @@ function addTx(e){
         scheduledRecurring:true,scheduleMonthIndex:i+1,scheduleTotalMonths:months,
         type,amount,asset,category,date:occurrenceDate,description,memberId
       });
+      plan.lastGeneratedDate=occurrenceDate;
       occurrenceDate=monthlyNextDate(occurrenceDate,anchorDay);
     }
+    S.recurringTransactions=S.recurringTransactions||[];
+    S.recurringTransactions.unshift(plan);
   }else{
     S.transactions.unshift({id:uid(),type,amount,asset,category,date:startDate,description,memberId});
   }
@@ -2570,36 +2648,10 @@ function expandLegacyRecurringPayments(){
 }
 
 function processDueRecurringTransactions(){
-  // Eski sürümdeki tekil planları, aynı ay tarihlerini koruyarak ayrı işlem kayıtlarına dönüştür.
-  const plans=S.recurringTransactions||[];
-  if(!plans.length)return false;
-  S.transactions=S.transactions||[];
-  let changed=false;
-  plans.forEach(r=>{
-    const remaining=Math.max(0,Number(r.remaining??r.months)||0);
-    if(!r.active||r.paused||remaining<=0)return;
-    const anchorDay=Number(r.anchorDay)||Number((r.nextDate||r.startDate||date()).slice(-2))||1;
-    let occurrenceDate=r.nextDate||r.startDate||date();
-    const firstIndex=Math.max(0,Number(r.generatedCount)||0);
-    for(let i=0;i<remaining;i++){
-      const occurrenceId=`${r.id}-occ-${firstIndex+i}`;
-      if(!S.transactions.some(t=>t.id===occurrenceId||t.recurringOccurrenceId===occurrenceId)){
-        S.transactions.unshift({
-          id:occurrenceId,recurringOccurrenceId:occurrenceId,recurringId:r.id,
-          scheduledRecurring:true,scheduleMonthIndex:firstIndex+i+1,scheduleTotalMonths:Number(r.months)||remaining,
-          type:r.type,amount:Number(r.amount)||0,asset:r.asset||'TRY',
-          category:r.category||'Diğer',date:occurrenceDate,
-          description:r.description||r.category||'Düzenli işlem',memberId:r.memberId||S.active
-        });
-      }
-      occurrenceDate=monthlyNextDate(occurrenceDate,anchorDay);
-    }
-    changed=true;
-  });
-  // Plan tablosu artık kullanılmıyor; geçmişe eklenmiş taksitler S.transactions içinde kalır.
-  S.recurringTransactions=[];
-  return true;
+  // Düzenli planlar artık kalıcı tutuluyor; seçilen ayların kayıtları oluşturulurken plan silinmez.
+  return false;
 }
+
 function toggleRecurringTx(id){
   const r=(S.recurringTransactions||[]).find(x=>x.id===id);
   if(!r||r.remaining<=0)return;
@@ -2879,6 +2931,7 @@ function savings(){
       </div>
       <section class="savings-goals-column"><div class="panelhead" style="margin-bottom:8px"><div><h2>Birikim Hedefleri</h2><p>Hedeflerinizi durumlarına göre görüntüleyin.</p></div>${deleteMode.goals?`<div style="display:flex;gap:6px"><button class="secondary" onclick="cancelDeleteMode('goals')">İptal</button><button class="dangerbtn" onclick="askDelete('goals')" ${deleteSelected.goals.size?'':'disabled'}>Seçili Sil (${deleteSelected.goals.size})</button></div>`:`<button class="secondary" onclick="enterDeleteMode('goals')">Sil</button>`}</div><div class="segment saving-tabs"><button class="${savingsFilter==='active'?'active':''}" onclick="savingsFilter='active';render()">Devam Eden (${activeGoals.length})</button><button class="${savingsFilter==='completed'?'active':''}" onclick="savingsFilter='completed';render()">Tamamlanan (${completedGoals.length})</button></div><section class="goalgrid">${shownGoals.map(g=>goalCard(g)).join('')||empty()}</section></section>
     </div>
+    <section class="panel recurring-savings-panel"><div class="panelhead"><div><h2>Düzenli Birikimler</h2><p>Her ay otomatik eklenen birikimleri tek listede görün ve karta dokunarak ayrıntılarını açın.</p></div><button class="primary" onclick="openRecurringSavingModal()">+ Düzenli Birikim</button></div>${recurringSavingsPanel()}</section>
     <div class="savings-bottom-grid">
       ${loansPanel()}
     </div>
@@ -3361,7 +3414,8 @@ function applySharedState(data,preferredActive=null){
   S={...seed(),...(data||{})};
   S.members=Array.isArray(S.members)?S.members:[];
   S.transactions=Array.isArray(S.transactions)?S.transactions:[];
-  S.recurringTransactions=(S.recurringTransactions||[]).map(r=>({...r,asset:r.asset||'TRY',months:Math.max(2,Number(r.months)||2),remaining:Math.max(0,Number(r.remaining??r.months)||0),generatedCount:Math.max(0,Number(r.generatedCount)||0),nextDate:r.nextDate||r.startDate||date(),anchorDay:Number(r.anchorDay)||Number((r.startDate||date()).slice(-2)),active:r.active!==false&&!r.paused&&Number(r.remaining??r.months)>0}));
+  S.recurringSavings=Array.isArray(S.recurringSavings)?S.recurringSavings:[];
+S.recurringTransactions=(S.recurringTransactions||[]).map(r=>({...r,asset:r.asset||'TRY',months:Math.max(2,Number(r.months)||2),remaining:Math.max(0,Number(r.remaining??r.months)||0),generatedCount:Math.max(0,Number(r.generatedCount)||0),nextDate:r.nextDate||r.startDate||date(),anchorDay:Number(r.anchorDay)||Number((r.startDate||date()).slice(-2)),active:r.active!==false&&!r.paused&&Number(r.remaining??r.months)>0}));
   S.transactions=S.transactions.map(t=>({...t,asset:t.asset||'TRY'}));
   S.loans=(S.loans||[]).map(normalizeLoanRecord);
   S.payments=(S.payments||[]).map(p=>({...p,recurring:!!p.recurring,interval:p.interval||'aylik',months:Math.max(1,Number(p.months)||1),remaining:Math.max(0,Number(p.remaining??(p.recurring?Number(p.months)||1:1)))}));
