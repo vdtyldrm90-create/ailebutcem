@@ -321,6 +321,23 @@ form{display:flex;flex-direction:column;gap:11px}.row2{display:grid;grid-templat
 @media(max-width:390px){.savings-overview-card .value{font-size:15px}.savings-overview-card{padding:11px}}
 
 
+
+.notification-wrap{position:relative;flex:none}
+.notification-btn{position:relative;width:38px;height:38px;flex:none;display:grid;place-items:center;border:1px solid var(--border);background:var(--card);color:var(--fg);border-radius:11px;font-size:19px;line-height:1}
+.notification-btn:hover,.notification-btn.active{background:#eaf5ef;color:var(--primary);border-color:#c8ded6}
+.notification-badge{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 4px;border-radius:99px;background:#d74747;color:#fff;border:2px solid var(--bg);font-size:9px;font-weight:850;display:none;align-items:center;justify-content:center;line-height:1}
+.notification-badge.show{display:flex}
+.notification-menu{position:absolute;right:0;top:calc(100% + 8px);width:min(360px,calc(100vw - 24px));padding:10px;background:var(--card);border:1px solid var(--border);border-radius:15px;box-shadow:0 12px 32px rgba(24,45,39,.18);z-index:75}
+.notification-menu[hidden]{display:none!important}
+.notification-menu-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 2px 8px;border-bottom:1px solid var(--border)}
+.notification-menu-head b{font-size:14px}.notification-menu-head small{color:var(--muted);font-size:10px}
+.notification-list{display:flex;flex-direction:column;max-height:390px;overflow:auto}
+.notification-item{display:flex;gap:9px;padding:10px 3px;border-bottom:1px solid var(--border);align-items:flex-start}
+.notification-item:last-child{border-bottom:0}.notification-item-icon{width:31px;height:31px;flex:0 0 31px;border-radius:10px;display:grid;place-items:center;font-size:15px;font-weight:800}
+.notification-item.overdue .notification-item-icon{background:#fde7e5;color:#b93834}.notification-item.today .notification-item-icon{background:#fff1d9;color:#946719}.notification-item.upcoming .notification-item-icon{background:#e7f5ec;color:#237849}.notification-item.goal .notification-item-icon{background:#f0ebfa;color:#6d50aa}
+.notification-item-main{min-width:0;flex:1}.notification-item-main b{display:block;font-size:11px;line-height:1.35}.notification-item-main p{margin:3px 0 0;color:var(--muted);font-size:10px;line-height:1.4}.notification-item-main small{display:block;margin-top:4px;color:#7a8882;font-size:9px}
+.notification-empty{text-align:center;padding:24px 10px;color:var(--muted);font-size:11px}
+@media(max-width:800px){.notification-btn{width:34px;height:34px;font-size:18px}.notification-menu{position:fixed;right:8px;top:66px;width:min(390px,calc(100vw - 16px));max-height:calc(100vh - 82px)}.notification-list{max-height:calc(100vh - 150px)}}
 .settings-wrap{position:relative;flex:none}
 .settings-menu{position:absolute;right:0;top:calc(100% + 8px);width:min(220px,calc(100vw - 24px));display:grid;gap:3px;padding:7px;background:var(--card);border:1px solid var(--border);border-radius:13px;box-shadow:0 10px 28px rgba(24,45,39,.16);z-index:70}
 .settings-menu[hidden]{display:none!important}
@@ -1530,7 +1547,7 @@ button,input,select,textarea,a{touch-action:manipulation}
 <body class="auth-pending">
 <div id="authGate" class="auth-gate" aria-live="polite"></div>
 <div class="app">
-<header><div class="head"><div class="brand"><div class="logo"><img src="./icon-192.png" alt="Aile Bütçem uygulama simgesi"></div><div><b class="brand-title" role="button" tabindex="0" onclick="go('ozet')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();go('ozet')}">Aile Bütçem</b><span>Bütçe · Birikim · Ödemeler</span></div></div><div class="head-actions"><select id="memberSelect" class="profile" aria-label="İşlem profili"></select><div class="settings-wrap"><button id="familySettingsBtn" class="settings-btn" type="button" onclick="toggleSettingsMenu()" aria-label="Ayarlar" title="Ayarlar" aria-haspopup="true" aria-expanded="false">⚙</button><div id="settingsMenu" class="settings-menu" role="menu" hidden><button type="button" role="menuitem" onclick="openFamilySettings()"><span class="settings-menu-icon">👥</span><span>Aile ve Profil</span></button><button type="button" role="menuitem" onclick="toggleFamilyNotifications()"><span class="settings-menu-icon">🔔</span><span class="settings-menu-copy"><span id="familyNotificationMenuLabel">Telefon bildirimlerini aç</span><small id="familyNotificationMenuStatus">Bu cihazda kapalı</small></span></button><button type="button" role="menuitem" onclick="closeSettingsMenu();installPwa()"><span class="settings-menu-icon">⇩</span><span>Masaüstüne ekle</span></button></div></div></div></div>
+<header><div class="head"><div class="brand"><div class="logo"><img src="./icon-192.png" alt="Aile Bütçem uygulama simgesi"></div><div><b class="brand-title" role="button" tabindex="0" onclick="go('ozet')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();go('ozet')}">Aile Bütçem</b><span>Bütçe · Birikim · Ödemeler</span></div></div><div class="head-actions"><select id="memberSelect" class="profile" aria-label="İşlem profili"></select><div class="notification-wrap"><button id="notificationBtn" class="notification-btn" type="button" onclick="toggleNotificationMenu(event)" aria-label="Bildirimler" title="Bildirimler" aria-haspopup="true" aria-expanded="false">🔔<span id="notificationBadge" class="notification-badge">0</span></button><div id="notificationMenu" class="notification-menu" hidden></div></div><div class="settings-wrap"><button id="familySettingsBtn" class="settings-btn" type="button" onclick="toggleSettingsMenu()" aria-label="Ayarlar" title="Ayarlar" aria-haspopup="true" aria-expanded="false">⚙</button><div id="settingsMenu" class="settings-menu" role="menu" hidden><button type="button" role="menuitem" onclick="openFamilySettings()"><span class="settings-menu-icon">👥</span><span>Aile ve Profil</span></button><button type="button" role="menuitem" onclick="toggleFamilyNotifications()"><span class="settings-menu-icon">🔔</span><span class="settings-menu-copy"><span id="familyNotificationMenuLabel">Telefon bildirimlerini aç</span><small id="familyNotificationMenuStatus">Bu cihazda kapalı</small></span></button><button type="button" role="menuitem" onclick="closeSettingsMenu();installPwa()"><span class="settings-menu-icon">⇩</span><span>Masaüstüne ekle</span></button></div></div></div></div>
 <nav class="desktop-nav" id="desktopNav"></nav></header>
 <main id="main"></main>
 <nav class="bottom" id="bottomNav"></nav>
@@ -1930,7 +1947,59 @@ function moneyInAsset(n,asset){
   return `${value.toLocaleString('tr-TR',{minimumFractionDigits:0,maximumFractionDigits:3})} ${assetLabels[a]||a}`;
 }
 const tabs=[['ozet','Ana Sayfa','⌂'],['islemler','İşlemler','↕'],['odemeler','Ödemeler','◷'],['birikim','Birikim','◉'],['raporlar','Raporlar','▤']];
-function nav(){document.getElementById('desktopNav').innerHTML=tabs.map(x=>`<button class="navbtn navtab-${x[0]} ${tab===x[0]?'active':''}" onclick="go('${x[0]}')"><span class="navicon">${x[2]}</span><span>${x[1]}</span></button>`).join('');document.getElementById('bottomNav').innerHTML=tabs.map(x=>`<button class="navtab-${x[0]} ${tab===x[0]?'active':''}" onclick="go('${x[0]}')"><span class="ni">${x[2]}</span><span class="nav-label">${x[1]}</span></button>`).join('');const gear=byId('familySettingsBtn');if(gear){gear.classList.toggle('active',tab==='aile');gear.setAttribute('aria-current',tab==='aile'?'page':'false')}}
+function notificationStorageKey(){return KEY+'-read-notifications-v1-'+String(cloud.user?.id||S.active||'local')}
+function getReadNotifications(){try{return JSON.parse(localStorage.getItem(notificationStorageKey())||'[]')}catch(e){return []}}
+function setReadNotifications(ids){try{localStorage.setItem(notificationStorageKey(),JSON.stringify(ids.slice(-100)))}catch(e){}}
+function buildNotifications(){
+  const items=[],today=date();
+  const push=(id,type,icon,title,body,meta)=>items.push({id,type,icon,title,body,meta});
+  (S.payments||[]).filter(p=>p.status==='bekliyor'&&p.dueDate).forEach(p=>{
+    const diff=dayDiffToday(p.dueDate);
+    if(diff>0)push('payment-late-'+p.id,'overdue','🔴',p.title||'Planlı ödeme',`${fnum(p.amount)} ${assetLabels[p.asset]||'TL'} ödeme vadesini ${diff} gün geçti.`,fd(p.dueDate));
+    else if(diff===0)push('payment-today-'+p.id,'today','⚠️',p.title||'Planlı ödeme',`${fnum(p.amount)} ${assetLabels[p.asset]||'TL'} ödeme bugün.`,fd(p.dueDate));
+    else if(diff>=-7)push('payment-upcoming-'+p.id,'upcoming','📅',p.title||'Planlı ödeme',`${fnum(p.amount)} ${assetLabels[p.asset]||'TL'} ödeme için ${Math.abs(diff)} gün kaldı.`,fd(p.dueDate));
+  });
+  (S.recurringTransactions||[]).filter(r=>r.active&&r.remaining>0&&r.nextDate).forEach(r=>{
+    const diff=dayDiffToday(r.nextDate),isIncome=r.type==='gelir';
+    if(diff>0)push('recurring-late-'+r.id,'overdue',isIncome?'🟢':'🔴',isIncome?'Düzenli gelir':'Düzenli gider',`${isIncome?'Gelir':'Gider'} tarihi ${diff} gün geçti.`,fd(r.nextDate));
+    else if(diff===0)push('recurring-today-'+r.id,'today',isIncome?'⬆️':'⬇️',isIncome?'Düzenli gelir':'Düzenli gider',`${fnum(r.amount)} ${assetLabels[r.asset]||'TL'} bugün.`,fd(r.nextDate));
+    else if(diff>=-7)push('recurring-upcoming-'+r.id,'upcoming',isIncome?'⬆️':'⬇️',isIncome?'Düzenli gelir':'Düzenli gider',`${fnum(r.amount)} ${assetLabels[r.asset]||'TL'} için ${Math.abs(diff)} gün kaldı.`,fd(r.nextDate));
+  });
+  (S.goals||[]).forEach(g=>{if(goalIsCompleted(g))push('goal-complete-'+g.id,'goal','🎉',g.name||'Birikim hedefi','Birikim hedefiniz tamamlandı.',g.completionDate?fd(g.completionDate):'Tamamlandı')});
+  const order={overdue:0,today:1,upcoming:2,goal:3};
+  return items.sort((a,b)=>(order[a.type]??9)-(order[b.type]??9)||String(a.meta||'').localeCompare(String(b.meta||'')));
+}
+function refreshNotificationBadge(){const items=buildNotifications(),read=getReadNotifications(),unread=items.filter(x=>!read.includes(x.id)),badge=byId('notificationBadge');if(badge){badge.textContent=unread.length>99?'99+':String(unread.length);badge.classList.toggle('show',unread.length>0)}}
+function maybeSendBudgetNotifications(){
+  if(!familyNotificationsEnabled())return;
+  const items=buildNotifications().filter(x=>x.type==='overdue'||x.type==='today');
+  if(!items.length)return;
+  let sent=[];try{sent=JSON.parse(localStorage.getItem(KEY+'-sent-system-notifications-v1-'+String(cloud.user?.id||S.active||'local'))||'[]')}catch(e){}
+  const fresh=items.filter(x=>!sent.includes(x.id));if(!fresh.length)return;
+  const first=fresh[0];
+  const title='Aile Bütçem';const options={body:first.title+': '+first.body,icon:'./icon-192.png',badge:'./icon-192.png',tag:'budget-'+first.id,data:{url:location.href}};
+  const show=()=>{try{if('serviceWorker' in navigator)navigator.serviceWorker.ready.then(reg=>reg.showNotification(title,options)).catch(()=>new Notification(title,options));else new Notification(title,options)}catch(e){}};
+  show();
+  try{localStorage.setItem(KEY+'-sent-system-notifications-v1-'+String(cloud.user?.id||S.active||'local'),JSON.stringify([...sent,...fresh.map(x=>x.id)].slice(-100)))}catch(e){}
+}
+function renderNotificationMenu(){
+  const menu=byId('notificationMenu');if(!menu)return;
+  const items=buildNotifications(),read=getReadNotifications();
+  if(!items.length){menu.innerHTML='<div class="notification-menu-head"><b>Bildirimler</b><small>Güncel</small></div><div class="notification-empty">Şu anda yeni bir uyarı yok. 🎉</div>';refreshNotificationBadge();return}
+  menu.innerHTML='<div class="notification-menu-head"><b>Bildirimler</b><small>'+items.length+' uyarı</small></div><div class="notification-list">'+items.map(x=>`<div class="notification-item ${x.type}"><div class="notification-item-icon">${x.icon}</div><div class="notification-item-main"><b>${esc(x.title)}</b><p>${esc(x.body)}</p><small>${esc(x.meta||'')}</small></div></div>`).join('')+'</div><button type="button" class="ghost" style="width:100%;margin-top:5px" onclick="markNotificationsRead()">Tümünü okundu işaretle</button>';
+  refreshNotificationBadge();
+}
+function markNotificationsRead(){const ids=buildNotifications().map(x=>x.id);setReadNotifications([...new Set([...getReadNotifications(),...ids])]);renderNotificationMenu();}
+function toggleNotificationMenu(event){
+  if(event){event.stopPropagation();}
+  closeSettingsMenu();
+  const menu=byId('notificationMenu'),button=byId('notificationBtn');if(!menu)return;
+  const opening=menu.hidden;menu.hidden=!opening;
+  if(button)button.setAttribute('aria-expanded',opening?'true':'false');
+  if(opening){renderNotificationMenu();const ids=buildNotifications().map(x=>x.id);setReadNotifications([...new Set([...getReadNotifications(),...ids])]);refreshNotificationBadge();}
+}
+function closeNotificationMenu(){const menu=byId('notificationMenu'),button=byId('notificationBtn');if(menu)menu.hidden=true;if(button)button.setAttribute('aria-expanded','false')}
+function nav(){refreshNotificationBadge();document.getElementById('desktopNav').innerHTML=tabs.map(x=>`<button class="navbtn navtab-${x[0]} ${tab===x[0]?'active':''}" onclick="go('${x[0]}')"><span class="navicon">${x[2]}</span><span>${x[1]}</span></button>`).join('');document.getElementById('bottomNav').innerHTML=tabs.map(x=>`<button class="navtab-${x[0]} ${tab===x[0]?'active':''}" onclick="go('${x[0]}')"><span class="ni">${x[2]}</span><span class="nav-label">${x[1]}</span></button>`).join('');const gear=byId('familySettingsBtn');if(gear){gear.classList.toggle('active',tab==='aile');gear.setAttribute('aria-current',tab==='aile'?'page':'false')}}
 function closeSettingsMenu(){
   const menu=byId('settingsMenu'),button=byId('familySettingsBtn');
   if(menu)menu.hidden=true;
@@ -1944,8 +2013,8 @@ function toggleSettingsMenu(){
   if(button)button.setAttribute('aria-expanded',menu.hidden?'false':'true');
 }
 function openFamilySettings(){closeSettingsMenu();go('aile')}
-document.addEventListener('click',event=>{if(!event.target.closest('.settings-wrap'))closeSettingsMenu()});
-function go(t){if(t==='birikim')savingsDetailView=null;tab=t;rememberActiveTab(t);closeSettingsMenu();render()}
+document.addEventListener('click',event=>{if(!event.target.closest('.settings-wrap'))closeSettingsMenu();if(!event.target.closest('.notification-wrap'))closeNotificationMenu()});
+function go(t){if(t==='birikim')savingsDetailView=null;tab=t;rememberActiveTab(t);closeSettingsMenu();closeNotificationMenu();render()}
 document.getElementById('memberSelect').onchange=e=>{S.active=e.target.value;save()}
 
 document.addEventListener('paste',e=>{if(e.target&&e.target.matches&&e.target.matches('[data-money]'))setTimeout(()=>formatMoneyInput(e.target),0)},true);
@@ -4514,6 +4583,8 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       .catch((error) => console.warn('Aile Bütçem PWA kaydı tamamlanamadı:', error));
   });
 }
+setInterval(()=>{refreshNotificationBadge();maybeSendBudgetNotifications()},60000);
+setTimeout(()=>{refreshNotificationBadge();maybeSendBudgetNotifications()},1200);
 </script>
 </body>
 </html>
