@@ -2276,7 +2276,23 @@ function trackedProfitLoss(lotState=acquisitionLotState()){
 }
 function signedMoney(n){return (n>0?'+':n<0?'−':'')+fmt(Math.abs(Number(n)||0))}
 function signedPercent(n){return (n>0?'+':n<0?'−':'')+fnum(Math.abs(Number(n)||0))+'%'}
-function holdingsValue(h){return Object.entries(h||{}).reduce((sum,[k,v])=>sum+(Number(v)||0)*currentExitRate(k),0)}
+function holdingsValue(h){
+  return Object.entries(h||{}).reduce((sum,[k,v])=>{
+    const qty=Math.max(0,Number(v)||0);
+    if(qty<=1e-8)return sum;
+    let rate=currentExitRate(k);
+    // Kur henüz yüklenmediyse kayıtlı hareketin alış/son referans fiyatını
+    // kullan; böylece özellikle TL ve eski birikim kayıtları toplamı 0'a düşmez.
+    if(!(rate>0)){
+      const last=(S.savingMovements||[]).slice().reverse().find(m=>m.asset===k&&Number(m.quantity)>0&&Number(m.rate)>0);
+      rate=Number(last?.rate)||0;
+    }
+    return sum+qty*rate;
+  },0);
+}
+function savingsCurrentTotal(){
+  return (S.goals||[]).reduce((sum,g)=>sum+holdingsValue(g.holdings||{}),0);
+}
 function goalValueInTarget(g){
   const asset=g?.targetAsset||'TRY';
   const rate=currentPurchaseRate(asset)||1;
@@ -3910,7 +3926,7 @@ function loansPanel(){
   return `<section id="loansPanel" class="panel loan-records-panel"><div class="panelhead"><div><h2>Elden Borç Kayıtları</h2><p>${rows.length} kayıt</p></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><div class="segment loan-filter">${[['open','Açık'],['closed','Kapalı'],['all','Tümü']].map(x=>`<button type="button" class="${loanFilter===x[0]?'active':''}" onclick="loanFilter='${x[0]}';render()">${x[1]}</button>`).join('')}</div>${deleteActions}</div></div><div class="list">${rows.map(loanRow).join('')||empty()}</div></section>`;
 }
 function savings(){
-  const total=S.goals.reduce((a,g)=>a+holdingsValue(g.holdings),0);
+  const total=savingsCurrentTotal();
   const lotState=acquisitionLotState(),pl=trackedProfitLoss(lotState);
   const completedGoals=S.goals.filter(goalIsCompleted),activeGoals=S.goals.filter(g=>!goalIsCompleted(g)),shownGoals=savingsFilter==='completed'?completedGoals:activeGoals;
   const loans=S.loans||[],activeGiven=loans.filter(l=>l.direction==='given'&&l.status!=='closed'),activeTaken=loans.filter(l=>l.direction==='taken'&&l.status!=='closed');
