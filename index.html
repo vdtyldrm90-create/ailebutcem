@@ -2329,8 +2329,24 @@ function holdingsValue(h){
     return sum+qty*rate;
   },0);
 }
+// Toplam Birikim: hareket geçmişindeki EKLE satırlarının "Güncel değer"
+// sütunuyla aynı kalan miktar ve kur hesabını kullan. Çıkarılan miktarlar
+// FIFO lotlarında zaten düşülür; çıkarma satırını tekrar düşmeyiz.
 function savingsCurrentTotal(){
-  return (S.goals||[]).reduce((sum,g)=>sum+holdingsValue(g.holdings||{}),0);
+  const lotState=acquisitionLotState();
+  return (S.goals||[]).reduce((sum,g)=>{
+    const goalMovements=(S.savingMovements||[]).filter(m=>String(m.goalId)===String(g.id));
+    // Hareket geçmişi bulunmayan eski hedeflerin bakiyesini kaybetme.
+    if(!goalMovements.length)return sum+holdingsValue(g.holdings||{});
+    for(const lots of lotState.lotsByKey.values()){
+      for(const lot of lots){
+        if(String(lot.goalId)!==String(g.id)||lot.remaining<=0)continue;
+        const rate=lot.asset==='TRY'?1:currentExitRate(lot.asset);
+        sum+=lot.remaining*rate;
+      }
+    }
+    return sum;
+  },0);
 }
 function goalValueInTarget(g){
   const asset=g?.targetAsset||'TRY';
