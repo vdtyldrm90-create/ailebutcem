@@ -3055,8 +3055,32 @@ function loadRateCache(){
   try{
     const cached=JSON.parse(localStorage.getItem(RATE_CACHE_KEY)||'null');
     if(!cached)return false;
-    if(cached.quotes)Object.assign(rateQuotes,cached.quotes);
-    if(cached.rates)Object.assign(rates,cached.rates);
+    // Döviz tarafında yalnızca TCMB kaynaklı önbelleği kullan.
+    // Eski/yedek Currency API kuru ekranda geçici olarak bile gösterilmesin.
+    const cachedFxSource=String(cached.fxSource||'');
+    if(cachedFxSource==='TCMB'){
+      if(cached.quotes)Object.assign(rateQuotes,cached.quotes);
+      if(cached.rates){
+        if(Number(cached.rates.USD)>0)rates.USD=cached.rates.USD;
+        if(Number(cached.rates.EUR)>0)rates.EUR=cached.rates.EUR;
+      }
+      window._fxRateSource='TCMB';
+    }
+    // Altın önbelleğini koruyoruz; altın hesabının yapısı değişmiyor.
+    if(cached.goldSource==='Gold API'){
+      if(cached.quotes){
+        for(const key of ['GOLD22','GOLD24','CEYREK','YARIM','TAM']){
+          if(cached.quotes[key])rateQuotes[key]=cached.quotes[key];
+        }
+      }
+      if(cached.rates){
+        for(const key of ['GOLD22','GOLD24','CEYREK','YARIM','TAM']){
+          if(Number(cached.rates[key])>0)rates[key]=cached.rates[key];
+        }
+      }
+      window._goldSource='Gold API';
+      window._goldSpotUsdOz=Number(cached.goldSpotUsdOz)||0;
+    }
     if(cached.updated)rateUpdated=cached.updated;
     return true;
   }catch(e){return false}
@@ -3072,13 +3096,14 @@ async function refreshRates(showMessage=false){
   let fxOk=false,goldOk=false;
   let fxSource='',goldUpdated='';
   try{
-    try{
-      const fx=await fetchTcmbToday();
-      if(fx.usd>0&&fx.eur>0){applyCurrencyRates(fx.usd,fx.eur,'TCMB',fx);fxOk=true;fxSource='TCMB';}
-      else throw new Error('Eksik TCMB kuru');
-    }catch(e){
-      const fx=await fetchOpenCurrencyFallback();
-      applyCurrencyRates(fx.usd,fx.eur,'Currency API (CC0)',{usdBuy:fx.usd,usdSell:fx.usd,eurBuy:fx.eur,eurSell:fx.eur});fxOk=true;fxSource='Currency API (CC0)';
+    // Döviz kurlarında tek kaynak TCMB'dir. Yedek Currency API kullanılmaz.
+    const fx=await fetchTcmbToday();
+    if(fx.usd>0&&fx.eur>0){
+      applyCurrencyRates(fx.usd,fx.eur,'TCMB',fx);
+      fxOk=true;
+      fxSource='TCMB';
+    }else{
+      throw new Error('Eksik TCMB kuru');
     }
     try{
       const gold=await fetchGoldApi();
