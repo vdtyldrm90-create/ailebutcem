@@ -4236,14 +4236,26 @@ function goalCard(g,compact=false){
 }
 function adjust(id,sign){
   let g=S.goals.find(x=>String(x.id)===String(id)),assetEl=byId('asset-'+id),amtEl=byId('amt-'+id),dateEl=byId('saveDate-'+id),costEl=byId('costRate-'+id),a=assetEl?.value,v=Number(amtEl?.value)||0,saveDate=dateEl?.value||date();
-  if(!g||!a||v<=0)return;
-  let costRate=1;
+  if(!g||!a||v<=0){appNotice('Birikim miktarını kontrol et.','Uyarı');return;}
+  let costRate=1,costTotal=null;
   if(Number(sign)>0&&a!=='TRY'){
-    costRate=parseRateNumber(costEl?.value);
-    if(!(costRate>0)){appNotice('Döviz veya altın birikimi için birim başına gerçek alış fiyatını TL olarak gir.');costEl?.focus();return;}
+    const enteredCost=parseRateNumber(costEl?.value);
+    if(!(enteredCost>0)){
+      appNotice(a.startsWith('GOLD')?'Altın için bu alış hareketinin toplam sabit TL maliyetini gir.':'Döviz için birim başına gerçek alış fiyatını TL olarak gir.','Uyarı');
+      costEl?.focus();
+      return;
+    }
+    if(a.startsWith('GOLD')){
+      costTotal=enteredCost;
+      // Hareket/lots sistemi birim maliyeti kullandığı için toplam maliyeti gram miktarına dağıtıyoruz.
+      costRate=enteredCost/v;
+    }else{
+      costRate=enteredCost;
+    }
   }
   let beforeTotal=goalValueInTarget(g),qty=sign>0?v:-v;
-  g.holdings[a]=Math.max(0,(g.holdings[a]||0)+qty);
+  g.holdings=g.holdings||{};
+  g.holdings[a]=Math.max(0,(Number(g.holdings[a])||0)+qty);
   let afterTotal=goalValueInTarget(g);
   S.savingMovements=S.savingMovements||[];
   const movement={id:uid(),goalId:id,goalName:g.name,asset:a,quantity:v,sign:sign,date:saveDate,rate:currentPurchaseRate(a),costRate:Number(sign)>0?costRate:null,costTotal:Number(sign)>0&&a.startsWith('GOLD')?costTotal:null,memberId:S.active||g.memberId,createdAt:new Date().toISOString()};
