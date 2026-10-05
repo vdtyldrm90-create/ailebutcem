@@ -2055,13 +2055,16 @@ S.savingMovements=(S.savingMovements||[]).map(m=>({...m,date:m.date||date()}));
   g.holdings=g.holdings||{};
   if(g.holdings.GOLD!=null && g.holdings.GOLD24==null){g.holdings.GOLD24=g.holdings.GOLD;delete g.holdings.GOLD}
   Object.keys(assetLabels).forEach(k=>{if(g.holdings[k]==null)g.holdings[k]=0});
-  // Birikim hedefinin gerçek bakiyesi yalnızca hareket geçmişinden oluşur.
-  // Hareket yoksa eski/önbellekte kalmış holdings değeri hedefe eklenmez.
+  // Hareket geçmişi varsa gerçek bakiye hareketlerden hesaplanır.
+  // Eski hedeflerde hiç hareket kaydı yoksa mevcut holdings verisini koru;
+  // aksi halde eski hedefler açılışta yanlışlıkla 0'a düşer.
   const moves=(S.savingMovements||[]).filter(m=>String(m.goalId)===String(g.id));
-  const net={};
-  moves.forEach(m=>{const a=m.asset||'TRY';net[a]=(Number(net[a])||0)+(Number(m.quantity)||0)*(Number(m.sign)||1)});
-  g.holdings={};
-  Object.entries(net).forEach(([a,q])=>{if(Number(q)>1e-8)g.holdings[a]=Number(q)});
+  if(moves.length){
+    const net={};
+    moves.forEach(m=>{const a=m.asset||'TRY';net[a]=(Number(net[a])||0)+(Number(m.quantity)||0)*(Number(m.sign)||1)});
+    g.holdings={};
+    Object.entries(net).forEach(([a,q])=>{if(Number(q)>1e-8)g.holdings[a]=Number(q)});
+  }
 });
 function migrateHistoricalRecords(){
   let changed=false;
@@ -2094,6 +2097,7 @@ function migrateHistoricalRecords(){
   // Hedef bakiyesi geçmiş hareketlerin netinden yeniden oluşturulur.
   (S.goals||[]).forEach(g=>{
     const moves=(S.savingMovements||[]).filter(m=>String(m.goalId)===String(g.id));
+    if(!moves.length)return;
     const net={};
     moves.forEach(m=>{
       const a=m.asset||'TRY';
@@ -2107,7 +2111,42 @@ function migrateHistoricalRecords(){
   return changed;
 }
 const historicalRecordsMigratedAtBoot=migrateHistoricalRecords();
-if(legacyPaymentsMigratedAtBoot||historicalRecordsMigratedAtBoot)try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
+
+function reconcilePlannedPaymentTransactions(){
+  let changed=false;
+  const paymentIds=new Set((S.payments||[]).map(p=>String(p.id)));
+  const before=(S.transactions||[]).length;
+  S.transactions=(S.transactions||[]).filter(t=>!t.paymentId||paymentIds.has(String(t.paymentId)));
+  if(S.transactions.length!==before)changed=true;
+
+  // Ödenmiş planlı ödeme İşlemler sayfasında mutlaka karşılık bulur.
+  (S.payments||[]).forEach(p=>{
+    if(p.status!=='odendi')return;
+    const linked=(S.transactions||[]).find(t=>String(t.paymentId||'')===String(p.id));
+    if(linked){
+      if(p.transactionId!==linked.id){p.transactionId=linked.id;changed=true;}
+      return;
+    }
+    const tx={
+      id:p.transactionId||uid(),
+      type:'gider',
+      amount:Number(p.amount)||0,
+      asset:p.asset||'TRY',
+      category:p.category||'Diğer',
+      date:p.lastPaidDate||p.paidDate||p.dueDate||date(),
+      description:'Planlı ödeme: '+(p.title||'Ödeme'),
+      memberId:p.memberId,
+      paymentId:p.id
+    };
+    S.transactions.unshift(tx);
+    p.transactionId=tx.id;
+    p.lastPaidDate=tx.date;
+    changed=true;
+  });
+  return changed;
+}
+const plannedPaymentTransactionsReconciled=reconcilePlannedPaymentTransactions();
+if(legacyPaymentsMigratedAtBoot||historicalRecordsMigratedAtBoot||plannedPaymentTransactionsReconciled)try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
 
 function date(n=0){let d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)}
 function uid(){return crypto.randomUUID?crypto.randomUUID():Date.now()+Math.random()}
@@ -2141,11 +2180,11 @@ function durationText(start,end){
 function findGoalCompletionDate(g){
   if(!g)return null;
   if(g.completionDate)return g.completionDate;
-  const moves=(S.savingMovements||[]).filter(x=>x.goalId===g.id);
+  const moves=(S.savingMovements||[]).filter(x=>String(x.goalId)===String(g.id));
   if(!moves.length)return null;
   const target=Number(g.target)||0;
   const targetAsset=g.targetAsset||'TRY';
-  const targetRate=rates[targetAsset]||1;
+  const targetRate=currentPurchaseRate(targetAsset)||1;
   let totals={};
   const sorted=moves.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   for(const m of sorted){
