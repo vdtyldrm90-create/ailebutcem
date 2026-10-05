@@ -2823,7 +2823,9 @@ function reportSavingsSection(start,end,periodLabel){
     perGoal.set(goalId,row);
   }
   const goalRows=(S.goals||[]).map(g=>({goal:g,snapshot:goalFinancialSnapshot(g)}));
-  const portfolioValue=goalRows.reduce((sum,r)=>sum+r.snapshot.value,0);
+  // Raporlar'daki güncel toplam, Birikim sayfasındaki Toplam Birikim ile birebir aynı olmalı.
+  // Dönemden bağımsız olarak mevcut portföyün güncel TL değeri gösterilir.
+  const portfolioValue=savingsCurrentTotal();
   const tracked=trackedProfitLoss();
   const movementRows=[...perGoal.values()].sort((a,b)=>(b.addCost+b.withdrawalValue)-(a.addCost+a.withdrawalValue));
   const movementTable=movementRows.length?`<div class="report-table-wrap"><table class="table report-table"><thead><tr><th>Hedef</th><th class="number">Ekleme adedi</th><th class="number">Alış maliyeti</th><th class="number">Çıkarma adedi</th><th class="number">Çıkarılanların güncel değeri</th></tr></thead><tbody>${movementRows.map(r=>`<tr><td>${esc(r.name)}</td><td class="number">${r.addCount}</td><td class="number">${fmt(r.addCost)}${r.estimated?'<small> · tahmini</small>':''}</td><td class="number">${r.withdrawalCount}</td><td class="number">${fmt(r.withdrawalValue)}</td></tr>`).join('')}</tbody></table></div><div class="report-mobile-list">${movementRows.map(r=>`<div class="report-mobile-row"><div class="itemmain"><b>${esc(r.name)}</b><div class="sub">Ekleme: ${r.addCount} · Çıkarma: ${r.withdrawalCount}<br>Alış maliyeti: ${fmt(r.addCost)}${r.estimated?' · tahmini':''}<br>Çıkarılanların güncel değeri: ${fmt(r.withdrawalValue)}</div></div></div>`).join('')}</div>`:`<div class="empty">${esc(periodLabel)} döneminde birikim hareketi bulunmuyor.</div>`;
@@ -2878,8 +2880,9 @@ function home(){
   const expense=homeList.filter(t=>t.type==='gider').reduce((a,x)=>a+(Number(x.amount)||0),0);
   const net=income-expense;
   const planned=(S.payments||[]).filter(p=>p.status==='bekliyor'&&dateInRange(p.dueDate,dateFilters.home||'month',window._filterDates?.home?.start,window._filterDates?.home?.end)).reduce((a,p)=>a+(Number(p.amount)||0),0);
-  // Ana sayfadaki Birikim toplamı tüm hedefleri TL karşılığıyla toplar; hedef kartları ise kendi para biriminde gösterilir.
-  const savings=(S.goals||[]).filter(g=>!goalIsCompleted(g)).reduce((a,g)=>a+(Number(holdingsValue(g.holdings))||0),0);
+  // Ana Sayfa, Birikim ve Raporlar aynı güncel TL toplamını göstermeli.
+  // Tek kaynak: hareket geçmişini ve kalan lotları dikkate alan savingsCurrentTotal().
+  const savings=savingsCurrentTotal();
   const overdue=S.payments.filter(p=>p.status==='bekliyor'&&dayDiffToday(p.dueDate)>0).sort((a,b)=>(a.dueDate||'').localeCompare(b.dueDate||''));
   const upcoming=S.payments.filter(p=>p.status==='bekliyor'&&(-dayDiffToday(p.dueDate))>=0&&(-dayDiffToday(p.dueDate))<=7).sort((a,b)=>(a.dueDate||'').localeCompare(b.dueDate||''));
   const upcomingTotal=upcoming.reduce((a,x)=>a+(Number(x.amount)||0),0);
