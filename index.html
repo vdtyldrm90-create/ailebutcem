@@ -4183,13 +4183,11 @@ function savingMovementTable(rows,lotState,isAddition,completed){
       const remain=Math.max(0,Number(lot?.remaining)||0);
       const hasCost=asset==='TRY'||(Number(x.costRate)>0&&!!lot);
       const cost=asset==='TRY'?remain:(hasCost?remain*Number(x.costRate):0);
-      const currentRemainTarget=currentValueInGoalAsset(remain,asset,targetAsset);
-      const targetRate=targetAsset==='TRY'?1:(currentExitRate(targetAsset)||currentPurchaseRate(targetAsset)||1);
-      const currentRemainTl=currentRemainTarget*targetRate;
+      const currentRemainTl=remain*(currentExitRate(asset)||currentPurchaseRate(asset)||1);
       const profit=currentRemainTl-cost,pct=cost>0?profit/cost*100:0;
       const profitClass=completed||asset==='TRY'?'pl-neutral':!hasCost||remain<=0?'pl-unknown':profit>=0?'pl-positive':'pl-negative';
       const costMarkup=hasCost?`<span class="movement-primary-line">${fmt(cost)}</span><small class="movement-secondary-line">TL</small>`:`<span class="movement-primary-line">Kayıtlı değil</span>`;
-      const currentMarkup=`<span class="movement-primary-line">${fmt(currentRemainTarget)}</span><small class="movement-secondary-line">${esc(targetName)}</small>`;
+      const currentMarkup=`<span class="movement-primary-line">${fmt(currentRemainTl)}</span><small class="movement-secondary-line">TL</small>`;
       let profitMarkup='';
       if(completed) profitMarkup=`<span class="movement-primary-line">Hedef tamamlandı</span>`;
       else if(asset==='TRY') profitMarkup=`<span class="movement-primary-line">—</span><small class="movement-secondary-line">Kur farkı yok</small>`;
@@ -4198,7 +4196,8 @@ function savingMovementTable(rows,lotState,isAddition,completed){
       else profitMarkup=`<span class="movement-primary-line">${signedMoney(profit)}</span><small class="movement-secondary-line">${signedPercent(pct)}</small>`;
       extras=`<td class="movement-money">${costMarkup}</td><td class="movement-money movement-current-value">${currentMarkup}</td><td class="${profitClass} movement-profit">${profitMarkup}</td>`;
     }else{
-      extras=`<td class="movement-money movement-current-value">${`<span class="movement-primary-line">${fmt(currentTarget)}</span><small class="movement-secondary-line">${esc(targetName)}</small>`}</td>`;
+      const currentTl=qty*(currentExitRate(asset)||currentPurchaseRate(asset)||1);
+      extras=`<td class="movement-money movement-current-value">${`<span class="movement-primary-line">${fmt(currentTl)}</span><small class="movement-secondary-line">TL</small>`}</td>`;
     }
     return `<tr class="${isAddition?'movement-row-added':'movement-row-removed'}">${select}<td class="movement-date">${dateMarkup}</td><td class="movement-member">${esc(member(x.memberId))}</td><td class="movement-quantity">${quantityMarkup}</td>${extras}</tr>`;
   }).join('');
