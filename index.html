@@ -1692,6 +1692,24 @@ body.cloud-cache-loading #main button,body.cloud-cache-loading #main input,body.
   .home-row-main span{font-size:9px}
 }
 </style>
+
+<style id="movement-two-line-cells">
+/* Birikim hareket geçmişi: ana tutar tek parça, birim/yıl/oran alt satırda. */
+.movement-history-table .movement-date,.movement-history-table .movement-quantity,.movement-history-table .movement-money,.movement-history-table .movement-current-value,.movement-history-table .movement-profit{white-space:nowrap;word-break:keep-all;overflow-wrap:normal;}
+.movement-history-table .movement-date{min-width:52px;}
+.movement-history-table .movement-quantity{min-width:72px;}
+.movement-history-table .movement-money,.movement-history-table .movement-current-value{min-width:82px;}
+.movement-history-table .movement-profit{min-width:88px;}
+.movement-primary-line{display:block;white-space:nowrap;line-height:1.15;font-weight:750;}
+.movement-secondary-line{display:block;white-space:nowrap;margin-top:2px;font-size:8px!important;line-height:1.05;color:var(--muted);font-weight:650;}
+.movement-history-table .movement-profit .movement-secondary-line{font-weight:750;}
+@media(max-width:600px){
+  .movement-history-table{min-width:650px;}
+  .movement-history-table th,.movement-history-table td{padding:6px 4px;}
+  .movement-history-table .movement-primary-line{font-size:9px;}
+  .movement-history-table .movement-secondary-line{font-size:7.5px!important;}
+}
+</style>
 </head>
 <style id="savings-report-readable-contrast-v1">
 /* Birikim raporunda net kartlardan miras kalan beyaz etiketleri okunaklı koyu metne çevir. */
@@ -4127,6 +4145,10 @@ function savingMovementTable(rows,lotState,isAddition,completed){
     const asset=x.asset||'TRY',assetName=assetLabels[asset]||asset,qty=Math.max(0,Number(x.quantity)||0);
     const currentTarget=currentValueInGoalAsset(qty,asset,targetAsset);
     const select=deleteMode.movements?`<td class="movement-select-col"><input type="checkbox" ${deleteSelected.movements.has(x.id)||deleteSelected.movements.has(String(x.id))?'checked':''} onchange="toggleDeleteSelection('movements','${String(x.id).replace(/'/g,"\'")}')" aria-label="Bu hareketi silmek için seç"></td>`:'';
+    const dateText=fd(x.date);
+    const dateParts=String(dateText||'').split('.');
+    const dateMarkup=dateParts.length===3?`${esc(dateParts[0])}.${esc(dateParts[1])}<small class="movement-secondary-line">${esc(dateParts[2])}</small>`:esc(dateText);
+    const quantityMarkup=`<span class="movement-primary-line ${isAddition?'pl-positive':'pl-negative'}">${isAddition?'+':'−'}${fnum(qty)}</span><small class="movement-secondary-line">${esc(assetName)}</small>`;
     let extras='';
     if(isAddition){
       const lot=lotState.byMovementId.get(String(x.id));
@@ -4137,11 +4159,20 @@ function savingMovementTable(rows,lotState,isAddition,completed){
       const targetRate=targetAsset==='TRY'?1:(currentExitRate(targetAsset)||currentPurchaseRate(targetAsset)||1);
       const currentRemainTl=currentRemainTarget*targetRate;
       const profit=currentRemainTl-cost,pct=cost>0?profit/cost*100:0;
-      const profitText=completed?'Hedef tamamlandı':asset==='TRY'?'—':!hasCost?'Maliyet eksik':remain<=0?'Kalan miktar yok':`${signedMoney(profit)} (${signedPercent(pct)})`;
       const profitClass=completed||asset==='TRY'?'pl-neutral':!hasCost||remain<=0?'pl-unknown':profit>=0?'pl-positive':'pl-negative';
-      extras=`<td class="movement-money">${hasCost?fmt(cost):'Kayıtlı değil'} TL</td><td class="movement-money movement-current-value">${fmt(currentRemainTarget)} ${esc(targetName)}</td><td class="${profitClass} movement-profit">${profitText}</td>`;
-    }else extras=`<td class="movement-money movement-current-value">${fmt(currentTarget)} ${esc(targetName)}</td>`;
-    return `<tr class="${isAddition?'movement-row-added':'movement-row-removed'}">${select}<td class="movement-date">${fd(x.date)}</td><td class="movement-member">${esc(member(x.memberId))}</td><td class="movement-quantity"><span class="${isAddition?'pl-positive':'pl-negative'}">${isAddition?'+':'−'}${fnum(qty)} ${esc(assetName)}</span></td>${extras}</tr>`;
+      const costMarkup=hasCost?`<span class="movement-primary-line">${fmt(cost)}</span><small class="movement-secondary-line">TL</small>`:`<span class="movement-primary-line">Kayıtlı değil</span>`;
+      const currentMarkup=`<span class="movement-primary-line">${fmt(currentRemainTarget)}</span><small class="movement-secondary-line">${esc(targetName)}</small>`;
+      let profitMarkup='';
+      if(completed) profitMarkup=`<span class="movement-primary-line">Hedef tamamlandı</span>`;
+      else if(asset==='TRY') profitMarkup=`<span class="movement-primary-line">—</span><small class="movement-secondary-line">Kur farkı yok</small>`;
+      else if(!hasCost) profitMarkup=`<span class="movement-primary-line">Maliyet eksik</span>`;
+      else if(remain<=0) profitMarkup=`<span class="movement-primary-line">Kalan miktar yok</span>`;
+      else profitMarkup=`<span class="movement-primary-line">${signedMoney(profit)}</span><small class="movement-secondary-line">${signedPercent(pct)}</small>`;
+      extras=`<td class="movement-money">${costMarkup}</td><td class="movement-money movement-current-value">${currentMarkup}</td><td class="${profitClass} movement-profit">${profitMarkup}</td>`;
+    }else{
+      extras=`<td class="movement-money movement-current-value">${`<span class="movement-primary-line">${fmt(currentTarget)}</span><small class="movement-secondary-line">${esc(targetName)}</small>`}</td>`;
+    }
+    return `<tr class="${isAddition?'movement-row-added':'movement-row-removed'}">${select}<td class="movement-date">${dateMarkup}</td><td class="movement-member">${esc(member(x.memberId))}</td><td class="movement-quantity">${quantityMarkup}</td>${extras}</tr>`;
   }).join('');
   return `<div class="movement-table-wrap"><table class="movement-history-table"><thead><tr>${selectionHead}${headers}</tr></thead><tbody>${body}</tbody></table></div>`;
 }
