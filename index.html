@@ -3276,13 +3276,13 @@ function toggleSavingCostField(id,sign){
   const asset=byId('asset-'+id)?.value||'TRY',wrap=byId('costRateWrap-'+id),input=byId('costRate-'+id),label=byId('costRateLabel-'+id),hint=byId('costRateHint-'+id);
   const show=Number(sign)>0&&asset!=='TRY';
   if(wrap)wrap.style.display=show?'':'none';
-  if(input){input.required=show;input.disabled=!show;if(input.dataset.asset!==asset){input.value='';input.dataset.asset=asset;}input.placeholder='Örn. '+moneyText(currentPurchaseRate(asset));}
-  if(label)label.textContent=`Gerçek alış fiyatı (TL / 1 ${assetLabels[asset]||asset})`;
-  if(hint)hint.textContent=asset.startsWith('GOLD')?'Altın için gram başına; çeyrek, yarım ve tam altın için adet başına ödediğin TL tutarını gir.':`Bir ${assetLabels[asset]||asset} için gerçekten ödediğin TL tutarını gir. Örnek gösterim güncel referans fiyattır.`;
+  if(input){input.required=show;input.disabled=!show;if(input.dataset.asset!==asset){input.value='';input.dataset.asset=asset;}input.placeholder=asset.startsWith('GOLD')?'Örn. 25.000,00': 'Örn. '+moneyText(currentPurchaseRate(asset));}
+  if(label)label.textContent=asset.startsWith('GOLD')?'Toplam alış maliyeti (TL)':`Gerçek alış fiyatı (TL / 1 ${assetLabels[asset]||asset})`;
+  if(hint)hint.textContent=asset.startsWith('GOLD')?'Bu alana gram başına fiyat değil, bu alış hareketinin ödediğin toplam sabit TL maliyetini gir. Örn. 5 gram için toplam 32.500 TL ödediysen 32.500 yaz.':`Bir ${assetLabels[asset]||asset} için gerçekten ödediğin TL tutarını gir. Örnek gösterim güncel referans fiyattır.`;
 }
 function savingMoveForm(g,sign){
   const verb=sign>0?'Ekle':'Çıkar',defaultAsset=g.targetAsset||'TRY';
-  return `<form class="saving-move-form ${sign>0?'saving-move-add':'saving-move-remove'}" onsubmit="submitSavingMove(event,'${g.id}',${sign})"><div class="field"><label>Birikim Hedefi</label><input value="${esc(g.name)}" readonly></div><div class="row2"><div class="field"><label>Miktar</label><input id="amt-${g.id}" type="number" min="0.001" step="0.001" placeholder="Miktar" required></div><div class="field"><label>Kur Türü</label><select id="asset-${g.id}" aria-label="Kur Türü" class="goal-asset-select" onchange="toggleSavingCostField('${g.id}',${sign})">${assetOptions}</select></div><div class="field"><label>Tarih</label><input id="saveDate-${g.id}" type="date" value="${date()}" required></div></div><div id="costRateWrap-${g.id}" class="field" style="display:none"><label id="costRateLabel-${g.id}">Gerçek alış fiyatı (TL / birim)</label><input id="costRate-${g.id}" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00"><small id="costRateHint-${g.id}" class="sub">Birim başına gerçekten ödediğin TL tutarını gir.</small></div><div class="sub">Döviz veya altın eklerken gerçek alış fiyatın istenir. Kâr/zarar, güncel tahmini bozdurma değeriyle karşılaştırılır.</div><button class="primary">Birikime ${verb}</button></form>`;
+  return `<form class="saving-move-form ${sign>0?'saving-move-add':'saving-move-remove'}" onsubmit="submitSavingMove(event,'${g.id}',${sign})"><div class="field"><label>Birikim Hedefi</label><input value="${esc(g.name)}" readonly></div><div class="row2"><div class="field"><label>Miktar</label><input id="amt-${g.id}" type="number" min="0.001" step="0.001" placeholder="Miktar" required></div><div class="field"><label>Kur Türü</label><select id="asset-${g.id}" aria-label="Kur Türü" class="goal-asset-select" onchange="toggleSavingCostField('${g.id}',${sign})">${assetOptions}</select></div><div class="field"><label>Tarih</label><input id="saveDate-${g.id}" type="date" value="${date()}" required></div></div><div id="costRateWrap-${g.id}" class="field" style="display:none"><label id="costRateLabel-${g.id}">Gerçek alış fiyatı (TL / birim)</label><input id="costRate-${g.id}" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00"><small id="costRateHint-${g.id}" class="sub">Birim başına gerçekten ödediğin TL tutarını gir.</small></div><div class="sub">Döviz eklerken birim alış fiyatını, 22/24 ayar altın eklerken ise bu alışın toplam sabit maliyetini gir. Kâr/zarar güncel değerle karşılaştırılır.</div><button class="primary">Birikime ${verb}</button></form>`;
 }
 function submitSavingMove(e,id,sign){e.preventDefault();adjust(id,sign);}
 
@@ -4246,7 +4246,7 @@ function adjust(id,sign){
   g.holdings[a]=Math.max(0,(g.holdings[a]||0)+qty);
   let afterTotal=goalValueInTarget(g);
   S.savingMovements=S.savingMovements||[];
-  const movement={id:uid(),goalId:id,goalName:g.name,asset:a,quantity:v,sign:sign,date:saveDate,rate:currentPurchaseRate(a),costRate:Number(sign)>0?costRate:null,memberId:S.active||g.memberId,createdAt:new Date().toISOString()};
+  const movement={id:uid(),goalId:id,goalName:g.name,asset:a,quantity:v,sign:sign,date:saveDate,rate:currentPurchaseRate(a),costRate:Number(sign)>0?costRate:null,costTotal:Number(sign)>0&&a.startsWith('GOLD')?costTotal:null,memberId:S.active||g.memberId,createdAt:new Date().toISOString()};
   S.savingMovements.unshift(movement);
   if(beforeTotal<Number(g.target||0)&&afterTotal>=Number(g.target||0)){
     g.completionDate=saveDate;
