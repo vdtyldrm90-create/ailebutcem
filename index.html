@@ -1947,7 +1947,7 @@ button,input,select,textarea,a{touch-action:manipulation}
 <body class="auth-pending">
 <div id="authGate" class="auth-gate" aria-live="polite"></div>
 <div class="app">
-<header><div class="head"><div class="brand"><div class="logo"><img src="./icon-192.png" alt="Aile Bütçem uygulama simgesi"></div><div><b class="brand-title" role="button" tabindex="0" onclick="go('ozet')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();go('ozet')}">Aile Bütçem</b><span>Bütçe · Birikim · Ödemeler</span></div></div><div class="head-actions"><select id="memberSelect" class="profile" aria-label="İşlem profili"></select><div class="notification-wrap"><button id="notificationBtn" class="notification-btn" type="button" onclick="toggleNotificationMenu(event)" aria-label="Bildirimler" title="Bildirimler" aria-haspopup="true" aria-expanded="false">🔔<span id="notificationBadge" class="notification-badge">0</span></button><div id="notificationMenu" class="notification-menu" hidden></div></div><div class="settings-wrap"><button id="familySettingsBtn" class="settings-btn" type="button" onclick="toggleSettingsMenu()" aria-label="Ayarlar" title="Ayarlar" aria-haspopup="true" aria-expanded="false">⚙</button><div id="settingsMenu" class="settings-menu" role="menu" hidden><button type="button" role="menuitem" onclick="openFamilySettings()"><span class="settings-menu-icon">👥</span><span>Aile ve Profil</span></button><button type="button" role="menuitem" onclick="toggleFamilyNotifications()"><span class="settings-menu-icon">🔔</span><span class="settings-menu-copy"><span id="familyNotificationMenuLabel">Telefon bildirimlerini aç</span><small id="familyNotificationMenuStatus">Bu cihazda kapalı</small></span></button><button type="button" role="menuitem" onclick="closeSettingsMenu();installPwa()"><span class="settings-menu-icon">⇩</span><span>Masaüstüne ekle</span></button></div></div></div></div>
+<header><div class="head"><div class="brand"><div class="logo"><img src="./icon-192.png" alt="Aile Bütçem uygulama simgesi"></div><div><b class="brand-title" role="button" tabindex="0" onclick="go('ozet')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();go('ozet')}">Aile Bütçem</b><span>Bütçe · Birikim · Ödemeler</span></div></div><div class="head-actions"><select id="memberSelect" class="profile" aria-label="İşlem profili"></select><div class="notification-wrap"><button id="notificationBtn" class="notification-btn" type="button" onclick="toggleNotificationMenu(event)" aria-label="Bildirimler" title="Bildirimler" aria-haspopup="true" aria-expanded="false">🔔<span id="notificationBadge" class="notification-badge">0</span></button><div id="notificationMenu" class="notification-menu" hidden></div></div><div class="settings-wrap"><button id="familySettingsBtn" class="settings-btn" type="button" onclick="toggleSettingsMenu()" aria-label="Ayarlar" title="Ayarlar" aria-haspopup="true" aria-expanded="false">⚙</button><div id="settingsMenu" class="settings-menu" role="menu" hidden><button type="button" role="menuitem" onclick="openFamilySettings()"><span class="settings-menu-icon">👥</span><span>Aile ve Profil</span></button><button type="button" role="menuitem" onclick="toggleFamilyNotifications()"><span class="settings-menu-icon">🔔</span><span class="settings-menu-copy"><span id="familyNotificationMenuLabel">Telefon bildirimlerini aç</span><small id="familyNotificationMenuStatus">Bu cihazda kapalı</small></span></button><button type="button" role="menuitem" onclick="openNotes()"><span class="settings-menu-icon">📝</span><span>Notlar</span></button><button type="button" role="menuitem" onclick="closeSettingsMenu();installPwa()"><span class="settings-menu-icon">⇩</span><span>Masaüstüne ekle</span></button></div></div></div></div>
 <nav class="desktop-nav" id="desktopNav"></nav></header>
 <main id="main"></main>
 <nav class="bottom" id="bottomNav"></nav>
@@ -2048,7 +2048,7 @@ function rememberActiveTab(value){
   try{sessionStorage.setItem(ACTIVE_TAB_KEY,value)}catch(e){}
   try{localStorage.setItem(ACTIVE_TAB_KEY,value)}catch(e){}
 }
-let S=JSON.parse(localStorage.getItem(KEY)||'null')||seed(),tab=readActiveTab(),txFilter='tumu',payFilter='tumu';
+let S=JSON.parse(localStorage.getItem(KEY)||'null')||seed(),tab='ozet',txFilter='tumu',payFilter='tumu';
 let reportMode='monthly',reportYear=new Date().getFullYear(),reportMonth=new Date().getMonth(),reportIncomeCategory='*',reportExpenseCategory='*';
 let deleteMode={transactions:false,recurringTransactions:false,payments:false,recurringPayments:false,goals:false,movements:false,loans:false};
 let dateFilters={transactions:'month',recurringTransactions:'all',payments:'month',movements:'all',home:'month'};
@@ -2496,6 +2496,27 @@ function toggleNotificationMenu(event){
 }
 function closeNotificationMenu(){const menu=byId('notificationMenu'),button=byId('notificationBtn');if(menu)menu.hidden=true;if(button)button.setAttribute('aria-expanded','false')}
 function nav(){refreshNotificationBadge();document.getElementById('desktopNav').innerHTML=tabs.map(x=>`<button class="navbtn navtab-${x[0]} ${tab===x[0]?'active':''}" onclick="go('${x[0]}')"><span class="navicon">${x[2]}</span><span>${x[1]}</span></button>`).join('');document.getElementById('bottomNav').innerHTML=tabs.map(x=>`<button class="navtab-${x[0]} ${tab===x[0]?'active':''}" onclick="go('${x[0]}')"><span class="ni">${x[2]}</span><span class="nav-label">${x[1]}</span></button>`).join('');const gear=byId('familySettingsBtn');if(gear){gear.classList.toggle('active',tab==='aile');gear.setAttribute('aria-current',tab==='aile'?'page':'false')}}
+const APP_NOTES_KEY='aile-butcem-notes-v1';
+function openNotes(){
+  closeSettingsMenu();
+  const title=byId('modalTitle'),body=byId('modalBody'),modal=byId('modal');
+  if(!title||!body||!modal)return;
+  let saved='';try{saved=localStorage.getItem(APP_NOTES_KEY)||''}catch(e){}
+  title.textContent='Notlar';
+  body.innerHTML=`<div class="stack"><p class="sub">Kendine hatırlatma, ödeme notu veya aile bütçesiyle ilgili notlarını buraya yazabilirsin. Notlar bu cihazda saklanır.</p><div class="field"><label for="appNotesText">Notların</label><textarea id="appNotesText" rows="8" placeholder="Notunu buraya yaz..." style="text-transform:none;min-height:180px;resize:vertical">${esc(saved)}</textarea></div><div class="row2"><button type="button" class="primary" onclick="saveAppNotes()">Notları Kaydet</button><button type="button" class="outline" onclick="clearAppNotes()">Temizle</button></div><p id="appNotesStatus" class="sub" aria-live="polite"></p></div>`;
+  modal.classList.add('show');
+}
+function saveAppNotes(){
+  const text=byId('appNotesText')?.value||'';
+  try{localStorage.setItem(APP_NOTES_KEY,text);const status=byId('appNotesStatus');if(status)status.textContent='Notların kaydedildi.';}
+  catch(e){const status=byId('appNotesStatus');if(status)status.textContent='Kaydedilemedi. Cihaz depolama alanını kontrol et.';}
+}
+function clearAppNotes(){
+  const input=byId('appNotesText');if(input)input.value='';
+  try{localStorage.removeItem(APP_NOTES_KEY)}catch(e){}
+  const status=byId('appNotesStatus');if(status)status.textContent='Notlar temizlendi.';
+}
+
 function closeSettingsMenu(){
   const menu=byId('settingsMenu'),button=byId('familySettingsBtn');
   if(menu)menu.hidden=true;
@@ -3153,7 +3174,7 @@ window.addEventListener('pagehide',stopRateAutoRefresh);
 
 function ratesMarkup(){
   const rateCard=(label,asset,unit='')=>{const kind=asset==='USD'?'USD':asset==='EUR'?'EUR':'GOLD';return `<article class="rate"><div class="rate-title"><span class="rate-modal-icon">${homeRateIcon(kind)}</span><div class="rate-title-text"><b>${label}</b>${unit?`<span class="rate-unit">${unit}</span>`:''}</div></div><div class="rate-pair"><div class="rate-pair-row rate-buy"><span>Alış</span><strong>₺${fnum(currentExitRate(asset))}</strong></div><div class="rate-pair-row rate-sell"><span>Satış</span><strong>₺${fnum(currentPurchaseRate(asset))}</strong></div></div></article>`;};
-  return `<div class="rates-modal-content"><div class="rates-modal-meta"><span class="rates-live-dot"></span><span id="rateUpdatedText">${esc(rateUpdated)} · Otomatik veri</span></div><div class="rategrid live-rates">${rateCard('Dolar / TL','USD')}${rateCard('Euro / TL','EUR')}${rateCard('22 Ayar Altın','GOLD22','TL/gr')}${rateCard('24 Ayar Altın','GOLD24','TL/gr')}${rateCard('Çeyrek Altın','CEYREK','hesaplanan')}${rateCard('Yarım Altın','YARIM','hesaplanan')}${rateCard('Tam Altın','TAM','hesaplanan')}</div><details class="rate-note-details"><summary>Kur açıklaması</summary><p class="sub rate-note">Alış: kurumun sizden alırken ödediği referans fiyat, yaklaşık bozdurma değeridir. Satış: aynı varlığı yeniden almak için ödeyeceğiniz referans fiyattır. TCMB verisi yoksa döviz için orta kura yaklaşık %0,5 referans makası uygulanır. Altında spot fiyata yaklaşık makas eklenir; gerçek kuyumcu fiyatları farklı olabilir. Çeyrek, yarım ve tam altın değerleri yaklaşık hesaplanır.</p></details></div>`;
+  return `<div class="rates-modal-content"><div class="rates-modal-meta"><span class="rates-live-dot"></span><span id="rateUpdatedText">${esc(rateUpdated)} · TCMB resmi kuru (iş günlerinde günlük yayımlanır)</span></div><div class="rategrid live-rates">${rateCard('Dolar / TL','USD')}${rateCard('Euro / TL','EUR')}${rateCard('22 Ayar Altın','GOLD22','TL/gr')}${rateCard('24 Ayar Altın','GOLD24','TL/gr')}${rateCard('Çeyrek Altın','CEYREK','hesaplanan')}${rateCard('Yarım Altın','YARIM','hesaplanan')}${rateCard('Tam Altın','TAM','hesaplanan')}</div><details class="rate-note-details"><summary>Kur açıklaması</summary><p class="sub rate-note">Alış: kurumun sizden alırken ödediği referans fiyat, yaklaşık bozdurma değeridir. Satış: aynı varlığı yeniden almak için ödeyeceğiniz referans fiyattır. TCMB verisi yoksa döviz için orta kura yaklaşık %0,5 referans makası uygulanır. Altında spot fiyata yaklaşık makas eklenir; gerçek kuyumcu fiyatları farklı olabilir. Çeyrek, yarım ve tam altın değerleri yaklaşık hesaplanır.</p></details></div>`;
 }
 function openRatesModal(){showFormModal('Güncel Kurlar',ratesMarkup());}
 function homeRateIcon(kind){
