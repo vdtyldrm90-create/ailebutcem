@@ -2497,24 +2497,67 @@ function toggleNotificationMenu(event){
 function closeNotificationMenu(){const menu=byId('notificationMenu'),button=byId('notificationBtn');if(menu)menu.hidden=true;if(button)button.setAttribute('aria-expanded','false')}
 function nav(){refreshNotificationBadge();document.getElementById('desktopNav').innerHTML=tabs.map(x=>`<button class="navbtn navtab-${x[0]} ${tab===x[0]?'active':''}" onclick="go('${x[0]}')"><span class="navicon">${x[2]}</span><span>${x[1]}</span></button>`).join('');document.getElementById('bottomNav').innerHTML=tabs.map(x=>`<button class="navtab-${x[0]} ${tab===x[0]?'active':''}" onclick="go('${x[0]}')"><span class="ni">${x[2]}</span><span class="nav-label">${x[1]}</span></button>`).join('');const gear=byId('familySettingsBtn');if(gear){gear.classList.toggle('active',tab==='aile');gear.setAttribute('aria-current',tab==='aile'?'page':'false')}}
 const APP_NOTES_KEY='aile-butcem-notes-v1';
+let editingAppNoteId=null;
+function getAppNotes(){
+  try{
+    const raw=localStorage.getItem(APP_NOTES_KEY);
+    if(!raw)return [];
+    const parsed=JSON.parse(raw);
+    if(Array.isArray(parsed))return parsed.filter(n=>n&&typeof n==='object').map(n=>({id:String(n.id||('note-'+Date.now()+Math.random())),title:String(n.title||''),text:String(n.text||''),updatedAt:Number(n.updatedAt)||Date.now()}));
+    if(typeof parsed==='string'&&parsed.trim())return [{id:'legacy-note',title:'Notlarım',text:parsed,updatedAt:Date.now()}];
+    return [];
+  }catch(e){
+    try{const old=localStorage.getItem(APP_NOTES_KEY)||'';return old.trim()?[{id:'legacy-note',title:'Notlarım',text:old,updatedAt:Date.now()}]:[]}catch(_){return []}
+  }
+}
+function storeAppNotes(notes){localStorage.setItem(APP_NOTES_KEY,JSON.stringify(notes));}
 function openNotes(){
   closeSettingsMenu();
   const title=byId('modalTitle'),body=byId('modalBody'),modal=byId('modal');
   if(!title||!body||!modal)return;
-  let saved='';try{saved=localStorage.getItem(APP_NOTES_KEY)||''}catch(e){}
+  editingAppNoteId=null;
   title.textContent='Notlar';
-  body.innerHTML=`<div class="stack"><p class="sub">Kendine hatırlatma, ödeme notu veya aile bütçesiyle ilgili notlarını buraya yazabilirsin. Notlar bu cihazda saklanır.</p><div class="field"><label for="appNotesText">Notların</label><textarea id="appNotesText" rows="8" placeholder="Notunu buraya yaz..." style="text-transform:none;min-height:180px;resize:vertical">${esc(saved)}</textarea></div><div class="row2"><button type="button" class="primary" onclick="saveAppNotes()">Notları Kaydet</button><button type="button" class="outline" onclick="clearAppNotes()">Temizle</button></div><p id="appNotesStatus" class="sub" aria-live="polite"></p></div>`;
+  body.innerHTML=`<div class="stack"><p class="sub">Notlarını ayrı ayrı kaydet, daha sonra düzenle veya sil. Notlar bu cihazda saklanır.</p><div class="row2"><button type="button" class="primary" onclick="newAppNote()">＋ Not Ekle</button><button type="button" class="outline" onclick="renderAppNotes()">Not Listesi</button></div><div id="appNotesEditor"></div><div id="appNotesList"></div><p id="appNotesStatus" class="sub" aria-live="polite"></p></div>`;
   modal.classList.add('show');
+  renderAppNotes();
 }
-function saveAppNotes(){
-  const text=byId('appNotesText')?.value||'';
-  try{localStorage.setItem(APP_NOTES_KEY,text);const status=byId('appNotesStatus');if(status)status.textContent='Notların kaydedildi.';}
-  catch(e){const status=byId('appNotesStatus');if(status)status.textContent='Kaydedilemedi. Cihaz depolama alanını kontrol et.';}
+function newAppNote(){
+  editingAppNoteId=null;
+  const editor=byId('appNotesEditor');if(!editor)return;
+  editor.innerHTML=`<section class="panel" style="padding:14px"><h3 style="margin:0 0 12px">Yeni Not</h3><div class="field"><label for="appNoteTitle">Not başlığı</label><input id="appNoteTitle" maxlength="100" placeholder="Örn. Ödenecek faturalar" style="text-transform:none"></div><div class="field"><label for="appNoteText">Not içeriği</label><textarea id="appNoteText" rows="5" placeholder="Notunu buraya yaz..." style="text-transform:none;min-height:120px;resize:vertical"></textarea></div><div class="row2"><button type="button" class="primary" onclick="saveAppNote()">Notu Kaydet</button><button type="button" class="outline" onclick="cancelAppNoteEdit()">Vazgeç</button></div></section>`;
+  byId('appNoteTitle')?.focus();
 }
-function clearAppNotes(){
-  const input=byId('appNotesText');if(input)input.value='';
-  try{localStorage.removeItem(APP_NOTES_KEY)}catch(e){}
-  const status=byId('appNotesStatus');if(status)status.textContent='Notlar temizlendi.';
+function editAppNote(id){
+  const note=getAppNotes().find(n=>String(n.id)===String(id));if(!note)return;
+  editingAppNoteId=String(id);
+  const editor=byId('appNotesEditor');if(!editor)return;
+  editor.innerHTML=`<section class="panel" style="padding:14px"><h3 style="margin:0 0 12px">Notu Düzenle</h3><div class="field"><label for="appNoteTitle">Not başlığı</label><input id="appNoteTitle" maxlength="100" value="${esc(note.title)}" placeholder="Not başlığı" style="text-transform:none"></div><div class="field"><label for="appNoteText">Not içeriği</label><textarea id="appNoteText" rows="5" placeholder="Notunu buraya yaz..." style="text-transform:none;min-height:120px;resize:vertical">${esc(note.text)}</textarea></div><div class="row2"><button type="button" class="primary" onclick="saveAppNote()">Değişiklikleri Kaydet</button><button type="button" class="outline" onclick="cancelAppNoteEdit()">Vazgeç</button></div></section>`;
+  editor.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function saveAppNote(){
+  const title=(byId('appNoteTitle')?.value||'').trim();
+  const text=(byId('appNoteText')?.value||'').trim();
+  if(!title&&!text){const status=byId('appNotesStatus');if(status)status.textContent='Kaydetmek için başlık veya not içeriği yaz.';return;}
+  try{
+    const notes=getAppNotes();
+    if(editingAppNoteId){const i=notes.findIndex(n=>String(n.id)===editingAppNoteId);if(i>=0)notes[i]={...notes[i],title:title||'Başlıksız not',text,updatedAt:Date.now()};else notes.unshift({id:editingAppNoteId,title:title||'Başlıksız not',text,updatedAt:Date.now()});}
+    else notes.unshift({id:'note-'+Date.now()+'-'+Math.random().toString(36).slice(2,8),title:title||'Başlıksız not',text,updatedAt:Date.now()});
+    storeAppNotes(notes);editingAppNoteId=null;renderAppNotes();
+    const status=byId('appNotesStatus');if(status)status.textContent='Not kaydedildi.';
+  }catch(e){const status=byId('appNotesStatus');if(status)status.textContent='Kaydedilemedi. Cihaz depolama alanını kontrol et.';}
+}
+function cancelAppNoteEdit(){editingAppNoteId=null;const editor=byId('appNotesEditor');if(editor)editor.innerHTML='';}
+function deleteAppNote(id){
+  const notes=getAppNotes();const note=notes.find(n=>String(n.id)===String(id));if(!note)return;
+  if(!confirm('“'+(note.title||'Başlıksız not')+'” silinsin mi?'))return;
+  try{storeAppNotes(notes.filter(n=>String(n.id)!==String(id)));if(editingAppNoteId===String(id))editingAppNoteId=null;renderAppNotes();const status=byId('appNotesStatus');if(status)status.textContent='Not silindi.';}
+  catch(e){const status=byId('appNotesStatus');if(status)status.textContent='Not silinemedi.';}
+}
+function renderAppNotes(){
+  const list=byId('appNotesList');if(!list)return;
+  const notes=getAppNotes();
+  if(!notes.length){list.innerHTML='<div class="panel" style="text-align:center;padding:22px"><div style="font-size:28px;margin-bottom:8px">📝</div><b>Henüz not yok</b><p class="sub">İlk notunu eklemek için “Not Ekle” düğmesine dokun.</p></div>';return;}
+  list.innerHTML='<div class="stack" style="gap:10px">'+notes.map(n=>`<article class="panel" style="padding:13px"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px"><div style="min-width:0;flex:1"><b style="display:block;overflow-wrap:anywhere">${esc(n.title||'Başlıksız not')}</b><small class="sub">${new Date(n.updatedAt||Date.now()).toLocaleString('tr-TR')}</small></div><span style="font-size:20px">📝</span></div><p style="white-space:pre-wrap;overflow-wrap:anywhere;margin:10px 0 12px;text-transform:none">${esc(n.text||'')}</p><div class="row2"><button type="button" class="outline" onclick="editAppNote('${String(n.id).replace(/'/g,'')}')">✎ Düzenle</button><button type="button" class="danger" onclick="deleteAppNote('${String(n.id).replace(/'/g,'')}')">Sil</button></div></article>`).join('')+'</div>';
 }
 
 function closeSettingsMenu(){
