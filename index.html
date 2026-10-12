@@ -3038,9 +3038,28 @@ async function fetchJson(url){
   return await r.json();
 }
 async function fetchText(url){
-  const r=await fetch(url,{cache:'no-store'});
-  if(!r.ok)throw new Error('HTTP '+r.status);
-  return await r.text();
+  // Tarayıcılar TCMB XML isteğini CORS nedeniyle engelleyebilir.
+  // Tüm adresler aynı resmi TCMB XML dosyasını sunar; proxy yalnızca erişim katmanıdır.
+  const encoded=encodeURIComponent(url);
+  const urls=[
+    url+(url.includes('?')?'&':'?')+'_='+Date.now(),
+    'https://api.allorigins.win/raw?url='+encoded,
+    'https://corsproxy.io/?url='+encoded
+  ];
+  let lastError=null;
+  for(const candidate of urls){
+    try{
+      const controller=typeof AbortController!=='undefined'?new AbortController():null;
+      const timer=controller?setTimeout(()=>controller.abort(),9000):null;
+      const response=await fetch(candidate,{cache:'no-store',signal:controller?.signal});
+      if(timer)clearTimeout(timer);
+      if(!response.ok)throw new Error('HTTP '+response.status);
+      const text=await response.text();
+      if(!text||(!text.includes('<Currency')&&!text.includes('<Tarih')))throw new Error('TCMB XML içeriği geçersiz');
+      return text;
+    }catch(error){lastError=error;}
+  }
+  throw new Error('TCMB verisine erişilemedi: '+(lastError?.message||'Bağlantı hatası'));
 }
 function applyCurrencyRates(usdTry,eurTry,source,spread={}){
   const quote=(mid,buyRaw,sellRaw)=>{
@@ -3155,34 +3174,47 @@ function saveRateCache(){
   S.rateData=data;
 }
 async function refreshRates(showMessage=false){
+  if(window._rateRefreshInProgress)return;
+  window._rateRefreshInProgress=true;
   const btn=document.querySelector('.rate-update-btn');
   if(btn){btn.disabled=true;btn.textContent='Güncelleniyor...'}
   let fxOk=false,goldOk=false;
-  let fxSource='',goldUpdated='';
   try{
-    // Döviz kurlarında tek kaynak TCMB'dir. Yedek Currency API kullanılmaz.
+    // Döviz için yalnızca TCMB'nin resmi XML verisi kullanılır.
     const fx=await fetchTcmbToday();
-    if(fx.usd>0&&fx.eur>0){
-      applyCurrencyRates(fx.usd,fx.eur,'TCMB',fx);
-      fxOk=true;
-      fxSource='TCMB';
-    }else{
-      throw new Error('Eksik TCMB kuru');
-    }
+    if(!(fx.usd>0&&fx.eur>0))throw new Error('TCMB yanıtında USD/EUR kuru bulunamadı.');
+    applyCurrencyRates(fx.usd,fx.eur,'TCMB',fx);
+    fxOk=true;
+    window._fxRateSource='TCMB';
+    window._rateError='';
+    const now=new Date();
+    const time=now.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});
+    rateUpdated=rateDateLabel()+' · TCMB '+time;
     try{
       const gold=await fetchGoldApi();
       goldOk=applyGoldSpot(gold.spot,rates.USD);
-      goldUpdated=gold.updatedAt||'';
-    }catch(e){}
-    if(fxOk&&goldOk)rateUpdated=rateDateLabel();
-    else if(fxOk)rateUpdated=rateDateLabel()+' · Altın verisi bekleniyor';
+      if(!goldOk)throw new Error('Altın verisi hesaplanamadı');
+    }catch(goldError){
+      window._goldRateError=goldError?.message||'Altın verisi alınamadı';
+    }
+    if(goldOk)window._goldRateError='';
     saveRateCache();
     save();
-  }catch(e){
+    const status=document.getElementById('rateUpdatedText');
+    if(status)status.textContent=rateUpdated+(goldOk?' · TCMB + Altın güncel':' · TCMB güncel, altın verisi alınamadı');
+    if(showMessage&&typeof appNotice==='function')appNotice('Döviz kurları TCMB üzerinden güncellendi.','Başarılı');
+  }catch(error){
+    window._rateError=error?.message||'Kur güncellemesi başarısız.';
+    const status=document.getElementById('rateUpdatedText');
+    if(status)status.textContent='Güncelleme başarısız · Son kayıtlı değerler gösteriliyor. '+window._rateError;
+    if(showMessage&&typeof appNotice==='function')appNotice('Kur güncellenemedi. İnternet bağlantısını kontrol edip tekrar dene.','Uyarı');
+    console.warn('TCMB kur güncelleme hatası:',error);
   }finally{
+    window._rateRefreshInProgress=false;
     if(btn){btn.disabled=false;btn.textContent='Güncelle'}
   }
 }
+
 function stopRateAutoRefresh(){
   if(window._rateTimer){
     clearInterval(window._rateTimer);
@@ -3217,7 +3249,7 @@ window.addEventListener('pagehide',stopRateAutoRefresh);
 
 function ratesMarkup(){
   const rateCard=(label,asset,unit='')=>{const kind=asset==='USD'?'USD':asset==='EUR'?'EUR':'GOLD';return `<article class="rate"><div class="rate-title"><span class="rate-modal-icon">${homeRateIcon(kind)}</span><div class="rate-title-text"><b>${label}</b>${unit?`<span class="rate-unit">${unit}</span>`:''}</div></div><div class="rate-pair"><div class="rate-pair-row rate-buy"><span>Alış</span><strong>₺${fnum(currentExitRate(asset))}</strong></div><div class="rate-pair-row rate-sell"><span>Satış</span><strong>₺${fnum(currentPurchaseRate(asset))}</strong></div></div></article>`;};
-  return `<div class="rates-modal-content"><div class="rates-modal-meta"><span class="rates-live-dot"></span><span id="rateUpdatedText">${esc(rateUpdated)} · TCMB resmi kuru (iş günlerinde günlük yayımlanır)</span></div><div class="rategrid live-rates">${rateCard('Dolar / TL','USD')}${rateCard('Euro / TL','EUR')}${rateCard('22 Ayar Altın','GOLD22','TL/gr')}${rateCard('24 Ayar Altın','GOLD24','TL/gr')}${rateCard('Çeyrek Altın','CEYREK','hesaplanan')}${rateCard('Yarım Altın','YARIM','hesaplanan')}${rateCard('Tam Altın','TAM','hesaplanan')}</div><details class="rate-note-details"><summary>Kur açıklaması</summary><p class="sub rate-note">Alış: kurumun sizden alırken ödediği referans fiyat, yaklaşık bozdurma değeridir. Satış: aynı varlığı yeniden almak için ödeyeceğiniz referans fiyattır. TCMB verisi yoksa döviz için orta kura yaklaşık %0,5 referans makası uygulanır. Altında spot fiyata yaklaşık makas eklenir; gerçek kuyumcu fiyatları farklı olabilir. Çeyrek, yarım ve tam altın değerleri yaklaşık hesaplanır.</p></details></div>`;
+  return `<div class="rates-modal-content"><div class="rates-modal-meta"><span class="rates-live-dot"></span><span id="rateUpdatedText">${esc(rateUpdated)} · TCMB resmi kuru (iş günlerinde günlük yayımlanır)</span><button type="button" class="secondary rate-update-btn" onclick="refreshRates(true)">Kurları Güncelle</button></div><div class="rategrid live-rates">${rateCard('Dolar / TL','USD')}${rateCard('Euro / TL','EUR')}${rateCard('22 Ayar Altın','GOLD22','TL/gr')}${rateCard('24 Ayar Altın','GOLD24','TL/gr')}${rateCard('Çeyrek Altın','CEYREK','hesaplanan')}${rateCard('Yarım Altın','YARIM','hesaplanan')}${rateCard('Tam Altın','TAM','hesaplanan')}</div><details class="rate-note-details"><summary>Kur açıklaması</summary><p class="sub rate-note">Alış: kurumun sizden alırken ödediği referans fiyat, yaklaşık bozdurma değeridir. Satış: aynı varlığı yeniden almak için ödeyeceğiniz referans fiyattır. TCMB verisi yoksa döviz için orta kura yaklaşık %0,5 referans makası uygulanır. Altında spot fiyata yaklaşık makas eklenir; gerçek kuyumcu fiyatları farklı olabilir. Çeyrek, yarım ve tam altın değerleri yaklaşık hesaplanır.</p></details></div>`;
 }
 function openRatesModal(){showFormModal('Güncel Kurlar',ratesMarkup());}
 function homeRateIcon(kind){
