@@ -2211,7 +2211,15 @@ function reconcilePlannedPaymentTransactions(){
   return changed;
 }
 const plannedPaymentTransactionsReconciled=reconcilePlannedPaymentTransactions();
-if(legacyPaymentsMigratedAtBoot||historicalRecordsMigratedAtBoot||plannedPaymentTransactionsReconciled)try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
+let paymentHistoryMigratedAtBoot=false;
+(S.payments||[]).forEach(p=>{
+  if(!Array.isArray(p.paymentHistory)){
+    const linked=(S.transactions||[]).filter(t=>String(t.paymentId||'')===String(p.id));
+    p.paymentHistory=linked.map(t=>({id:String(t.paymentRecordId||t.id),date:t.date||p.lastPaidDate||p.dueDate||date(),amount:Number(t.amount)||0,transactionId:t.id,legacy:true}));
+    if(linked.length)paymentHistoryMigratedAtBoot=true;
+  }
+});
+if(legacyPaymentsMigratedAtBoot||historicalRecordsMigratedAtBoot||plannedPaymentTransactionsReconciled||paymentHistoryMigratedAtBoot)try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
 
 function date(n=0){let d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)}
 function uid(){return crypto.randomUUID?crypto.randomUUID():Date.now()+Math.random()}
@@ -3301,22 +3309,57 @@ function ratesPanel(){
 }
 function days(d){return Math.ceil((new Date(d+'T12:00:00')-new Date(new Date().toDateString()))/86400000)}
 function due(p){let d=days(p.dueDate);return p.status==='odendi'?'<span class="badge ok">Ödendi</span>':d<0?'<span class="badge late">Gecikti</span>':d<=3?'<span class="badge warn">Yaklaşıyor</span>':`<span class="badge">${d} gün</span>`}
+function paymentActualTotal(p){
+  const history=Array.isArray(p?.paymentHistory)?p.paymentHistory:[];
+  if(history.length)return history.reduce((sum,h)=>sum+(Number(h.amount)||0),0);
+  return (S.transactions||[]).filter(t=>String(t.paymentId||'')===String(p?.id)).reduce((sum,t)=>sum+(Number(t.amount)||0),0);
+}
+function paymentHistoryRows(p){
+  const history=Array.isArray(p.paymentHistory)?p.paymentHistory:[];
+  if(!history.length)return '<div class="detail-empty-note">Henüz gerçekleşen ödeme kaydı yok.</div>';
+  return `<div class="list payment-history-list">${history.slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).map(h=>`<div class="item"><div class="icon category-list-icon in">✓</div><div class="itemmain"><b>${fd(h.date)}</b><div class="sub">Gerçekleşen ödeme</div></div><div class="amount in">${fnum(h.amount)} ${assetLabels[p.asset||'TRY']||'TL'}</div></div>`).join('')}</div>`;
+}
 function openPaymentDetailModal(id){
   const p=(S.payments||[]).find(x=>String(x.id)===String(id));
   if(!p)return;
-  const late=isOverdue(p), status=p.status==='odendi'?'Ödendi':late?'Gecikti':'Bekliyor';
+  if(!Array.isArray(p.paymentHistory))p.paymentHistory=[];
+  const late=isOverdue(p), paid=paymentActualTotal(p), status=paid+0.005>=Number(p.amount||0)?'Ödendi':late?'Gecikti':'Bekliyor';
   const recurringText=p.recurringGroupId||p.installment?'Düzenli ödeme':p.recurring?'Her ay':'Tek seferlik';
   showFormModal('Planlı Ödeme',`<div class="record-detail-modal recurring-detail-modal goal-style-detail-modal">
     <div class="record-detail-summary recurring-detail-summary">
       <div><small>Ödeme</small><b>${esc(p.title||'Planlı ödeme')}</b></div>
       <div><small>Kategori</small><b class="detail-category-value"><span class="detail-category-icon">${categorySvgFor(p.category||'Diğer','gider')}</span>${esc(p.category||'Diğer')}</b></div>
-      <div class="detail-amount-box"><div class="detail-amount-main"><small>Tutar</small><b>${fnum(p.amount)} ${assetLabels[p.asset||'TRY']||'TL'}</b></div></div>
+      <div class="detail-amount-box"><div class="detail-amount-main"><small>Planlanan tutar</small><b>${fnum(p.amount)} ${assetLabels[p.asset||'TRY']||'TL'}</b></div></div>
+      <div class="detail-amount-box"><div class="detail-amount-main"><small>Gerçekleşen ödeme</small><b>${fnum(paid)} ${assetLabels[p.asset||'TRY']||'TL'}</b></div></div>
       <div><small>Durum</small><b><span class="badge regular-status-badge ${status==='Ödendi'?'running':status==='Gecikti'?'done':'pending'}">${status}</span></b></div>
     </div>
     <div class="goal-detail-meta"><span><small>Vade</small><b>${fd(p.dueDate)}</b></span><span><small>Tür</small><b>${recurringText}</b></span><span><small>Sorumlu</small><b>${esc(member(p.memberId))}</b></span><span><small>Para Birimi</small><b>${assetLabels[p.asset||'TRY']||'TL'}</b></span></div>
-    ${late?`<div class="overdue-text">Vadesi geçti · ${Math.abs(days(p.dueDate))} gün gecikti</div>`:''}
-    <div class="modal-actions"><button type="button" class="primary" onclick="closeModal();togglePay('${p.id}')">${p.status==='bekliyor'?'Ödendi':'Geri Al'}</button><button type="button" class="secondary" onclick="closeModal()">Kapat</button></div>
+    ${late&&status!=='Ödendi'?`<div class="overdue-text">Vadesi geçti · ${Math.abs(days(p.dueDate))} gün gecikti</div>`:''}
+    <form class="payment-actual-form" onsubmit="addPaymentActual(event,'${String(p.id).replace(/'/g,"\\'")}')">
+      <h3>Gerçekleşen ödeme kaydet</h3>
+      <div class="row2"><div class="field"><label>Ödenen tutar</label><input id="actualPayAmount" type="text" inputmode="decimal" data-money autocomplete="off" placeholder="0,00" required></div><div class="field"><label>Ödeme tarihi</label><input id="actualPayDate" type="date" value="${date()}" required></div></div>
+      <button type="submit" class="primary">Ödemeyi Kaydet</button>
+    </form>
+    <div class="field"><label>Ödeme geçmişi</label>${paymentHistoryRows(p)}</div>
+    <div class="modal-actions"><button type="button" class="secondary" onclick="closeModal()">Kapat</button></div>
   </div>`);
+}
+function addPaymentActual(e,id){
+  if(e&&typeof e.preventDefault==='function')e.preventDefault();
+  const p=(S.payments||[]).find(x=>String(x.id)===String(id));if(!p)return false;
+  const amount=parseMoney(byId('actualPayAmount')?.value),paidDate=byId('actualPayDate')?.value||date();
+  if(!(amount>0)){appNotice('Lütfen sıfırdan büyük geçerli bir ödeme tutarı gir.','Tutar Kontrolü');return false;}
+  if(!paidDate){appNotice('Lütfen ödeme tarihini seç.','Eksik Bilgi');return false;}
+  p.paymentHistory=Array.isArray(p.paymentHistory)?p.paymentHistory:[];
+  const recordId=String(uid()),txId=String(uid());
+  p.paymentHistory.push({id:recordId,date:paidDate,amount,transactionId:txId});
+  S.transactions.unshift({id:txId,type:'gider',amount,asset:p.asset||'TRY',category:p.category||'Diğer',date:paidDate,description:'Planlı ödeme: '+(p.title||'Ödeme'),memberId:p.memberId,paymentId:p.id,paymentRecordId:recordId});
+  const total=paymentActualTotal(p);
+  if(total+0.005>=Number(p.amount||0)){p.status='odendi';p.lastPaidDate=paidDate;p.transactionId=txId;}
+  else {p.status='bekliyor';delete p.transactionId;}
+  save();
+  openPaymentDetailModal(id);
+  return false;
 }
 function paymentRow(p,full=false){
   let late=p.status==='bekliyor' && days(p.dueDate)<0;
@@ -3324,8 +3367,9 @@ function paymentRow(p,full=false){
   return `<div class="item ${late?'overdue-payment':''}" style="${late?'background:#fff1f2;border-color:#fecdd3;':''}">
     ${deleteMode.payments?`<label class="checkwrap"><input type="checkbox" ${deleteSelected.payments.has(p.id)?'checked':''} onchange="toggleDeleteSelection('payments','${p.id}')"><span></span></label>`:''}
     <div class="icon category-list-icon" aria-hidden="true">${categorySvgFor(p.category||'Diğer','gider')}</div>
-    <div class="itemmain"><b>${esc(p.title)}</b>
+    <div class="itemmain" role="button" tabindex="0" onclick="openPaymentDetailModal('${String(p.id).replace(/'/g,"\'")}')"><b>${esc(p.title)}</b>
       <div class="sub">${esc(p.category)} · Vade: ${fd(p.dueDate)} · ${esc(member(p.memberId))} · ${assetLabels[p.asset||'TRY']||'TL'}${p.recurringGroupId||p.installment?` · Düzenli · ${Number(p.recurringIndex)||1}/${Number(p.recurringTotal)||Number(p.months)||1}. ay`:(p.recurring?' · Her ay · Kalan '+(p.remaining??p.months??0)+' ay':'')}</div>
+      <div class="sub">Planlanan: ${fnum(p.amount)} · Gerçekleşen: ${fnum(paymentActualTotal(p))} ${assetLabels[p.asset||'TRY']||'TL'} · Ödeme geçmişi için dokun</div>
       ${late?`<div class="overdue-text">Vadesi geçti · ${lateDays} gün gecikti</div>`:''}
     </div>
     <div style="text-align:right"><div class="amount ${late?'late-amount':''}">${fnum(p.amount)} ${assetLabels[p.asset||'TRY']||'TL'}</div><div class="sub ${late?'late-amount':''}">${late?'Gecikmiş':(p.status==='odendi'?'Ödendi':'Bekliyor')}</div></div>
@@ -3744,7 +3788,19 @@ function addTx(e){
   closeModal();
   save();
 }
-function delTx(id){S.transactions=S.transactions.filter(t=>t.id!==id);save()}
+function removePaymentHistoryForTransactions(transactionIds){
+  const ids=new Set(Array.from(transactionIds||[]).map(String));if(!ids.size)return;
+  (S.payments||[]).forEach(p=>{
+    if(!Array.isArray(p.paymentHistory)||!p.paymentHistory.length)return;
+    const before=p.paymentHistory.length;
+    p.paymentHistory=p.paymentHistory.filter(h=>!ids.has(String(h.transactionId||h.id||'')));
+    if(p.paymentHistory.length!==before){
+      const total=p.paymentHistory.reduce((sum,h)=>sum+(Number(h.amount)||0),0);
+      if(total+0.005<Number(p.amount||0)){p.status='bekliyor';delete p.transactionId;delete p.lastPaidDate;}
+    }
+  });
+}
+function delTx(id){removePaymentHistoryForTransactions([id]);S.transactions=S.transactions.filter(t=>t.id!==id);save()}
 function monthlyNextDate(iso,anchorDay){
   const parts=String(iso||date()).split('-').map(Number);
   const next=new Date(parts[0],parts[1],1,12);
@@ -3946,6 +4002,7 @@ function deleteSelectedRecurringOccurrences(type,groupId){
   const ids=new Set(Array.from(modalDeleteSelected[type]||[]).map(String));if(!ids.size)return;
   showAppConfirm('Silme Onayı',`${ids.size} seçili kayıt silinsin mi?`,()=>{
   if(type==='recurringTransactions'){
+    removePaymentHistoryForTransactions(ids);
     S.transactions=(S.transactions||[]).filter(t=>!ids.has(String(t.id)));
     const r=(S.recurringTransactions||[]).find(x=>String(x.id)===String(groupId));
     if(r){const count=(S.transactions||[]).filter(t=>String(t.recurringId||'')===String(r.id)).length;r.generatedCount=count;r.remaining=Math.max(0,Number(r.months||0)-count);}
@@ -3996,20 +4053,23 @@ function addPay(e){
 }
 function togglePay(id){
   const p=S.payments.find(x=>String(x.id)===String(id));if(!p)return;
-  const independent=!!(p.recurringGroupId||p.installment);
+  p.paymentHistory=Array.isArray(p.paymentHistory)?p.paymentHistory:[];
   if(p.status==='bekliyor'){
-    const tx={id:uid(),type:'gider',amount:p.amount,asset:p.asset||'TRY',category:p.category,date:date(),description:'Planlı ödeme: '+p.title,memberId:p.memberId,paymentId:p.id};
-    S.transactions.unshift(tx);
-    if(p.recurring&&!independent){
-      p.remaining=Math.max(0,(Number(p.remaining)||Number(p.months)||1)-1);
-      if(p.remaining>0){p.dueDate=monthlyNextDate(p.dueDate,Number(p.anchorDay)||Number(String(p.dueDate).slice(-2))||1);p.status='bekliyor';p.lastPaidDate=tx.date}
-      else{p.status='odendi';p.transactionId=tx.id}
-    }else{p.status='odendi';p.transactionId=tx.id;p.lastPaidDate=tx.date}
+    const paid=paymentActualTotal(p),amount=Math.max(0,(Number(p.amount)||0)-paid);
+    if(amount>0){
+      const recordId=String(uid()),txId=String(uid()),paidDate=date();
+      p.paymentHistory.push({id:recordId,date:paidDate,amount,transactionId:txId});
+      S.transactions.unshift({id:txId,type:'gider',amount,asset:p.asset||'TRY',category:p.category||'Diğer',date:paidDate,description:'Planlı ödeme: '+(p.title||'Ödeme'),memberId:p.memberId,paymentId:p.id,paymentRecordId:recordId});
+    }
+    p.status='odendi';p.lastPaidDate=date();
+    const linked=(S.transactions||[]).filter(t=>String(t.paymentId||'')===String(p.id));p.transactionId=linked[linked.length-1]?.id||'';
+    if(p.recurring&&!p.recurringGroupId&&!p.installment){p.remaining=Math.max(0,(Number(p.remaining)||Number(p.months)||1)-1);if(p.remaining>0){p.dueDate=monthlyNextDate(p.dueDate,Number(p.anchorDay)||Number(String(p.dueDate).slice(-2))||1);p.status='bekliyor';}}
   }else{
-    const txId=p.transactionId,lastPaidDate=p.lastPaidDate;
-    S.transactions=S.transactions.filter(t=>t.paymentId!==id&&(!txId||t.id!==txId));
-    p.status='bekliyor';delete p.transactionId;delete p.lastPaidDate;
-    if(p.recurring&&!independent){p.remaining=Math.max(1,Number(p.remaining)||Number(p.months)||1);p.dueDate=lastPaidDate?monthlyNextDate(lastPaidDate,Number(p.anchorDay)||Number(String(p.dueDate).slice(-2))||1):p.dueDate}
+    const linked=(S.transactions||[]).filter(t=>String(t.paymentId||'')===String(p.id));
+    const txIds=new Set(linked.map(t=>String(t.id)));
+    S.transactions=S.transactions.filter(t=>!txIds.has(String(t.id)));
+    p.paymentHistory=[];p.status='bekliyor';delete p.transactionId;delete p.lastPaidDate;
+    if(p.recurring&&!p.recurringGroupId&&!p.installment){p.remaining=Math.max(1,Number(p.remaining)||Number(p.months)||1);}
   }
   save();
 }
@@ -5438,6 +5498,7 @@ function askDelete(type){
 function confirmDelete(type){
   let ids=deleteSelected[type];
   if(type==='transactions'){
+    removePaymentHistoryForTransactions(ids);
     S.transactions=S.transactions.filter(x=>!ids.has(x.id));
   }else if(type==='recurringTransactions'){
     // Düzenli gelir/gider planı silindiğinde, bu plana bağlı üstteki
