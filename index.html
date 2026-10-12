@@ -1307,6 +1307,7 @@ body.cloud-cache-loading #main button,body.cloud-cache-loading #main input,body.
 .rate-note-details summary:after{content:'+';float:right;font-size:13px}
 .rate-note-details[open] summary:after{content:'−'}
 .rate-note-details .rate-note{margin:7px 0 0;line-height:1.45}
+.modal:has(.rates-modal-content){z-index:21000!important}
 .modalbox:has(.rates-modal-content){width:min(760px,100%)}
 @media(min-width:720px){.rates-modal-content .rategrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:440px){.rates-modal-content .rategrid{gap:6px}.rates-modal-content .rate{padding:8px}.rates-modal-content .rate-pair-row{padding:5px 6px}.rates-modal-content .rate-pair-row b{font-size:11px}.rates-modal-content .rate-pair-row strong{font-size:11px}.rate-title b{font-size:10.5px}.modal:has(.rates-modal-content){padding:0}.modal:has(.rates-modal-content) .modalbox{max-height:88svh;padding:14px 12px calc(14px + env(safe-area-inset-bottom));border-radius:18px 18px 0 0}.modal:has(.rates-modal-content) .modalhead{margin-bottom:9px}.modal:has(.rates-modal-content) .modalhead b{font-size:15px}}
@@ -1737,6 +1738,11 @@ body.cloud-cache-loading #main button,body.cloud-cache-loading #main input,body.
   .movement-history-table .movement-primary-line{font-size:8px!important}
   .movement-history-table .movement-secondary-line{font-size:7px!important}
 }
+</style>
+<style id="rates-modal-above-bottom-tabs-fix">
+/* Döviz penceresi, sabit alt sekmelerin üstünde görünmeli. */
+.modal{z-index:30000!important}
+.modal.show{z-index:30000!important}
 </style>
 </head>
 <style id="savings-report-readable-contrast-v1">
