@@ -2275,7 +2275,7 @@ function isOverdue(p){return p.status==='bekliyor' && dayDiffToday(p.dueDate)>0}
 
 function calcTotal(q,p){return (Number(q)||0)*(Number(p)||0)}
 
-function save(){S.rateData={updated:rateUpdated,quotes:rateQuotes};localStorage.setItem(KEY,JSON.stringify(S));render();scheduleCloudSync()}
+function save(){S.rateData={...(S.rateData||{}),updated:rateUpdated,quotes:rateQuotes,rates,fetchedAt:Number(S.rateData?.fetchedAt)||0};localStorage.setItem(KEY,JSON.stringify(S));render();scheduleCloudSync()}
 function fmt(n){return new Intl.NumberFormat('tr-TR',{style:'currency',currency:'TRY',minimumFractionDigits:2,maximumFractionDigits:2}).format(n||0)}
 function fnum(n){return new Intl.NumberFormat('tr-TR',{maximumFractionDigits:2}).format(n||0)}
 function moneyText(n){return new Intl.NumberFormat('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(n)||0)}
@@ -3175,7 +3175,7 @@ function loadRateCache(){
   }catch(e){return false}
 }
 function saveRateCache(){
-  const data={updated:rateUpdated,rates,quotes:rateQuotes,fxSource:window._fxRateSource||'',goldSource:window._goldSource||'',goldSpotUsdOz:window._goldSpotUsdOz||0};
+  const data={updated:rateUpdated,rates,quotes:rateQuotes,fetchedAt:Date.now(),fxSource:window._fxRateSource||'',goldSource:window._goldSource||'',goldSpotUsdOz:window._goldSpotUsdOz||0};
   localStorage.setItem(RATE_CACHE_KEY,JSON.stringify(data));
   S.rateData=data;
 }
@@ -4702,7 +4702,7 @@ function cloudErrorText(error){
   return raw;
 }
 function persistLocalOnly(){
-  S.rateData={updated:rateUpdated,quotes:rateQuotes};
+  S.rateData={...(S.rateData||{}),updated:rateUpdated,quotes:rateQuotes,rates,fetchedAt:Number(S.rateData?.fetchedAt)||0};
   localStorage.setItem(KEY,JSON.stringify(S));
 }
 // Yalnızca daha önce doğrulanmış aynı kullanıcı/aile önbelleğini anında göster.
@@ -4785,6 +4785,10 @@ function bootstrapVerifiedCachedView(){
 function applySharedState(data,preferredActive=null){
   const oldActive=preferredActive||S.active;
   const localRates=S.rateData||{updated:rateUpdated,quotes:rateQuotes};
+  const incomingRates=data?.rateData||null;
+  const localRateStamp=Number(localRates?.fetchedAt)||0;
+  const incomingRateStamp=Number(incomingRates?.fetchedAt)||0;
+  const chosenRates=(incomingRates&&(!localRates||incomingRateStamp>localRateStamp||(!localRateStamp&&!incomingRateStamp)))?incomingRates:localRates;
   S={...seed(),...(data||{})};
   S.members=Array.isArray(S.members)?S.members:[];
   S.transactions=Array.isArray(S.transactions)?S.transactions:[];
@@ -4799,8 +4803,14 @@ S.recurringTransactions=(S.recurringTransactions||[]).map(r=>({...r,asset:r.asse
   if(cloud.member&&!S.members.some(m=>m.id===cloud.member.profile_id))S.members.push({id:cloud.member.profile_id,name:cloud.member.display_name||'Aile üyesi'});
   S.active=S.members.some(m=>m.id===oldActive)?oldActive:(S.members.some(m=>m.id===cloud.member?.profile_id)?cloud.member.profile_id:(S.members[0]?.id||'m-ahmet'));
   S.family={id:cloud.family?.id||'local-'+uid(),name:cloud.family?.name||'Ailem',inviteToken:''};
-  S.rateData=localRates;
-  if(S.rateData?.quotes)Object.assign(rateQuotes,S.rateData.quotes);
+  S.rateData=chosenRates||{updated:rateUpdated,quotes:rateQuotes};
+  if(S.rateData?.quotes){
+    Object.assign(rateQuotes,S.rateData.quotes);
+    Object.keys(rates).forEach(k=>{if(k==='TRY')return;const stored=Number(S.rateData?.rates?.[k]);const q=rateQuotes[k];const value=stored>0?stored:Number(q?.value??q?.sell);if(Number.isFinite(value)&&value>0)rates[k]=value;});
+  }
+  rateUpdated=S.rateData?.updated||rateUpdated;
+  if(S.rateData?.fxSource)window._fxRateSource=S.rateData.fxSource;
+  if(S.rateData?.goldSource)window._goldSource=S.rateData.goldSource;
   normalizeIndicativeRateSpreads();
   localStorage.setItem(KEY,JSON.stringify(S));
   render();
