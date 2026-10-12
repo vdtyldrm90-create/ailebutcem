@@ -3039,17 +3039,22 @@ function parseRateNumber(v){
   return Number.isFinite(n)?n:0;
 }
 async function fetchJson(url){
-  const r=await fetch(url,{cache:'no-store'});
-  if(!r.ok)throw new Error('HTTP '+r.status);
-  return await r.json();
+  const controller=typeof AbortController!=='undefined'?new AbortController():null;
+  const timer=controller?setTimeout(()=>controller.abort(),10000):null;
+  try{
+    const r=await fetch(url,{cache:'no-store',signal:controller?.signal});
+    if(!r.ok)throw new Error('HTTP '+r.status+' ('+new URL(url).hostname+')');
+    return await r.json();
+  }finally{if(timer)clearTimeout(timer);}
 }
 async function fetchCurrencyApiTr(){
-  // Ücretsiz, açık kaynak API: döviz + gram altın + çeyrek/yarım/tam altın tek yanıtta.
-  // CDN CORS destekler; cihazlar aynı veri adresini kullanır.
+  // Öncelik: tek yanıtta döviz ve altın sağlayan ücretsiz açık kaynak servis.
+  const stamp=Date.now();
   const urls=[
-    'https://cdn.jsdelivr.net/gh/MehmetAkgul/currency-api-tr@main/v1/currencies/try-full.json',
-    'https://raw.githubusercontent.com/MehmetAkgul/currency-api-tr/main/v1/currencies/try-full.json'
-  ];
+    'https://cdn.jsdelivr.net/gh/MehmetAkgul/currency-api-tr@main/v1/currencies/try-full.json?_= '+stamp,
+    'https://raw.githubusercontent.com/MehmetAkgul/currency-api-tr/main/v1/currencies/try-full.json?_= '+stamp,
+    'https://cdn.statically.io/gh/MehmetAkgul/currency-api-tr/main/v1/currencies/try-full.json?_= '+stamp
+  ].map(u=>u.replace('?_= ','?_='));
   let lastError=null;
   for(const url of urls){
     try{
@@ -3060,7 +3065,31 @@ async function fetchCurrencyApiTr(){
       return data;
     }catch(error){lastError=error;}
   }
-  throw new Error('Kur servisine erişilemedi: '+(lastError?.message||'Bağlantı hatası'));
+  throw new Error('Ana kur servisleri yanıt vermedi: '+(lastError?.message||'Bağlantı hatası'));
+}
+async function fetchFallbackRates(){
+  // İkinci yol: ücretsiz günlük döviz API'si + altın spot API'si.
+  const sources=[
+    {usd:'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json',eur:'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/eur.json'},
+    {usd:'https://latest.currency-api.pages.dev/v1/currencies/usd.json',eur:'https://latest.currency-api.pages.dev/v1/currencies/eur.json'}
+  ];
+  let lastError=null;
+  for(const source of sources){
+    try{
+      const [usdData,eurData]=await Promise.all([fetchJson(source.usd),fetchJson(source.eur)]);
+      const usd=Number(usdData?.usd?.try),eur=Number(eurData?.eur?.try);
+      if(!(usd>0&&eur>0))throw new Error('Yedek döviz servisinde USD/TRY veya EUR/TRY bulunamadı.');
+      let goldData=null,goldError=null;
+      for(const goldUrl of ['https://api.gold-api.com/price/XAU','https://api.gold-api.com/price/XAU?_= '+Date.now()]){
+        try{goldData=await fetchJson(goldUrl.replace('?_= ','?_='));if(Number(goldData?.price)>0)break;goldData=null;}catch(e){goldError=e;}
+      }
+      if(!(Number(goldData?.price)>0))throw new Error('Döviz alındı ancak altın servisi yanıt vermedi: '+(goldError?.message||'altın fiyatı bulunamadı'));
+      const data={try:{usd:{bid:usd*0.995,ask:usd*1.005},eur:{bid:eur*0.995,ask:eur*1.005},xau_gram:{bid:(Number(goldData.price)*usd/XAU_TO_GRAMS)*0.99,ask:(Number(goldData.price)*usd/XAU_TO_GRAMS)*1.01}},date:usdData?.date||eurData?.date||'',updated_at:goldData?.updatedAt||'',sources:['fawazahmed0','Gold API'],is_stale:false};
+      // Yedek kaynakta Türk altınları ayrı verilmediğinden gram altın üzerinden yaklaşık hesaplanır.
+      return data;
+    }catch(error){lastError=error;}
+  }
+  throw new Error('Yedek servisler de çalışmadı: '+(lastError?.message||'bağlantı hatası'));
 }
 function applyCurrencyRates(usdTry,eurTry,source,spread={}){
   const quote=(mid,buyRaw,sellRaw)=>{
@@ -3164,7 +3193,9 @@ async function refreshRates(showMessage=false){
   const btn=document.querySelector('.rate-update-btn');
   if(btn){btn.disabled=true;btn.textContent='Güncelleniyor...'}
   try{
-    const data=await fetchCurrencyApiTr();
+    let data,primaryError=null,usedFallback=false;
+    try{data=await fetchCurrencyApiTr();}
+    catch(error){primaryError=error;data=await fetchFallbackRates();usedFallback=true;}
     applyCurrencyApiTr(data);
     window._rateError='';window._goldRateError='';
     const now=new Date();
@@ -3174,13 +3205,14 @@ async function refreshRates(showMessage=false){
     saveRateCache();
     save();
     const status=document.getElementById('rateUpdatedText');
-    if(status)status.textContent=rateUpdated+(window._goldStale?' · Bazı altın verileri gecikmiş olabilir':' · Döviz ve altın güncel');
-    if(showMessage&&typeof appNotice==='function')appNotice('Döviz ve altın kurları güncellendi.','Başarılı');
+    if(status)status.textContent=rateUpdated+(usedFallback?' · Yedek servis kullanılıyor (döviz günlük, altın yaklaşık)':' · Döviz ve altın güncel');
+    if(showMessage&&typeof appNotice==='function')appNotice(usedFallback?'Kurlar yedek servis üzerinden güncellendi.':'Döviz ve altın kurları güncellendi.','Başarılı');
+    if(usedFallback)console.warn('Ana kur servisi kullanılamadı; yedek kaynak devrede:',primaryError);
   }catch(error){
     window._rateError=error?.message||'Kur güncellemesi başarısız.';
     const status=document.getElementById('rateUpdatedText');
     if(status)status.textContent='Güncelleme başarısız · Son kayıtlı değerler gösteriliyor. '+window._rateError;
-    if(showMessage&&typeof appNotice==='function')appNotice('Kurlar alınamadı. İnternet bağlantısını kontrol edip tekrar dene.','Uyarı');
+    if(showMessage&&typeof appNotice==='function')appNotice('Kurlar alınamadı: '+window._rateError,'Uyarı');
     console.warn('Kur API güncelleme hatası:',error);
   }finally{
     window._rateRefreshInProgress=false;
