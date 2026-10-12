@@ -3043,29 +3043,24 @@ async function fetchJson(url){
   if(!r.ok)throw new Error('HTTP '+r.status);
   return await r.json();
 }
-async function fetchText(url){
-  // Tarayıcılar TCMB XML isteğini CORS nedeniyle engelleyebilir.
-  // Tüm adresler aynı resmi TCMB XML dosyasını sunar; proxy yalnızca erişim katmanıdır.
-  const encoded=encodeURIComponent(url);
+async function fetchCurrencyApiTr(){
+  // Ücretsiz, açık kaynak API: döviz + gram altın + çeyrek/yarım/tam altın tek yanıtta.
+  // CDN CORS destekler; cihazlar aynı veri adresini kullanır.
   const urls=[
-    url+(url.includes('?')?'&':'?')+'_='+Date.now(),
-    'https://api.allorigins.win/raw?url='+encoded,
-    'https://corsproxy.io/?url='+encoded
+    'https://cdn.jsdelivr.net/gh/MehmetAkgul/currency-api-tr@main/v1/currencies/try-full.json',
+    'https://raw.githubusercontent.com/MehmetAkgul/currency-api-tr/main/v1/currencies/try-full.json'
   ];
   let lastError=null;
-  for(const candidate of urls){
+  for(const url of urls){
     try{
-      const controller=typeof AbortController!=='undefined'?new AbortController():null;
-      const timer=controller?setTimeout(()=>controller.abort(),9000):null;
-      const response=await fetch(candidate,{cache:'no-store',signal:controller?.signal});
-      if(timer)clearTimeout(timer);
-      if(!response.ok)throw new Error('HTTP '+response.status);
-      const text=await response.text();
-      if(!text||(!text.includes('<Currency')&&!text.includes('<Tarih')))throw new Error('TCMB XML içeriği geçersiz');
-      return text;
+      const data=await fetchJson(url);
+      const tr=data?.try||{};
+      if(!(Number(tr.usd?.bid)>0&&Number(tr.usd?.ask)>0&&Number(tr.eur?.bid)>0&&Number(tr.eur?.ask)>0))throw new Error('API yanıtında USD/EUR kurları eksik.');
+      if(!(Number(tr.xau_gram?.bid)>0&&Number(tr.xau_gram?.ask)>0))throw new Error('API yanıtında gram altın fiyatı eksik.');
+      return data;
     }catch(error){lastError=error;}
   }
-  throw new Error('TCMB verisine erişilemedi: '+(lastError?.message||'Bağlantı hatası'));
+  throw new Error('Kur servisine erişilemedi: '+(lastError?.message||'Bağlantı hatası'));
 }
 function applyCurrencyRates(usdTry,eurTry,source,spread={}){
   const quote=(mid,buyRaw,sellRaw)=>{
@@ -3102,122 +3097,94 @@ function applyGoldSpot(spotUsdOz,usdTry){
   window._goldSpotUsdOz=spotUsdOz;
   return true;
 }
-async function fetchTcmbToday(){
-  const xml=await fetchText('https://www.tcmb.gov.tr/kurlar/today.xml');
-  const doc=new DOMParser().parseFromString(xml,'application/xml');
-  if(doc.querySelector('parsererror'))throw new Error('TCMB XML okunamadı');
-  const nodes=[...doc.getElementsByTagName('Currency')];
-  const get=(code)=>{
-    const n=nodes.find(x=>x.getAttribute('CurrencyCode')===code);
-    if(!n)return {buy:0,sell:0};
-    const sell=parseRateNumber(n.getElementsByTagName('ForexSelling')[0]?.textContent);
-    const buy=parseRateNumber(n.getElementsByTagName('ForexBuying')[0]?.textContent);
-    return {buy:buy||sell,sell:sell||buy};
-  };
-  const usd=get('USD'),eur=get('EUR');
-  return {usd:usd.sell||usd.buy,eur:eur.sell||eur.buy,usdBuy:usd.buy,usdSell:usd.sell,eurBuy:eur.buy,eurSell:eur.sell};
-}
-async function fetchOpenCurrencyFallback(){
-  const urls=[
-    'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json',
-    'https://latest.currency-api.pages.dev/v1/currencies/usd.json'
-  ];
-  let last=null;
-  for(const url of urls){
-    try{
-      const data=await fetchJson(url);
-      const usd=data?.usd||{};
-      const usdTry=parseRateNumber(usd.try);
-      const usdEur=parseRateNumber(usd.eur);
-      if(usdTry>0&&usdEur>0)return {usd:usdTry,eur:usdTry/usdEur};
-    }catch(e){last=e}
-  }
-  throw last||new Error('Kur fallback başarısız');
-}
-async function fetchGoldApi(){
-  const data=await fetchJson('https://api.gold-api.com/price/XAU');
-  const spot=parseRateNumber(data?.price);
-  if(!(spot>0))throw new Error('XAU fiyatı alınamadı');
-  return {spot,updatedAt:data?.updatedAtReadable||data?.updatedAt||''};
-}
 function loadRateCache(){
   try{
     const cached=JSON.parse(localStorage.getItem(RATE_CACHE_KEY)||'null');
     if(!cached)return false;
-    // Döviz tarafında yalnızca TCMB kaynaklı önbelleği kullan.
-    // Eski/yedek Currency API kuru ekranda geçici olarak bile gösterilmesin.
     const cachedFxSource=String(cached.fxSource||'');
-    if(cachedFxSource==='TCMB'){
+    if(['Currency API TR','TCMB'].includes(cachedFxSource)){
       if(cached.quotes)Object.assign(rateQuotes,cached.quotes);
       if(cached.rates){
-        if(Number(cached.rates.USD)>0)rates.USD=cached.rates.USD;
-        if(Number(cached.rates.EUR)>0)rates.EUR=cached.rates.EUR;
+        for(const key of ['USD','EUR'])if(Number(cached.rates[key])>0)rates[key]=Number(cached.rates[key]);
       }
-      window._fxRateSource='TCMB';
+      window._fxRateSource=cachedFxSource;
     }
-    // Altın önbelleğini koruyoruz; altın hesabının yapısı değişmiyor.
-    if(cached.goldSource==='Gold API'){
+    if(['Currency API TR','Gold API'].includes(String(cached.goldSource||''))){
       if(cached.quotes){
-        for(const key of ['GOLD22','GOLD24','CEYREK','YARIM','TAM']){
-          if(cached.quotes[key])rateQuotes[key]=cached.quotes[key];
-        }
+        for(const key of ['GOLD22','GOLD24','CEYREK','YARIM','TAM'])if(cached.quotes[key])rateQuotes[key]=cached.quotes[key];
       }
       if(cached.rates){
-        for(const key of ['GOLD22','GOLD24','CEYREK','YARIM','TAM']){
-          if(Number(cached.rates[key])>0)rates[key]=cached.rates[key];
-        }
+        for(const key of ['GOLD22','GOLD24','CEYREK','YARIM','TAM'])if(Number(cached.rates[key])>0)rates[key]=Number(cached.rates[key]);
       }
-      window._goldSource='Gold API';
-      window._goldSpotUsdOz=Number(cached.goldSpotUsdOz)||0;
+      window._goldSource=cached.goldSource;
     }
     if(cached.updated)rateUpdated=cached.updated;
     return true;
   }catch(e){return false}
 }
 function saveRateCache(){
-  const data={updated:rateUpdated,rates,quotes:rateQuotes,fetchedAt:Date.now(),fxSource:window._fxRateSource||'',goldSource:window._goldSource||'',goldSpotUsdOz:window._goldSpotUsdOz||0};
-  localStorage.setItem(RATE_CACHE_KEY,JSON.stringify(data));
+  const data={updated:rateUpdated,rates,quotes:rateQuotes,fetchedAt:Date.now(),fxSource:window._fxRateSource||'',goldSource:window._goldSource||'',apiDate:window._rateApiDate||'',apiUpdatedAt:window._rateApiUpdatedAt||'',goldStale:!!window._goldStale};
+  try{localStorage.setItem(RATE_CACHE_KEY,JSON.stringify(data));}catch(e){}
   S.rateData=data;
+}
+function applyCurrencyApiTr(data){
+  const tr=data?.try||{};
+  const setQuote=(key,label,item,suffix='TL')=>{
+    const buy=Number(item?.bid),sell=Number(item?.ask);
+    if(!(buy>0&&sell>0))return false;
+    rates[key]=(buy+sell)/2;
+    rateQuotes[key]={...(rateQuotes[key]||{}),label,value:(buy+sell)/2,buy,sell,suffix};
+    return true;
+  };
+  if(!setQuote('USD','Dolar',tr.usd)||!setQuote('EUR','Euro',tr.eur))throw new Error('Döviz kurları eksik.');
+  const gram=tr.xau_gram;
+  if(!setQuote('GOLD24','24 Ayar Altın',gram,'TL/gr'))throw new Error('24 ayar altın fiyatı eksik.');
+  const gold24=Number(rates.GOLD24), gold22=gold24*22/24;
+  const g24q=rateQuotes.GOLD24;
+  rates.GOLD22=gold22;
+  rateQuotes.GOLD22={...(rateQuotes.GOLD22||{}),label:'22 Ayar Altın',buy:Number(g24q.buy)*22/24,sell:Number(g24q.sell)*22/24,suffix:'TL/gr'};
+  const coins=[['CEYREK','Çeyrek Altın',tr.xau_ceyrek],['YARIM','Yarım Altın',tr.xau_yarim],['TAM','Tam Altın',tr.xau_tam]];
+  for(const [key,label,item] of coins){
+    if(!setQuote(key,label,item,'TL')){
+      // Bazı API sürümlerinde madeni altınlar eksikse gram fiyatından yaklaşık değer üret.
+      const weight=COIN_WEIGHTS[key], buy=Number(rateQuotes.GOLD22.buy)*weight, sell=Number(rateQuotes.GOLD22.sell)*weight;
+      rates[key]=(buy+sell)/2;rateQuotes[key]={...(rateQuotes[key]||{}),label,buy,sell,suffix:'TL'};
+    }
+  }
+  window._fxRateSource='Currency API TR';
+  window._goldSource='Currency API TR';
+  window._rateApiDate=data?.date||'';
+  window._rateApiUpdatedAt=data?.updated_at||'';
+  window._goldStale=!!data?.is_stale||['xau_gram','xau_ceyrek','xau_yarim','xau_tam'].some(k=>!!tr[k]?.stale);
+  return true;
 }
 async function refreshRates(showMessage=false){
   if(window._rateRefreshInProgress)return;
   window._rateRefreshInProgress=true;
   const btn=document.querySelector('.rate-update-btn');
   if(btn){btn.disabled=true;btn.textContent='Güncelleniyor...'}
-  let fxOk=false,goldOk=false;
   try{
-    // Döviz için yalnızca TCMB'nin resmi XML verisi kullanılır.
-    const fx=await fetchTcmbToday();
-    if(!(fx.usd>0&&fx.eur>0))throw new Error('TCMB yanıtında USD/EUR kuru bulunamadı.');
-    applyCurrencyRates(fx.usd,fx.eur,'TCMB',fx);
-    fxOk=true;
-    window._fxRateSource='TCMB';
-    window._rateError='';
+    const data=await fetchCurrencyApiTr();
+    applyCurrencyApiTr(data);
+    window._rateError='';window._goldRateError='';
     const now=new Date();
     const time=now.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});
-    rateUpdated=rateDateLabel()+' · TCMB '+time;
-    try{
-      const gold=await fetchGoldApi();
-      goldOk=applyGoldSpot(gold.spot,rates.USD);
-      if(!goldOk)throw new Error('Altın verisi hesaplanamadı');
-    }catch(goldError){
-      window._goldRateError=goldError?.message||'Altın verisi alınamadı';
-    }
-    if(goldOk)window._goldRateError='';
+    const sourceDate=data?.date?new Date(data.date+'T12:00:00').toLocaleDateString('tr-TR',{day:'2-digit',month:'short',year:'numeric'}):rateDateLabel();
+    rateUpdated=sourceDate+' · '+time;
     saveRateCache();
     save();
     const status=document.getElementById('rateUpdatedText');
-    if(status)status.textContent=rateUpdated+(goldOk?' · TCMB + Altın güncel':' · TCMB güncel, altın verisi alınamadı');
-    if(showMessage&&typeof appNotice==='function')appNotice('Döviz kurları TCMB üzerinden güncellendi.','Başarılı');
+    if(status)status.textContent=rateUpdated+(window._goldStale?' · Bazı altın verileri gecikmiş olabilir':' · Döviz ve altın güncel');
+    if(showMessage&&typeof appNotice==='function')appNotice('Döviz ve altın kurları güncellendi.','Başarılı');
   }catch(error){
     window._rateError=error?.message||'Kur güncellemesi başarısız.';
     const status=document.getElementById('rateUpdatedText');
     if(status)status.textContent='Güncelleme başarısız · Son kayıtlı değerler gösteriliyor. '+window._rateError;
-    if(showMessage&&typeof appNotice==='function')appNotice('Kur güncellenemedi. İnternet bağlantısını kontrol edip tekrar dene.','Uyarı');
-    console.warn('TCMB kur güncelleme hatası:',error);
+    if(showMessage&&typeof appNotice==='function')appNotice('Kurlar alınamadı. İnternet bağlantısını kontrol edip tekrar dene.','Uyarı');
+    console.warn('Kur API güncelleme hatası:',error);
   }finally{
     window._rateRefreshInProgress=false;
-    if(btn){btn.disabled=false;btn.textContent='Güncelle'}
+    if(btn){btn.disabled=false;btn.textContent='Kurları Güncelle'}
   }
 }
 
@@ -3255,7 +3222,7 @@ window.addEventListener('pagehide',stopRateAutoRefresh);
 
 function ratesMarkup(){
   const rateCard=(label,asset,unit='')=>{const kind=asset==='USD'?'USD':asset==='EUR'?'EUR':'GOLD';return `<article class="rate"><div class="rate-title"><span class="rate-modal-icon">${homeRateIcon(kind)}</span><div class="rate-title-text"><b>${label}</b>${unit?`<span class="rate-unit">${unit}</span>`:''}</div></div><div class="rate-pair"><div class="rate-pair-row rate-buy"><span>Alış</span><strong>₺${fnum(currentExitRate(asset))}</strong></div><div class="rate-pair-row rate-sell"><span>Satış</span><strong>₺${fnum(currentPurchaseRate(asset))}</strong></div></div></article>`;};
-  return `<div class="rates-modal-content"><div class="rates-modal-meta"><span class="rates-live-dot"></span><span id="rateUpdatedText">${esc(rateUpdated)} · TCMB resmi kuru (iş günlerinde günlük yayımlanır)</span><button type="button" class="secondary rate-update-btn" onclick="refreshRates(true)">Kurları Güncelle</button></div><div class="rategrid live-rates">${rateCard('Dolar / TL','USD')}${rateCard('Euro / TL','EUR')}${rateCard('22 Ayar Altın','GOLD22','TL/gr')}${rateCard('24 Ayar Altın','GOLD24','TL/gr')}${rateCard('Çeyrek Altın','CEYREK','hesaplanan')}${rateCard('Yarım Altın','YARIM','hesaplanan')}${rateCard('Tam Altın','TAM','hesaplanan')}</div><details class="rate-note-details"><summary>Kur açıklaması</summary><p class="sub rate-note">Alış: kurumun sizden alırken ödediği referans fiyat, yaklaşık bozdurma değeridir. Satış: aynı varlığı yeniden almak için ödeyeceğiniz referans fiyattır. TCMB verisi yoksa döviz için orta kura yaklaşık %0,5 referans makası uygulanır. Altında spot fiyata yaklaşık makas eklenir; gerçek kuyumcu fiyatları farklı olabilir. Çeyrek, yarım ve tam altın değerleri yaklaşık hesaplanır.</p></details></div>`;
+  return `<div class="rates-modal-content"><div class="rates-modal-meta"><span class="rates-live-dot"></span><span id="rateUpdatedText">${esc(rateUpdated)} · Ücretsiz döviz ve altın veri servisi</span><button type="button" class="secondary rate-update-btn" onclick="refreshRates(true)">Kurları Güncelle</button></div><div class="rategrid live-rates">${rateCard('Dolar / TL','USD')}${rateCard('Euro / TL','EUR')}${rateCard('22 Ayar Altın','GOLD22','TL/gr')}${rateCard('24 Ayar Altın','GOLD24','TL/gr')}${rateCard('Çeyrek Altın','CEYREK','hesaplanan')}${rateCard('Yarım Altın','YARIM','hesaplanan')}${rateCard('Tam Altın','TAM','hesaplanan')}</div><details class="rate-note-details"><summary>Kur açıklaması</summary><p class="sub rate-note">Alış: kurumun sizden alırken ödediği referans fiyat, yaklaşık bozdurma değeridir. Satış: aynı varlığı yeniden almak için ödeyeceğiniz referans fiyattır. Döviz ve altın fiyatları ücretsiz, açık kaynaklı veri servisinden alınır. Altın fiyatları piyasaya ve veri sağlayıcısına göre değişebilir; kuyumcu fiyatları farklı olabilir. Servis geçici olarak erişilemezse son kayıtlı değerler gösterilir.</p></details></div>`;
 }
 function openRatesModal(){showFormModal('Güncel Kurlar',ratesMarkup());}
 function homeRateIcon(kind){
