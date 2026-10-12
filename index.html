@@ -466,7 +466,7 @@ form{display:flex;flex-direction:column;gap:11px}.row2{display:grid;grid-templat
 #recurringExtendMonths,#rsMonths,#txMonths,#pMonths{direction:ltr;text-align:left;caret-color:var(--primary)}
 
 /* Kategori seçimi - kompakt, renkli, ikonlu */
-.category-picker-overlay{position:fixed;inset:0;background:rgba(15,23,42,.38);backdrop-filter:blur(3px);display:flex;align-items:stretch;justify-content:center;z-index:22000;padding:0}
+.category-picker-overlay{position:fixed;inset:0;background:rgba(15,23,42,.38);backdrop-filter:blur(3px);display:flex;align-items:stretch;justify-content:center;z-index:40000!important;padding:0;isolation:isolate}
 .category-picker{width:min(620px,100%);height:100dvh;max-height:100dvh;overflow:hidden;background:var(--card,#fff);border:0;border-radius:0;box-shadow:0 0 35px rgba(15,23,42,.18);padding:14px 13px calc(92px + env(safe-area-inset-bottom));display:flex;flex-direction:column}
 .category-picker-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.category-picker-head h3{margin:0;font-size:17px}.category-picker-close{border:0;background:#f3f4f6;width:34px;height:34px;border-radius:11px;font-size:20px;line-height:1;cursor:pointer}
 .category-picker-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}.category-picker-tabs button{border:1px solid var(--border,#e5e7eb);background:#f8fafc;color:var(--fg);border-radius:11px;padding:9px;font-weight:800}.category-picker-tabs button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
@@ -1743,6 +1743,10 @@ body.cloud-cache-loading #main button,body.cloud-cache-loading #main input,body.
 /* Döviz penceresi, sabit alt sekmelerin üstünde görünmeli. */
 .modal{z-index:30000!important}
 .modal.show{z-index:30000!important}
+/* Kategori penceresi, kayıt modalının ve sabit alt menünün üzerinde açılmalı. */
+<style id="category-picker-layer-fix">
+#categoryPickerOverlay{z-index:40000!important;position:fixed!important;inset:0!important}
+#categoryPickerOverlay .category-picker{position:relative;z-index:40001!important;pointer-events:auto}
 </style>
 </head>
 <style id="savings-report-readable-contrast-v1">
