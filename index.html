@@ -1957,7 +1957,7 @@ button,input,select,textarea,a{touch-action:manipulation}
 <body class="auth-pending">
 <div id="authGate" class="auth-gate" aria-live="polite"></div>
 <div class="app">
-<header><div class="head"><div class="brand"><div class="logo"><img src="./icon-192.png" alt="Aile Bütçem uygulama simgesi"></div><div><b class="brand-title" role="button" tabindex="0" onclick="go('ozet')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();go('ozet')}">Aile Bütçem</b><span>Bütçe · Birikim · Ödemeler</span></div></div><div class="head-actions"><select id="memberSelect" class="profile" aria-label="İşlem profili"></select><div class="notification-wrap"><button id="notificationBtn" class="notification-btn" type="button" onclick="toggleNotificationMenu(event)" aria-label="Bildirimler" title="Bildirimler" aria-haspopup="true" aria-expanded="false">🔔<span id="notificationBadge" class="notification-badge">0</span></button><div id="notificationMenu" class="notification-menu" hidden></div></div><div class="settings-wrap"><button id="familySettingsBtn" class="settings-btn" type="button" onclick="toggleSettingsMenu()" aria-label="Ayarlar" title="Ayarlar" aria-haspopup="true" aria-expanded="false">⚙</button><div id="settingsMenu" class="settings-menu" role="menu" hidden><button type="button" role="menuitem" onclick="openFamilySettings()"><span class="settings-menu-icon">👥</span><span>Aile ve Profil</span></button><button type="button" role="menuitem" onclick="toggleFamilyNotifications()"><span class="settings-menu-icon">🔔</span><span class="settings-menu-copy"><span id="familyNotificationMenuLabel">Telefon bildirimlerini aç</span><small id="familyNotificationMenuStatus">Bu cihazda kapalı</small></span></button><button type="button" role="menuitem" onclick="openNotes()"><span class="settings-menu-icon">📝</span><span>Notlar</span></button><button type="button" role="menuitem" onclick="closeSettingsMenu();installPwa()"><span class="settings-menu-icon">⇩</span><span>Masaüstüne ekle</span></button></div></div></div></div>
+<header><div class="head"><div class="brand"><div class="logo"><img src="./icon-192.png" alt="Aile Bütçem uygulama simgesi"></div><div><b class="brand-title" role="button" tabindex="0" onclick="go('ozet')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();go('ozet')}">Aile Bütçem</b><span>Bütçe · Birikim · Ödemeler</span></div></div><div class="head-actions"><select id="memberSelect" class="profile" aria-label="İşlem profili"></select><div class="notification-wrap"><button id="notificationBtn" class="notification-btn" type="button" onclick="toggleNotificationMenu(event)" aria-label="Bildirimler" title="Bildirimler" aria-haspopup="true" aria-expanded="false">🔔<span id="notificationBadge" class="notification-badge">0</span></button><div id="notificationMenu" class="notification-menu" hidden></div></div><div class="settings-wrap"><button id="familySettingsBtn" class="settings-btn" type="button" onclick="toggleSettingsMenu()" aria-label="Ayarlar" title="Ayarlar" aria-haspopup="true" aria-expanded="false">⚙</button><div id="settingsMenu" class="settings-menu" role="menu" hidden><button type="button" role="menuitem" onclick="openFamilySettings()"><span class="settings-menu-icon">👥</span><span>Aile ve Profil</span></button><button type="button" role="menuitem" onclick="toggleFamilyNotifications()"><span class="settings-menu-icon">🔔</span><span class="settings-menu-copy"><span id="familyNotificationMenuLabel">Telefon bildirimlerini aç</span><small id="familyNotificationMenuStatus">Bu cihazda kapalı</small></span></button><button type="button" role="menuitem" onclick="openNotes()"><span class="settings-menu-icon">📝</span><span>Notlar</span></button><button type="button" role="menuitem" onclick="openLeaveTracker()"><span class="settings-menu-icon">🗓️</span><span>İzin Takip Listesi</span></button><button type="button" role="menuitem" onclick="closeSettingsMenu();installPwa()"><span class="settings-menu-icon">⇩</span><span>Masaüstüne ekle</span></button></div></div></div></div>
 <nav class="desktop-nav" id="desktopNav"></nav></header>
 <main id="main"></main>
 <nav class="bottom" id="bottomNav"></nav>
@@ -5578,6 +5578,50 @@ function confirmDelete(type){
   deleteSelected[type]=new Set();
   if(type==='loans')deleteSelected.loanSettlements=new Set();
   save();
+}
+
+
+// İzin takip listesi: kullanıcı izin türünü ve ölçü birimini kendisi tanımlar.
+function ensureLeaveTypes(){
+  if(!Array.isArray(S.leaveTypes))S.leaveTypes=[];
+  S.leaveTypes=S.leaveTypes.filter(x=>x&&typeof x==='object').map(x=>({id:String(x.id||uid()),name:String(x.name||'').trim(),unit:String(x.unit||'').trim(),createdAt:x.createdAt||Date.now()})).filter(x=>x.name&&x.unit);
+  return S.leaveTypes;
+}
+function openLeaveTracker(){
+  closeSettingsMenu();
+  const title=byId('modalTitle'),body=byId('modalBody'),modal=byId('modal');
+  if(!title||!body||!modal)return;
+  title.textContent='İzin Takip Listesi';
+  body.innerHTML=`<div class="stack"><p class="sub">İzin cinsini ve birimini kendin belirle. Örn. Yıllık İzin — Gün, Saatlik İzin — Saat.</p><form class="stack" onsubmit="addLeaveType(event)"><div class="field"><label>İzin Cinsi</label><input id="leaveTypeName" maxlength="80" placeholder="Örn. Yıllık İzin" required></div><div class="field"><label>İzin Birimi</label><input id="leaveTypeUnit" maxlength="30" placeholder="Gün, saat, yarım gün vb." required></div><button type="submit" class="primary">＋ Ekle</button></form><div class="divider"></div><h3>Kayıtlı İzin Türleri</h3><div id="leaveTypeList" class="stack"></div><button type="button" class="secondary" onclick="closeModal()">Kapat</button></div>`;
+  modal.classList.add('show');
+  renderLeaveTypes();
+}
+function renderLeaveTypes(){
+  const list=byId('leaveTypeList');if(!list)return;
+  const types=ensureLeaveTypes();
+  if(!types.length){list.innerHTML='<div class="empty-state">Henüz izin türü eklenmedi.</div>';return;}
+  list.innerHTML=types.map(x=>`<div class="panel" style="padding:12px;display:flex;align-items:center;justify-content:space-between;gap:10px"><div style="min-width:0"><b>${esc(x.name)}</b><div class="sub">Birim: ${esc(x.unit)}</div></div><button type="button" class="dangerbtn" onclick="deleteLeaveType('${esc(x.id)}')">Sil</button></div>`).join('');
+}
+function addLeaveType(event){
+  if(event&&typeof event.preventDefault==='function')event.preventDefault();
+  const name=(byId('leaveTypeName')?.value||'').trim();
+  const unit=(byId('leaveTypeUnit')?.value||'').trim();
+  if(!name||!unit){appNotice('İzin cinsi ve birimini gir.','Eksik Bilgi');return false;}
+  const types=ensureLeaveTypes();
+  if(types.some(x=>x.name.toLocaleLowerCase('tr-TR')===name.toLocaleLowerCase('tr-TR'))){appNotice('Bu izin cinsi zaten eklenmiş.','Bilgi');return false;}
+  types.push({id:String(uid()),name,unit,createdAt:Date.now()});
+  save();
+  if(byId('leaveTypeName'))byId('leaveTypeName').value='';
+  if(byId('leaveTypeUnit'))byId('leaveTypeUnit').value='';
+  renderLeaveTypes();
+  byId('leaveTypeName')?.focus({preventScroll:true});
+  return false;
+}
+function deleteLeaveType(id){
+  const types=ensureLeaveTypes();
+  const item=types.find(x=>String(x.id)===String(id));if(!item)return;
+  S.leaveTypes=types.filter(x=>String(x.id)!==String(id));
+  save();renderLeaveTypes();
 }
 
 function closeModal(){document.getElementById('modal').classList.remove('show');setTimeout(applyPendingRemoteIfSafe,250)}
